@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2017 
-#DATE MODIFIED: 03/10/2017
+#DATE MODIFIED: 03/11/2017
 #Version: 2
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
@@ -80,12 +80,18 @@ if(create_out_dir_param==TRUE){
 
 
 r_mask <- raster(mask_alaska_filename)
+NAvalue(r_mask) <- -999
+plot(r_mask)
+
 lf <- mixedsort(list.files(path=in_dir_NDVI,pattern="NDVI_2001_2009_filling6__NDVI_gap_filling2_07062011_test1_.*.rst$",full.names=T))
 
 r_NDVI_data <- stack(lf)
 
 plot(r_NDVI_data,y=1)
 
-r_NDVI_data_mask <- mask(r_NDVI_data,mask=r_mask,filename=file.path(out_dir,"r_NDVI_data_alaska_mask.tif"))
+r_NDVI_data_mask <- mask(r_NDVI_data,mask=r_mask,filename=file.path(out_dir,"r_NDVI_data_alaska_mask2.tif"))
+
+plot(r_NDVI_data_mask,y=2)
+filename(r_NDVI_data_mask) 
 
 ################### End of Script #########################
