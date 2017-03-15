@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/09/2017 
-#DATE MODIFIED: 03/13/2017
+#DATE MODIFIED: 03/15/2017
 #Version: 2
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
@@ -55,7 +55,7 @@ proj_str<- CRS_WGS84
 CRS_reg <- CRS_WGS84 # PARAM 4
 
 masking_process <- F
-file_format <- ".rst" #PARAM5
+file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
 out_suffix <-"alaska_03092017" #output suffix for the files and ouptu folder #PARAM 8
@@ -92,6 +92,19 @@ plot(r_NDVI_data,y=1)
 
 if(masking_process==T){
   r_NDVI_data_mask <- mask(r_NDVI_data,mask=r_mask,filename=file.path(out_dir,"r_NDVI_data_alaska_mask3.tif"))
+  
+  date_range <- c("2001.01.01","2009.12.31") #NDVI Katrina
+  
+  #generate dates for 16 days product
+  dates_val <- generate_dates_by_step(date_range[1],date_range[2],16)$dates #NDVI Katrina
+  dates_val_str <- format(dates_val,format="%Y_%m_%d") #format to insert in names of raste files, convert "-" in "_"
+  
+  out_suffix_str <- paste0("NDVI_",dates_val_str) # this needs to be matching the number of outputs files writeRaste
+  
+  #note idrisi files are 19 mb compared to 6.3 after compression in the tif format
+  writeRaster(r_NDVI_data_mask,filename="alaska.tif",
+              bylayer=T,datatype="FLT4S",options="COMPRESS=LZW",suffix=out_suffix_str,overwrite=T)
+  
 }else{
   r_NDVI_data_mask <- brick(file.path(out_dir,"r_NDVI_data_alaska_mask3.tif"))
 }
@@ -99,18 +112,6 @@ if(masking_process==T){
 ##
 plot(r_NDVI_data_mask,y=2)
 filename(r_NDVI_data_mask) 
-
-date_range <- c("2001.01.01","2009.12.31") #NDVI Katrina
-
-#generate dates for 16 days product
-dates_val <- generate_dates_by_step(date_range[1],date_range[2],16)$dates #NDVI Katrina
-dates_val_str <- format(dates_val,format="%Y_%m_%d") #format to insert in names of raste files, convert "-" in "_"
-
-out_suffix_str <- paste0("NDVI_",dates_val_str) # this needs to be matching the number of outputs files writeRaste
-
-#note idrisi files are 19 mb compared to 6.3 after compression in the tif format
-writeRaster(r_NDVI_data_mask,filename="alaska.tif",
-            bylayer=T,datatype="FLT4S",options="COMPRESS=LZW",suffix=out_suffix_str,overwrite=T)
 
 lf_masked <- mixedsort(list.files(path= out_dir, pattern="^alaska_NDVI_.*.tif",full.names=T))
 
@@ -129,16 +130,34 @@ lf_var <- list.files(path="~/Google Drive/Data/Seminars_talks_workshops/workshop
 
 r_var <- stack(lf_var)
 dim(r_var)
-plot(r_var,1)
+#plot(r_var,8)
+#freq(subset(r_var,8))
 
 ## now mask and transform one by one...
-r_var_data_mask <- mask(r_var,mask=r_mask,filename=file.path(out_dir,"r_var_masked.tif"))
-out_suffix_str <- names(r_var_data_mask) # this needs to be matching the number of outputs files writeRaste
+#r_var_data_mask <- mask(r_var,mask=r_mask,filename=file.path(out_dir,"r_var_masked.tif"),overwrite=T)
+#Error in .checkLevels(levs[[j]], value[[j]]) : 
+#  new raster attributes (factor values) should be in a data.frame (inside a list)
+# need to fix issue with layer 8: wwf_terr_ecos_Alaska_ECOREGIONS_ECOSYS_ALB83.rst
+
+r_var_data_mask <- mask(subset(r_var,1:7),mask=r_mask,filename=file.path(out_dir,"r_var_masked.tif"),overwrite=T)
+plot(r_var_data_mask,y=1:7)
+
+out_suffix_str <- names(r_var)[1:7] # this needs to be matching the number of outputs files writeRaste
 #Fix here problem.
 #note idrisi files are 19 mb compared to 6.3 after compression in the tif format
 writeRaster(r_var_data_mask,filename="r.tif",
             bylayer=T,datatype="FLT4S",options="COMPRESS=LZW",suffix=out_suffix_str,overwrite=T)
 
+### Now deal with ecoregions
+r_wwf <- subset(r_var,8)
+r_wwf_mask <- mask(r_wwf,r_mask)
+plot(r_wwf_mask,colNA=c("black"))
+
+raster_name <- paste0(names(r_wwf),file_format,sep="")
+r_wwf <- writeRaster(r_wwf_mask,filename=file.path(out_dir,raster_name),
+            bylayer=F,datatype="FLT4S",options="COMPRESS=LZW",overwrite=T)
+filename(r_wwf)
+plot(r_wwf)
 
 ################### End of Script #########################
 
