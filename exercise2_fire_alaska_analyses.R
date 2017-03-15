@@ -99,6 +99,62 @@ plot(r_var)
 #filename(r_wwf)
 #plot(r_wwf)
 
+##### 
+tb_freq <- freq(subset(r_var,6)) #  count of pixels by burn scars
+projection(r_var)
+
+####### PART II: Change analyses via image differencing and ratioing.
+
+## Studying change by image differencing
+#look for NDVI 2002 and 2009 and select each average
+
+r_NDVI_avg_2002 <- subset(r_var,4)
+r_NDVI_avg_2009 <- subset(r_var,5)
+
+r_diff_NDVI <- r_NDVI_avg_2009 - r_NDVI_avg_2002
+r_ratio_NDVI <- r_NDVI_avg_2009/r_NDVI_avg_2002
+  
+plot(r_diff_NDVI,col=matlab.like(255))
+plot(r_diff_NDVI,col=matlab.like(255),zlim=c(-0.5,0.5))
+
+plot(r_ratio_NDVI,col=matlab.like(255),zlim=c(0.5,1.5))
+
+### Quick histogram
+hist(r_diff_NDVI)
+##Adjust the bins
+
+hist_bins <- seq(-1,1,by=0.05)
+hist(r_diff_NDVI,breaks=hist_bins)
+#hist_bins <- seq(-0.3,0.3,by=0.05)
+hist(r_diff_NDVI,breaks=hist_bins,xlim=c(-0.3,0.3))
+
+## Threshold your inputs
+plot(r_diff_NDVI < -0.2)
+plot(r_diff_NDVI < -0.1)
+
+##Standardize images
+
+##Extract values by fire scars
+
+## Plot changes over the time period
+
+### Your turn: use albedo images to define image of changes, what do you think is a good threshold
+
+#1.Select Albedo images
+#2.Do differencing, and standardization
+#3.Generate Image of cahnge
+
+######### PART III: time series analyses
+
+#1. Extract time series
+#2. Generate movies through looping
+#3. Compute temporal corr
+#4. Compute autocorr
+#5. Performa PCA
+#4. compute averages by WWF ecoregions
+
+# Using LST time series perform similar analysis
+
 ################### End of Script #########################
 
 #To explore later:
