@@ -108,7 +108,7 @@ r_habitat <- raster(file.path(in_dir_var,habitat_fname))
 r_bio_hotspot <- raster(file.path(in_dir_var,biodiversity_hotspot_fname))
 fma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname))) #too large for workshop
 
-plot(r_strat_hab, "startegic habitat")
+plot(r_strat_hab, main="strategic habitat")
 plot(reg_counties_sp,add=T)
 plot(r_priority_wet_hab)
 #plot(r_habitat,add=T)
@@ -125,8 +125,25 @@ lapply(list_raster,function(x){res(x)})
 lapply(list_raster,function(x){projection(x)})
 lapply(list_raster,function(x){extent(x)})
 
-## let's use the resolution 55x55 as the reference
+## PART 0: generate reference layer
 
+## let's use the resolution 55x55 as the reference
+## Select clay county
+clay_county_sp <- subset(reg_counties_sp,NAME=="CLAY")
+plot(r_strat_hab)
+plot(clay_county_sp,border="red",add=T)
+
+## Crop r_strat_hab
+r_ref <- crop(r_strat_hab,clay_county_sp) #make a referenc image
+plot(r_ref)
+plot(clay_county_sp,border="red",add=T)
+
+r_clay <- rasterize(clay_county_sp,r_ref) #this can be used as mask for the study area
+freq(r_clay)
+##Use raster of Clay county definining the study area to mask pixels
+plot(r_clay)
+dim(r_clay)
+dim(r_priority_wet_hab_w)
 
 # PART I: P1- PRIORITY1- IDENTIFY LANDS WITH HIGH NATIVE BIODIVERSITY
 
@@ -141,32 +158,40 @@ lapply(list_raster,function(x){extent(x)})
 #Output: Habitat Biodiversity SUA (CG1O11SO114)
 
 #strategic habitat conservation areas
-r_strat_hab <- raster(file.path(in_dir_var,strat_hab_fname))
+plot(r_strat_hab)
+r_strat_hab_w <- crop(r_strat_hab,r_clay) #did this up there
+r_strat_hab_masked <- mask(r_strat_hab_w,r_clay)
 
-r_strat_hab
+## Now reclassify
+m <- c(5, 1000, 9,  
+       4, 5, 5,  
+       1, 3, 1)  
 
+rclmat <- matrix(m, ncol=3, byrow=TRUE)
 
+?raster::reclassify
 
+rc_strat_hab_reg <- reclassify(r_strat_hab_masked, rclmat)
+plot(rc_strat_hab_reg)
 
 ### STEP 2: Identify Lands With High Native Biodiversity: based on species count 
 
-## Select clay county
-clay_county_sp <- subset(reg_counties_sp,NAME=="CLAY")
-
-plot(r_strat_hab)
-plot(clay_county_sp,border="red")
-r_bio_hotspot <- raster(file.path(in_dir_var,biodiversity_hotspot_fname))
-
 ## Crop bio raster
-r_test <- crop(r_bio_hotspot,clay_county_sp)
-plot(r_test)
+r_bio_hotspot_w <- crop(r_bio_hotspot,clay_county_sp)
+plot(r_bio_hotspot_w)
 plot(clay_county_sp,border="red",add=T)
 
-r_clay <- rasterize(clay_county_sp,r_test)
-freq(r_clay)
-r_bio_clay <- mask(r_test,r_clay)
-plot(r_bio_clay)
-freq(r_bio_clay)
+r_bio_clay_masked <- mask(r_bio_hotspot_w,r_clay) ## Does not work!! because resolution don't match
+#match resolution:
+projection(r_bio_hotspot_w)==projection(r_clay)
+res(r_bio_hotspot_w)==res(r_clay)
+
+## Find about resample
+?raster::resample
+r_bio_hotspot_reg <- resample(r_bio_hotspot_w,r_clay, method='bilinear')
+
+r_bio_hotspot_reg <- mask(r_bio_hotspot_reg,r_clay) ## Does not work!! because resolution don't match
+plot(r_bio_hotspot_reg)
 
 #Criteria for value assignment: Cells with 7 or more focal species or an actual species occurrence record
 #location were assigned a value of 9; a value of 8 was assigned to cells with 5–8 focal species; 7 was
@@ -187,8 +212,9 @@ m <- c(9, 1000, 9,
        1, 2,1)
 rclmat <- matrix(m, ncol=3, byrow=TRUE)
 
-rc <- reclassify(r_bio_clay, rclmat)
-plot(rc)
+rc_bio_hotspot_reg <- reclassify(r_bio_hotspot_reg, rclmat)
+
+plot(rc_bio_hotspot_reg)
 
 ### STEP 3: Wetland priority 
 
@@ -211,22 +237,14 @@ r_priority_wet_hab_w <- crop(r_priority_wet_hab,clay_county_sp)
 plot(r_priority_wet_hab_w)
 plot(clay_county_sp,border="red",add=T)
 
-##Use raster of Clay county definining the study area to mask pixels
-plot(r_clay)
-dim(r_clay)
-dim(r_priority_wet_hab_w)
-
-r_priority_wet_hab_clay <- mask(r_priority_wet_hab_w,r_clay) ## Does not work!! because resolution don't match
+r_priority_wet_hab_reg <- mask(r_priority_wet_hab_w,r_clay) ## Does not work!! because resolution don't match
 #match resolution:
-#projection(r_priority_wet_hab_w)==projection(r_clay)
-#res(r_priority_wet_hab_w)==res(r_clay)
-
 ## Find about resample
-?raster::resample
-r_priority_wet_hab_clay <- resample(r_priority_wet_hab_w,r_clay, method='bilinear')
 
-r_priority_wet_hab_clay <- mask(r_priority_wet_hab_clay,r_clay) ## Does not work!! because resolution don't match
-plot(r_priority_wet_hab_clay)
+r_priority_wet_hab_reg <- resample(r_priority_wet_hab_w,r_clay, method='bilinear') #resolution matching the study region
+
+r_priority_wet_hab_reg <- mask(r_priority_wet_hab_reg,r_clay) ## Does not work!! because resolution don't match
+plot(r_priority_wet_hab_reg)
 
 ### Now reclass
 #The value of 9 was assigned to 10–12 wetland focal species, 8 was assigned to 7–9 wetland focal
@@ -240,14 +258,33 @@ m <- c(10, 12, 9,
 
 rclmat <- matrix(m, ncol=3, byrow=TRUE)
 
-rc_priority_wet_hab_clay <- reclassify(r_priority_wet_hab_clay, rclmat)
-plot(rc_priority_wet_hab_clay)
-freq_tb <- freq(rc_priority_wet_hab_clay)
+rc_priority_wet_hab_reg <- reclassify(r_priority_wet_hab_reg, rclmat)
+plot(rc_priority_wet_hab_reg )
+freq_tb <- freq(rc_priority_wet_hab_reg)
 
 
 ### STEP 4: Combine all the three layers with weigthed sum
 
+f_weights <- c(1,1,1)/3
+r_bio_es_factor <- (f_weights[1]*rc_strat_hab_reg + f_weights[2]*rc_bio_hotspot_reg + f_weights[3]*rc_priority_wet_hab_reg) #weighted sum
 
+f_weights <- c(1,1.5,1.5)/3
+r_bio_ws_factor <- (f_weights[1]*rc_strat_hab_reg + f_weights[2]*rc_bio_hotspot_reg + f_weights[3]*rc_priority_wet_hab_reg) #weighted sum
+
+r_bio_factor <- stack(r_bio_es_factor,r_bio_ws_factor)
+names(r_bio_factor) <- c("equal_weights","weigthed_sum")
+plot(r_bio_factor)
+
+##########################
+#P2- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION WITH ROAD DENSITY AND EXISTING MANAGED LANDS
+#GOAL: Create two raster maps showing lands in Clay County, 
+#Florida that have would have higher conservation potential based on 
+#local road density and distance from existing managed lands using a combination 
+#of the Clip, Extract by Mask, Euclidean Distance, Line Density, Project, Reclassify, and Weighted Sum tools.
+
+#Step 1: create a road density layer
+
+#setp 2: distance from existing managed land
 
 
 ###################### END OF SCRIPT #####################
