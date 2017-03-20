@@ -286,5 +286,95 @@ plot(r_bio_factor)
 
 #setp 2: distance from existing managed land
 
+r_roads_counts <- rasterize(roads_sp, r_clay, fun='count')
+writeRaster(r_roads_counts,"roads_counts.tif",overwrite=T)
+#filter()
+
+#r3 <- focal(x=r, w=matrix(1,nrow=3,ncol=3), fun=sum)
+#plot(r3)
+#do distance to road?
+
+?raster::distance
+#See the gdistance package for more advanced distances, and the geosphere package for greatcircle
+#distances (and more) between points in longitude/latitude coordinates
+
+#A list of target pixel values in the source image to be considered target pixels. If not specified, all non-zero pixels will be considered target pixels.
+
+set1f <- function(x){rep(NA, x)}
+r_init <- init(r_clay, fun=set1f)
+r_init <- r_roads > 0
+NAvalue(r_init) <- 0 
+srcfile <- file.path(out_dir,paste("feature_target_", out_suffix,file_format,sep=""))
+writeRaster(r_init,filename=srcfile,overwrite=T)
+
+#Sys.getpid
+dstfile <- file.path(out_dir,paste("feature_target_distance",out_suffix,file_format,sep=""))
+n_values <- "1"
+
+### Note that gdal_proximity doesn't like when path is too long
+#cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,"-values",n_values,sep=" ")
+cmd_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile),"-values",n_values,sep=" ")
+#cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
+
+system(cmd_str)
+
+#Now reverse the distance...
+
+
+#Get distance from managed land
+#b. Which parts of Clay County contain proximity-to-managed-lands characteristics that would make them more favorable to be used as conservation lands?
+
+#gDistance(spatialpoints, rasterToPoints(r, fun=function(x) {x == 15}))
+#r_dist <- distance(r_init)
+
+#gdal_proximity.py srcfile dstfile [-srcband n] [-dstband n]
+#[-of format] [-co name=value]*
+#  [-ot Byte/Int16/Int32/Float32/etc]
+#[-values n,n,n] [-distunits PIXEL/GEO]
+#[-maxdist n] [-nodata n] [-use_input_nodata YES/NO]
+#[-fixed-buf-val n]
+
+#gDistance(spatialpoints, rasterToPoints(r, fun=function(x) {x == 15}))
+
+##########################
+#P3- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION TO PARCEL VALUES AND ACREAGES
+#GOAL: Create two raster maps showing parcels in Clay County, Florida that have would 
+#have higher conservation potential based on parcel value and parcel size (acreage) using 
+#a combination of the Extract by Mask, Polygon to Raster, Project, Reclassify, and Weighted Sum tools.
+
+#Now summarize by parcels!!
 
 ###################### END OF SCRIPT #####################
+
+#
+#
+#
+#
+#?rasterize
+#fun=length
+
+#roads_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(roads_fname))) #too large for workshop
+#r_test <- rasterize(roads_sp,r_clay,"LINEARID",fun="length")
+#r_test <- rasterize(roads_sp,r_clay
+#                    ,fun="length")
+
+#http://gis.stackexchange.com/questions/119993/convert-line-shapefile-to-raster-value-total-length-of-lines-within-cell
+
+
+#setwd("D:/TEST/RDSUM")
+#roads <- readOGR(getwd(), "TZA_roads")
+#roads <- spTransform(roads, CRS("+init=epsg:21037"))
+#rrst <- raster(extent(roads), crs=projection(roads))
+
+# Intersect lines with raster "polygons" and add length to new lines segments
+#rrst.poly <- rasterToPolygons(rrst)
+#rp <- gIntersection(roads, rrst.poly, byid=TRUE)
+#rp <- SpatialLinesDataFrame(rp, data.frame(row.names=sapply(slot(rp, "lines"), 
+#                                                            function(x) slot(x, "ID")), ID=1:length(rp), 
+#                                           length=SpatialLinesLengths(rp)/1000) ) 
+
+# Rasterize using sum of intersected lines                            
+#rd.rst <- rasterize(rp, rrst, field="length", fun="sum")
+
+
+#http://gis.stackexchange.com/questions/138861/calculating-road-density-in-r-using-kernel-density
