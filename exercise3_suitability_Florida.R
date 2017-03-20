@@ -13,7 +13,7 @@
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
 #
-#COMMIT: initial commit for exercise 3, AAG workshop
+#COMMIT: processing data for the exercise, AAG workshop
 #
 #################################################################################################
 
@@ -85,8 +85,12 @@ if(create_out_dir_param==TRUE){
 #7) Biodiversity hotspot raster file
 #8) Florida managed areas shapefile
 
+#tl_2011_12019_roads.shp
+#tl_2011_12019_roads_prj.shp
+#tl_2010_12019_roads.shp
+
 strat_hab_fname <- "Strat_hab_con_areas1.tif" #1)Strategic Habitat conservation areas raster file
-#2) Missing:Tiger Roads shapefile
+roads_fname <- "tl_2011_12019_roads_prj.shp" #2) Missing:Tiger Roads shapefile
 regional_counties_fname <- "Regional_Counties.shp" #3) County shapefile
 priority_wet_habitats_fname <- "Priority_Wet_Habitats1.tif" #4) Priority Wetlands Habitat raster file
 clay_parcels_fname <- "Clay_Parcels.shp" #5) Clay County parcel shapefile
@@ -96,6 +100,7 @@ florida_managed_areas_fname <- "flma_jun13.shp" #8) Florida managed areas shapef
 
 ## read in
 r_strat_hab <- raster(file.path(in_dir_var,strat_hab_fname))
+roads_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(roads_fname))) #too large for workshop
 reg_counties_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(regional_counties_fname))) #too large for workshop
 r_priority_wet_hab <- raster(file.path(in_dir_var,priority_wet_habitats_fname))
 clay_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(clay_parcels_fname))) #too large for workshop
@@ -105,6 +110,8 @@ fma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fn
 
 plot(r_strat_hab)
 plot(r_priority_wet_hab)
-plot(r_habitat,add=T)
+#plot(r_habitat,add=T)
+plot(roads_sp,add=T)
+
 
 ###################### END OF SCRIPT #####################
