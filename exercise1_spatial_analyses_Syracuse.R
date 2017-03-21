@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/21/2017 
-#DATE MODIFIED: 03/21/2017
+#DATE MODIFIED: 03/22/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
@@ -33,9 +33,12 @@ library(rgeos) #contains topological operations
 library(sphet) #contains spreg, spatial regression modeling
 library(BMS) #contains hex2bin and bin2hex
 library(bitops) #
-library(foreign) #
+#
+library(foreign) # import datasets from SAS, spss, stata and other sources
 library(gdata) #read xls, dbf etc.
-library(classInt)
+library(classInt) #methods to generate class limits
+#library(sqldf) #Not available for 3.3.3
+library(plyr)
 
 ###### Functions used in this script
 
@@ -60,7 +63,6 @@ create_out_dir_param=TRUE #PARAM9
 
 ### PART I READ AND PREPARE DATA FOR REGRESSIONS #######
 
-
 ## First create an output directory
 
 if(is.null(out_dir)){
@@ -75,31 +77,37 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-
 ct_2000_fname <- "ct_00.shp" # CT_00: Cencus Tracts 2000
 bg_2000_fname <- "bg_00.shp" # BG_00: Census Blockgroups 2000
 bk_2000_fname <- "bk_00.shp" # BK_00: Census Blocks 2000
 
 census_table_fname <- "census.csv" #contains data from census to be linked
-soil_PB_table_fname <- "Soil_PB.csv" #contains soil lead data to be linked
+soil_PB_table_fname <- "Soil_PB.csv" #same as census table
+tgr_shp_fname <- "tgr36067lkA.shp" #contains data from census to be linked
+
 metals_table_fname <- "SYR_metals.xlsx" #contains metals data to be linked
 
-#stat_reg <- readOGR(dsn=dirname(census_blocks_2010_fname),sub(".shp","",basename(census_blocks_2010_fname))
-#blocks2010_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(census_blocks_2010_fname))) #too large for workshop
 ct_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(ct_2000_fname)))
 bg_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(bg_2000_fname)))
 bk_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(bk_2000_fname)))
 
+#roads
+#tgr_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(tgr_shp_fname)))
+#View(tgr_sp)
+#tgr_shp_fname
+
 census_syr_df <- read.table(file.path(in_dir_var,census_table_fname),sep=",",header=T)
-soil_PB_df <- read.table(file.path(in_dir_var,census_table_fname),sep=",",header=T)
 metals_df <- read.xls(file.path(in_dir_var,metals_table_fname),sep=",",header=T)
 
-dim(census_syr_df)
-dim(ct_2000_sp)
-dim(metals_df)
-dim(soil_PB_df)
+#Soil lead samples: UTM z18 coordinates
+soil_PB_df <- read.table(file.path(in_dir_var,soil_PB_table_fname),sep=",",header=T) #point locations
 
-######## PRODUCE A MAP OF 2000 Population #########
+dim(census_syr_df) #47 spatial entities
+dim(ct_2000_sp) #47 spatial entities
+dim(metals_df) #47 entities
+dim(bg_2000_sp) #147 spatial entities
+
+######## PRODUCE MAPS OF 2000 Population #########
 
 #First need to link it.
 
@@ -114,20 +122,21 @@ ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT))
 
 bg_2000_sp <- merge(bg_2000_sp,census_syr_df,by="BKG_KEY")
 
-spplot(bg_2000_sp,"POP2000",main="POP2000")
+spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
 
 ##Now change the classes!
 
 ### Summarize by census track
-census_2000_sp <- aggregate(bg_2000_sp , by="TRACT",FUN=mean)
+census_2000_sp <- aggregate(bg_2000_sp , by="TRACT",FUN=sum)
 ##compare to sp!!
 df_test <- aggregate(POP2000 ~ TRACT, bg_2000_sp , FUN=sum)
 
+### Check if the new geometry of entities is the same as census
 plot(census_2000_sp)
 plot(ct_2000_sp,border="red",add=T)
 nrow(census_2000_sp)==nrow(ct_2000_sp)
 
-df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sp , FUN=sum)
+df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sp , FUN=sum) #aggregate all variables from the data.frame
 
 ##Join by key table id:
 dim(ct_2000_sp)
@@ -137,10 +146,11 @@ dim(ct_2000_sp)
 #save as sp and text table
 #write.table(file.path(out_dir,)
 
-### Do another map: 
+### Do another map with different class intervals: 
 
-
+title_str <- "Population by census tract in 2000"
 range(ct_2000_sp$POP2000)
+col_palette <- matlab.like(256)
 
 ## 9 classes with fixed and constant break
 break_seq <- seq(0,9000,1000)
@@ -161,8 +171,6 @@ print(p_plot_pop2000_ct)
 
 breaks.qt <- classIntervals(ct_2000_sp$POP2000, n = 6, style = "quantile", intervalClosure = "right")
 
-col_palette <- matlab.like(256)
-title_str <- "Population by census tract in 2000"
 p_plot_pop2000_ct <- spplot(ct_2000_sp,
                             "POP2000",
                             col="transparent", #transprent color boundaries for polygons
@@ -177,6 +185,82 @@ print(p_plot_pop2000_ct)
 #title(title_str)
 #legend('topleft', legend=c(names(attr(colcode, 'table')),'no data'), 
 #       fill=c(attr(colcode, 'palette'),'white'), title=title_str)
+
+##### PART II: Vulnerability to metals #############
+
+#Examine the relationship between metals, Pb and vulnerable populations in Syracuse
+
+#soil_PB_df <- read.table(file.path(in_dir_var,census_table_fname),sep=",",header=T)
+metals_df <- read.xls(file.path(in_dir_var,metals_table_fname),sep=",",header=T)
+
+#View(soil_PB_df)
+View(metals_df)
+
+##This suggests matching to the following spatial entities
+nrow(metals_df)==nrow(ct_2000_sp)
+#nrow(soil_PB_df)==nrow(bg_2000_sp)
+
+#dim(bg_2000_sp)
+census_metals_sp <- merge(ct_2000_sp,metals_df,by.x="TRACT",by.y="ID")
+
+########processing lead data
+### Now let's plot lead data 
+#Soil lead samples: UTM z18 coordinates
+soil_PB_df <- read.table(file.path(in_dir_var,soil_PB_table_fname),sep=",",header=T) #point locations
+
+proj4string(census_metals_sp) #
+names(soil_PB_df)
+names(soil_PB_df) <- c("x","y","ID","ppm") 
+soil_PB_sp <- soil_PB_df
+class(soil_PB_df)
+coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
+class(soil_PB_sp)
+proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
+dim(soil_PB_sp)
+soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
+View(soil_PB_sp)
+
+plot(census_metals_sp)
+plot(soil_PB_sp,add=T)
+
+
+###### Spatial query: associate points of pb measurements to each census tract
+### Get the ID and 
+soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
+soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
+#test4 <- gIntersection(soil_PB_sp,census_2000_sp,byid=T)
+head(soil_PB_sp$ID)==head(soil_PB_sp$ID)
+names(soil_PB_sp)
+soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
+
+census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),FUN=mean)
+
+##
+
+### Aggregate by county
+#http://gis.stackexchange.com/questions/137621/join-spatial-point-data-to-polygons-in-r
+#test_df2 <- over(census_2000_sp,soil_PB_sp,fn=mean)
+
+
+statesAg2 <- aggregate(tweets["actor.friendsCount"], by = states, mean)
+
+
+
+#P2- SPATIAL AND NON SPATIAL QUERIES (cannot use spatial join)
+#GOAL: Answer a set of questions using spatial and attribute queries and their combinations
+
+#Produce:
+#  a) two different maps based on two different definitions that answer the question:  which areas have high levels of children and are predominantly minority AND are at risk of heavy metal exposure using at least three variables. Use only tabular operations
+#b) Same question as a) but using both spatial and tabular operations
+
+#Note: In both cases include the method, variables used and your definition of risk areas in each 4 maps. The definition of risk is your own, you can also follow an established standard that would make sense or is official.  
+#From these products, the layman should be able to answer the following questions:
+#  a. Where are the areas of high heavy metal exposure that also have high levels of children population that belong to a demographic minority(s)? 
+#b. Is there a different outcome in using tabular methods only vs combining tabular and spatial query methods?
+
+########### PART III: Spatial Moran's I and regression ###################
+
+
 
 ###################### END OF SCRIPT #####################
 
