@@ -8,7 +8,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/17/2017 
-#DATE MODIFIED: 03/19/2017
+#DATE MODIFIED: 03/21/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
@@ -107,6 +107,7 @@ clay_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(clay_parcels_fname))) #
 r_habitat <- raster(file.path(in_dir_var,habitat_fname))
 r_bio_hotspot <- raster(file.path(in_dir_var,biodiversity_hotspot_fname))
 fma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname))) #too large for workshop
+clay_parcels_fname <- "Clay_Parcels.shp" #5) Clay County parcel shapefile
 
 plot(r_strat_hab, main="strategic habitat")
 plot(reg_counties_sp,add=T)
@@ -343,6 +344,16 @@ system(cmd_str)
 #a combination of the Extract by Mask, Polygon to Raster, Project, Reclassify, and Weighted Sum tools.
 
 #Now summarize by parcels!!
+
+clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
+
+r_parcels_clay <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="min")
+
+#This step takes about 18 minutes on my laptop.
+#r_parcels_clay_index <- extract(subset(r_bio_factor,1),clay_sp_parcels_reg,sp=T)
+parcels_clay_avg_index <- extract(subset(r_bio_factor,1),clay_sp_parcels_reg,fun=mean)
+class(parcels_clay_avg_index)
+View(parcels_clay_avg_index)
 
 ###################### END OF SCRIPT #####################
 
