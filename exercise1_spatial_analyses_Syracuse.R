@@ -39,6 +39,7 @@ library(gdata) #read xls, dbf etc.
 library(classInt) #methods to generate class limits
 #library(sqldf) #Not available for 3.3.3
 library(plyr)
+libary(gstat)
 
 ###### Functions used in this script
 
@@ -186,9 +187,11 @@ print(p_plot_pop2000_ct)
 #legend('topleft', legend=c(names(attr(colcode, 'table')),'no data'), 
 #       fill=c(attr(colcode, 'palette'),'white'), title=title_str)
 
-##### PART II: Vulnerability to metals #############
+##### PART II: SPATIAL QUERY #############
 
-#Examine the relationship between metals, Pb and vulnerable populations in Syracuse
+## Join metals to census track 
+## Join lead (pb) measurements to census tracks
+
 
 #soil_PB_df <- read.table(file.path(in_dir_var,census_table_fname),sep=",",header=T)
 metals_df <- read.xls(file.path(in_dir_var,metals_table_fname),sep=",",header=T)
@@ -223,7 +226,6 @@ View(soil_PB_sp)
 plot(census_metals_sp)
 plot(soil_PB_sp,add=T)
 
-
 ###### Spatial query: associate points of pb measurements to each census tract
 ### Get the ID and 
 soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
@@ -234,17 +236,21 @@ names(soil_PB_sp)
 soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
 
 census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),FUN=mean)
+census_pb_avg <- rename(census_pb_avg,c("ppm"="pb_ppm"))
 
-##
+##Now join
+census_metals_pb_sp <- merge(census_metals_sp,census_pb_avg,by="TRACT")
+### write out final table and shapefile
 
-### Aggregate by county
-#http://gis.stackexchange.com/questions/137621/join-spatial-point-data-to-polygons-in-r
-#test_df2 <- over(census_2000_sp,soil_PB_sp,fn=mean)
+outfile<-paste("census_metals_pb_sp","_",
+               out_suffix,sep="")
+writeOGR(census_metals_pb_sp,dsn= out_dir,layer= outfile, driver="ESRI Shapefile",overwrite_layer=TRUE)
 
+outfile_df_name <- file.path(out_dir,paste0(outfile,".txt"))
+write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
 
-statesAg2 <- aggregate(tweets["actor.friendsCount"], by = states, mean)
-
-
+##### PART III: Vulnerability to metals #############
+#Examine the relationship between metals, Pb and vulnerable populations in Syracuse
 
 #P2- SPATIAL AND NON SPATIAL QUERIES (cannot use spatial join)
 #GOAL: Answer a set of questions using spatial and attribute queries and their combinations
@@ -258,9 +264,66 @@ statesAg2 <- aggregate(tweets["actor.friendsCount"], by = states, mean)
 #  a. Where are the areas of high heavy metal exposure that also have high levels of children population that belong to a demographic minority(s)? 
 #b. Is there a different outcome in using tabular methods only vs combining tabular and spatial query methods?
 
-########### PART III: Spatial Moran's I and regression ###################
+########### PART IV: Spatial Moran's I and regression ###################
 
 
+
+#Now generate a raster image to create grid of cell for kriging
+extent_reg <- extent(census_metals_pb_sp)
+plot(extent_reg)
+plot(census_metals_pb_sp,add=T)
+
+extent_matrix <- as.matrix(extent_reg)
+#> as.matrix(extent_reg)
+#min       max
+#x  401938.3  412486.4
+#y 4759733.5 4771049.2
+
+#> extent_reg
+#class       : Extent 
+#xmin        : 401938.3 
+#xmax        : 412486.4 
+#ymin        : 4759734 
+#ymax        : 4771049
+
+x_length_reg <- extent_matrix[1,2] - extent_matrix[1,1] 
+y_length_reg <- extent_matrix[2,2] - extent_matrix[2,1] 
+
+#> extent_matrix[1,2] - extent_matrix[1,1]
+#[1] 10548.06
+#> y_length_reg
+#[1] 11315.71
+## Based
+#we don't want too fine as resolution: let's do 100m, it will keep the grid small
+#res_x <- 100
+#res_y <- 100
+res_val <- 100
+r = raster (ext=extent_reg, res=res_val)
+plot(r) #will not work since there is no value.
+dim(r)
+values(r) <- 1:ncell(r)
+#assign projection system
+projection(r) <- proj4string(census_metals_pb_sp)
+
+######Visualize the data first
+plot(r)
+#generate grid from raster as poly for visualization
+r_poly<- rasterToPolygons(r)
+plot(extent_reg,add=T,col="red")
+plot(census_metals_pb_sp,border="blue",add=T)
+### Let's show the grid first
+plot(r_poly,add=T)
+
+v_ppm <- variogram(ppm ~ 1,soil_PB_sp)
+plot(v_ppm)
+v_ppm_fit <- fit.variogram(v_ppm,model=vgm(1,"Sph",900,1))
+plot(v_ppm,v_ppm_fit)
+
+ppm_lead_spg <- krige(ppm ~ 1, soil_PB_sp, r, model=v_ppm_fit)
+
+
+#lm(,data=census_metals_pb_sp)
+#moran(x, listw, n, S0, zero.policy=NULL, NAOK=FALSE)
 
 ###################### END OF SCRIPT #####################
 
