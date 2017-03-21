@@ -10,7 +10,7 @@
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
 #
-#COMMIT: initial commit for exercise 1, AAG workshop
+#COMMIT: added Moran'I and spatial regression, AAG workshop
 #
 #################################################################################################
 
@@ -39,7 +39,7 @@ library(gdata) #read xls, dbf etc.
 library(classInt) #methods to generate class limits
 #library(sqldf) #Not available for 3.3.3
 library(plyr)
-libary(gstat)
+library(gstat)
 
 ###### Functions used in this script
 
@@ -249,24 +249,7 @@ writeOGR(census_metals_pb_sp,dsn= out_dir,layer= outfile, driver="ESRI Shapefile
 outfile_df_name <- file.path(out_dir,paste0(outfile,".txt"))
 write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
 
-##### PART III: Vulnerability to metals #############
-#Examine the relationship between metals, Pb and vulnerable populations in Syracuse
-
-#P2- SPATIAL AND NON SPATIAL QUERIES (cannot use spatial join)
-#GOAL: Answer a set of questions using spatial and attribute queries and their combinations
-
-#Produce:
-#  a) two different maps based on two different definitions that answer the question:  which areas have high levels of children and are predominantly minority AND are at risk of heavy metal exposure using at least three variables. Use only tabular operations
-#b) Same question as a) but using both spatial and tabular operations
-
-#Note: In both cases include the method, variables used and your definition of risk areas in each 4 maps. The definition of risk is your own, you can also follow an established standard that would make sense or is official.  
-#From these products, the layman should be able to answer the following questions:
-#  a. Where are the areas of high heavy metal exposure that also have high levels of children population that belong to a demographic minority(s)? 
-#b. Is there a different outcome in using tabular methods only vs combining tabular and spatial query methods?
-
-########### PART IV: Spatial Moran's I and regression ###################
-
-
+########### PART IV: Generating raster lead surface from point and comparing aggregation ###################
 
 #Now generate a raster image to create grid of cell for kriging
 extent_reg <- extent(census_metals_pb_sp)
@@ -314,16 +297,88 @@ plot(census_metals_pb_sp,border="blue",add=T)
 ### Let's show the grid first
 plot(r_poly,add=T)
 
+r_sgdf <- as(r, 'SpatialGridDataFrame')
+class(r_sgdf)
+
 v_ppm <- variogram(ppm ~ 1,soil_PB_sp)
 plot(v_ppm)
 v_ppm_fit <- fit.variogram(v_ppm,model=vgm(1,"Sph",900,1))
 plot(v_ppm,v_ppm_fit)
 
-ppm_lead_spg <- krige(ppm ~ 1, soil_PB_sp, r, model=v_ppm_fit)
+##About 3minutes for this step
+ppm_lead_spg <- krige(ppm ~ 1, soil_PB_sp, r_sgdf, model=v_ppm_fit)
 
+class(ppm_lead_spg)
+r_lead <- raster(ppm_lead_spg)
+rm(ppm_lead_spg)
+r_lead
+
+col_palette <- matlab.like(256)
+plot(r_lead,col=col_palette)
+plot(census_metals_pb_sp,border="blue",add=T)
+spplot(census_metals_pb_sp,"pb_ppm",col.regions=col_palette)
+
+##Now do extract and calculate average by census tract
+
+census_lead_sp <- extract(r_lead,census_metals_pb_sp,sp=T,fun=mean)
+spplot(census_metals_pb_sp,"pb_ppm",col.regions=col_palette)
+spplot(census_lead_sp,"var1.pred",col.regions=col_palette)
+
+census_lead_sp$diff <- census_metals_pb_sp$pb_ppm - census_lead_sp$var1.pred
+hist(census_lead_sp$diff)
+spplot(census_lead_sp,"diff",col.regions=col_palette)
+
+raster_name <- file.path(out_dir,paste0("r_lead",out_suffix,file_format))
+writeRaster(r_lead,filename = raster_name)
+
+##### PART IV: Vulnerability to metals #############
+#Examine the relationship between metals, Pb and vulnerable populations in Syracuse
+
+#P2- SPATIAL AND NON SPATIAL QUERIES (cannot use spatial join)
+#GOAL: Answer a set of questions using spatial and attribute queries and their combinations
+
+#Produce:
+#  a) two different maps based on two different definitions that answer the question:  which areas have high levels of children and are predominantly minority AND are at risk of heavy metal exposure using at least three variables. Use only tabular operations
+#b) Same question as a) but using both spatial and tabular operations
+
+#Note: In both cases include the method, variables used and your definition of risk areas in each 4 maps. The definition of risk is your own, you can also follow an established standard that would make sense or is official.  
+#From these products, the layman should be able to answer the following questions:
+#  a. Where are the areas of high heavy metal exposure that also have high levels of children population that belong to a demographic minority(s)? 
+#b. Is there a different outcome in using tabular methods only vs combining tabular and spatial query methods?
 
 #lm(,data=census_metals_pb_sp)
 #moran(x, listw, n, S0, zero.policy=NULL, NAOK=FALSE)
+
+list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
+summary(list_nb)
+plot(census_lead_sp,border="blue")
+plot.nb(list_nb,coordinates(census_lead_sp),add=T)
+
+#generate weights
+nb2listw
+list_w <- nb2listw(list_nb, glist=NULL, style="W", zero.policy=NULL) #use row standardized
+can.be.simmed(list_w)
+summary(list_w)
+#plot(as.matrix(list_w))
+moran(census_lead_sp$pb_ppm,list_w,n=nrow(census_lead_sp), Szero(list_w))
+moran.plot(census_lead_sp$pb_ppm, list_w,
+           labels=as.character(census_lead_sp$TRACT), pch=19)
+
+##### Now do a spatial regression
+
+#replace explicative variable later! 
+mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
+mod_lag <- lagsarlm(pb_ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
+
+moran.test(mod_lm$residuals,list_w)
+moran.test(mod_lag$residuals,list_w)
+
+#### Compare Moran's I from raster to Moran's I from polygon sp
+# Rook's case
+f <- matrix(c(0,1,0,1,0,1,0,1,0), nrow=3)
+Moran(r_lead, f)
+
+#http://rspatial.org/analysis/rst/7-spregression.html
 
 ###################### END OF SCRIPT #####################
 
