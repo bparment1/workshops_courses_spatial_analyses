@@ -115,7 +115,7 @@ proj4string(ecoreg_spdf) <- CRS_reg
 plot(ecoreg_spdf)
 spplot(ecoreg_spdf)
 
-cat_names<-unique(ecoreg_spdf_ALB83$ECO_NAME)
+cat_names<-unique(ecoreg_spdf$ECO_NAME)
 
 nb_col<-length(unique(cat_names))
 # Wrong order in terms of the categories of ecoreg so assign them
@@ -163,7 +163,7 @@ plot(ecoreg_rast,col=col_eco)
 res_pix<-960
 col_mfrow<-1
 row_mfrow<-1
-png(filename=paste("Figure1_paper1_wwf_ecoreg_Alaska",out_prefix,".png",sep=""),
+png(filename=paste("Figure1_paper1_wwf_ecoreg_Alaska",out_suffix,".png",sep=""),
     width=col_mfrow*res_pix,height=row_mfrow*res_pix)
 #par(mfrow=c(1,2))
 
@@ -237,18 +237,36 @@ r_change_NDVI_neg <-  r_diff_NDVI_standardized < -1.96
 plot(r_change_NDVI_pos)
 plot(r_change_NDVI_neg)
 
+#writeRaster(r_change)
+
+####### PART III: Change analyses via image differencing and ratioing ##########
 
 ##Extract values by fire scars
 
-## Plot changes over the time period
+r_fire_poly <- subset(r_var,6)
+plot(r_fire_poly)
+mean_fire_poly_tb <- zonal(stack(r_NDVI_avg_2002,r_NDVI_avg_2009),r_fire_poly,fun="mean") #mean square error
+mean_fire_poly_df <- as.data.frame(t(mean_fire_poly_tb[-1,-1]))
 
-### Your turn: use albedo images to define image of changes, what do you think is a good threshold
+names(mean_fire_poly_df) <- c("fire_pol1","fire_pol2","fire_pol3")
+#write.table(as.data.frame(mean_wind_zones_tb),"mean_wind_zones_tb.txt",sep=",")
+mean_fire_poly_df$year <- c(2002,2009)
+
+## Plot the average NDVI by burn scars
+#Note that the decrease in NDVI varies according to the burned intensity
+plot(fire_pol1 ~year,data=mean_fire_poly_df,type="b",ylim=c(0.1,0.4))
+lines(fire_pol2 ~year,data=mean_fire_poly_df,type="b",col="red")
+lines(fire_pol3 ~year,data=mean_fire_poly_df,type="b",col="blue")
+title("Average NDVI for fire polygons")
+
+### Your turn: use albedo images to define image of changes, what do you think is a good threshold for change?
 
 #1.Select Albedo images
-#2.Do differencing, and standardization
-#3.Generate Image of cahnge
+#2.Peform differencing, and standardization
+#3.Generate Image of changes
+#4.Compute average by polygons of fire and compare to NDVI.
 
-######### PART III: time series analyses
+######### PART V: time series analyses #################
 
 #1. Extract time series
 #2. Generate movies through looping
@@ -258,15 +276,46 @@ plot(r_change_NDVI_neg)
 #4. compute averages by WWF ecoregions
 
 # Using LST time series perform similar analysis
-r <- mean(x, na.rm=TRUE)
-r_NDVI_mean <- stackApply(r_NDVI_ts, indices=rep(1,23), fun=mean,na.rm=T)
+#r_NDVI_mean <- stackApply(r_NDVI_ts, indices=rep(1,23), fun=mean,na.rm=T) # works too but slower
+r_NDVI_mean <- mean(r_NDVI_ts, na.rm=TRUE) # mean by pixel
+projection(r_NDVI_ts) <- CRS_reg
+
+mean_fire_NDVI_ts_tb <- zonal(stack(r_NDVI_ts),r_fire_poly,fun="mean") #mean square error
+mean_fire_NDVI_ts_df <- as.data.frame(t(mean_fire_NDVI_ts_tb[-1,-1]))
+names(mean_fire_NDVI_ts_df) <- c("fire_pol1","fire_pol2","fire_pol3")
+
+## Make a time series object
+NDVI_fire_dat_dz <- zoo(mean_fire_NDVI_ts_df,dates_val) #create zoo object from data.frame and date sequence object
+plot(NDVI_fire_dat_dz,main="Times series of average NDVI in fire polygons for 2005",type="b")
+#Note the sudden decrease in NDVI. It is related to the fire event. It is an average so the decresease may not be
+#strong. Let's examine a file pixel from the fire scars.
+
+#fire_poly_sp <- rasterToPolygons(r_fire_poly)
+fire_poly_shp_fname <- "OVERLAY_ID_83_399_144_TEST_BURNT_83_144_399_reclassed.shp"
+fire_poly_sp <-readOGR(dsn=in_dir_var,sub(".shp","",fire_poly_shp_fname))
+proj4string(fire_poly_sp) <- CRS_reg
+plot(ecoreg_spdf)
+spplot(ecoreg_spdf)
+
+cat_names<-unique(ecoreg_spdf$ECO_NAME)
+
+extract_pix_fire_poly_df<- extract(r_NDVI_ts,y=fire_poly_sp,sp=T)
+
+###
+
+
+###################
+freq(subset(r_var,3)) #
 
 #Correlate long term mean to PC!
+cor_mat_layerstats <- layerStats(r_NDVI_ts, 'pearson', na.rm=T)
+cor_matrix <- cor_mat_layerstats$`pearson correlation coefficient`
+class(cor_matrix)
+dim(cor_matrix)
+View(cor_matrix)
+image(cor_matrix)
 
-#compareRaster(SRTM_reg,ref_rast) #compare raster origin, resolution and projection system
-#mean_wind_zones_tb <- zonal(d_NDVI,r_wind,fun="mean") #mean square error
-#mean_lc_cat_tb <- zonal(d_NDVI,lc_cat,fun="mean") #absolute error
-#write.table(as.data.frame(mean_wind_zones_tb),"mean_wind_zones_tb.txt",sep=",")
+
 
 ################### End of Script #########################
 
