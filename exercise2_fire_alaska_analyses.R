@@ -5,12 +5,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2017 
-#DATE MODIFIED: 03/15/2017
+#DATE MODIFIED: 03/23/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
 #
-#COMMIT: initial commit for exercise 2, AAG workshop
+#COMMIT: adding time series analyses for exercise 2, AAG workshop
 #
 #################################################################################################
 
@@ -42,16 +42,19 @@ source(file.path(script_path,function_preprocessing_and_analyses)) #source all f
 
 #####  Parameters and argument set up ###########
 
-in_dir_NDVI <- "~/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Fire_Alaska_analyses/NDVI_alaska_2005"
-in_dir_var <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Fire_Alaska_analyses/data_alaska_analayses"
-out_dir <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Fire_Alaska_analyses/outputs"
+in_dir_NDVI <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_2/data/NDVI_alaska_2005"
+in_dir_var <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_2/data"
+out_dir <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_2/outputs"
 
-CRS_reg <- CRS_WGS84 # PARAM 4
+infile_ecoreg <- "wwf_terr_ecos_Alaska_ECOREGIONS_ECOSYS_ALB83.shp" #WWF ecoregions 2001 for Alaska
+
+#region coordinate reference system
+CRS_reg <- "+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise_03152017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise_03232017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 ################# START SCRIPT ###############################
@@ -85,11 +88,11 @@ date_range <- c("2005.01.01","2005.12.31") #NDVI Alaska
 dates_val <- generate_dates_by_step(date_range[1],date_range[2],16)$dates #NDVI Katrina
 
 file.info(lf_NDVI[1])$size/(1024*1024) # this is in bytes, convert to mb
-dataType(r_NDVI_ts)
-inMemory(r_NDVI_ts)
-dim(r_NDVI_ts)
+dataType(r_NDVI_ts) #Examine the data type used in the storing of data, this is float 32 signed: FLT4S
+inMemory(r_NDVI_ts) #Is the data in memory? Raster package does not load in memory automatically.
+dim(r_NDVI_ts) #dimension of the raster object: rows, cols, layers/bands
 
-##### Now examine other files from Alaska
+##### Now examine other files used in the exercise ##############
 
 lf_var <- list.files(path=in_dir_var,pattern="*.tif$",full.names=T)
 r_var <- stack(lf_var)
@@ -101,9 +104,86 @@ plot(r_var)
 
 ##### 
 tb_freq <- freq(subset(r_var,6)) #  count of pixels by burn scars
-projection(r_var)
+projection(r_var) #note that there is no projection assigned
+projection(r_var) <- CRS_reg
 
-####### PART II: Change analyses via image differencing and ratioing.
+#/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_2/data/
+#infile_ecoreg<-"wwf_terr_ecos_Alaska.shp"
+ecoreg_spdf<-readOGR(dsn=in_dir_var,sub(".shp","",infile_ecoreg))
+proj4string(ecoreg_spdf)
+proj4string(ecoreg_spdf) <- CRS_reg
+plot(ecoreg_spdf)
+spplot(ecoreg_spdf)
+
+cat_names<-unique(ecoreg_spdf_ALB83$ECO_NAME)
+
+nb_col<-length(unique(cat_names))
+# Wrong order in terms of the categories of ecoreg so assign them
+cat_names<-c("Alaska Peninsula montane taiga",
+             "Alaska St Elias Range tundra",
+             "Aleutian Islands tundra",
+             "Arctic coastal tundra",
+             "Arctic foothills tundra",
+             "Beringia lowland tundra",
+             "Beringia upland tundra",
+             "Brooks-British Range tundra",
+             "Cook Inlet taiga",
+             "Copper Plateau taiga",
+             "Interior Alaska-Yukon lowland taiga",
+             "Interior Yukon-Alaska alpine tundra",
+             "Northern Cordillera forests",
+             "Northern Pacific coastal forests",
+             "Ogilvie-Mackenzie alpine tundra",
+             "Pacific Coastal Mountain icefields and tundra",
+             "Rock and Ice")
+
+ecoreg_spdf$ECO_NAME<-cat_names
+#problem with extent, ecoreg_spdf is not the same extent as raster images!!
+lf_eco<-list.files(pattern="ecoregion_map.rst$")
+
+ecoreg_rast<-rasterize(ecoreg_spdf,r_var,"DATA_VALUE")
+data_name<-paste("ecoregion_map",sep="")
+raster_name<-paste(data_name,file_format, sep="") #Remember file_format ".tif" is set at the beginning
+writeRaster(ecoreg_rast, filename=raster_name,NAflag=-999,overwrite=TRUE)  #Writing the data in a raster file format...
+
+###Plottting raster:
+
+## Generate a color palette/color ramp
+col_eco<-rainbow(nb_col)
+col_eco[16]<-"brown"
+col_eco[11]<-"darkgreen"
+col_eco[7]<-"lightblue"
+col_eco[6]<-"grey"
+col_eco[12]<-"yellowgreen"
+
+plot(ecoreg_rast)
+plot(ecoreg_rast,col=col_eco)
+
+##Figure 1: wwf ecoregion
+res_pix<-960
+col_mfrow<-1
+row_mfrow<-1
+png(filename=paste("Figure1_paper1_wwf_ecoreg_Alaska",out_prefix,".png",sep=""),
+    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
+#par(mfrow=c(1,2))
+
+
+plot(ecoreg_rast,col=col_eco,legend=FALSE,axes="FALSE")
+legend("topright",legend=cat_names,title="WWF ecoregions",
+       pt.cex=1.1,cex=1.1,fill=col_eco,bty="n")
+scale_position<-c(450000, 600000)
+arrow_position<-c(900000, 600000)
+
+label_scalebar<-c("0","125","250")
+scalebar(d=250000, xy=scale_position, type = 'bar', 
+         divs=3,label=label_scalebar,below="kilometers",
+         cex=1.8)
+#this work on non sp plot too
+SpatialPolygonsRescale(layout.north.arrow(), offset = arrow_position, 
+                       scale = 150000, fill=c("transparent","black"),plot.grid=FALSE)
+dev.off()
+
+####### PART II: Change analyses via image differencing and ratioing ##########
 
 ## Studying change by image differencing
 #look for NDVI 2002 and 2009 and select each average
@@ -111,13 +191,13 @@ projection(r_var)
 r_NDVI_avg_2002 <- subset(r_var,4)
 r_NDVI_avg_2009 <- subset(r_var,5)
 
-r_diff_NDVI <- r_NDVI_avg_2009 - r_NDVI_avg_2002
+r_diff_NDVI <- r_NDVI_avg_2009 - r_NDVI_avg_2002 #if negative Higher NDVI in 2002, hence decrease in NDVI over 2002-2009
 r_ratio_NDVI <- r_NDVI_avg_2009/r_NDVI_avg_2002
-  
-plot(r_diff_NDVI,col=matlab.like(255))
-plot(r_diff_NDVI,col=matlab.like(255),zlim=c(-0.5,0.5))
 
 plot(r_ratio_NDVI,col=matlab.like(255),zlim=c(0.5,1.5))
+
+plot(r_diff_NDVI,col=matlab.like(255))
+plot(r_diff_NDVI,col=matlab.like(255),zlim=c(-0.5,0.5))
 
 ### Quick histogram
 hist(r_diff_NDVI)
@@ -128,11 +208,35 @@ hist(r_diff_NDVI,breaks=hist_bins)
 #hist_bins <- seq(-0.3,0.3,by=0.05)
 hist(r_diff_NDVI,breaks=hist_bins,xlim=c(-0.3,0.3))
 
+plot(r_diff_NDVI,col=matlab.like(255),zlim=c(-0.2,0.2))
+
 ## Threshold your inputs
 plot(r_diff_NDVI < -0.2)
 plot(r_diff_NDVI < -0.1)
+plot(r_diff_NDVI > 0.1)
 
-##Standardize images
+##Standardize images and define change
+#r <- as.data.frame(cellStats(x,mean))
+val_diff_mean <- cellStats(r_diff_NDVI,mean)
+val_diff_sd <- cellStats(r_diff_NDVI,sd)
+
+r_diff_NDVI_standardized <- (r_diff_NDVI - val_diff_mean)/val_diff_sd
+plot(r_diff_NDVI_standardized,col=matlab.like(255))#
+plot(r_diff_NDVI_standardized,col=matlab.like(255),zlim=c(-10,5))#
+
+hist_bins <- seq(-15,15,by=0.5)
+hist(r_diff_NDVI_standardized,breaks=hist_bins)
+hist(r_diff_NDVI_standardized,breaks=hist_bins,xlim=c(-5,5)) # zoom in
+
+hist(r_diff_NDVI_standardized)
+#shapiro.test(values(r_diff_NDVI_standardized))
+#qqnorm(values(r_diff_NDVI_standardized))
+
+r_change_NDVI_pos <-  r_diff_NDVI_standardized > 1.96
+r_change_NDVI_neg <-  r_diff_NDVI_standardized < -1.96
+plot(r_change_NDVI_pos)
+plot(r_change_NDVI_neg)
+
 
 ##Extract values by fire scars
 
@@ -154,6 +258,15 @@ plot(r_diff_NDVI < -0.1)
 #4. compute averages by WWF ecoregions
 
 # Using LST time series perform similar analysis
+r <- mean(x, na.rm=TRUE)
+r_NDVI_mean <- stackApply(r_NDVI_ts, indices=rep(1,23), fun=mean,na.rm=T)
+
+#Correlate long term mean to PC!
+
+#compareRaster(SRTM_reg,ref_rast) #compare raster origin, resolution and projection system
+#mean_wind_zones_tb <- zonal(d_NDVI,r_wind,fun="mean") #mean square error
+#mean_lc_cat_tb <- zonal(d_NDVI,lc_cat,fun="mean") #absolute error
+#write.table(as.data.frame(mean_wind_zones_tb),"mean_wind_zones_tb.txt",sep=",")
 
 ################### End of Script #########################
 
