@@ -33,6 +33,8 @@ library(rgeos) #contains topological operations
 library(sphet) #contains spreg, spatial regression modeling
 library(BMS) #contains hex2bin and bin2hex
 library(bitops) #
+#
+library(psych)
 
 ###### Functions used in this script
 
@@ -294,18 +296,21 @@ plot(NDVI_fire_dat_dz,main="Times series of average NDVI in fire polygons for 20
 fire_poly_shp_fname <- "OVERLAY_ID_83_399_144_TEST_BURNT_83_144_399_reclassed.shp"
 fire_poly_sp <-readOGR(dsn=in_dir_var,sub(".shp","",fire_poly_shp_fname))
 proj4string(fire_poly_sp) <- CRS_reg
-plot(ecoreg_spdf)
-spplot(ecoreg_spdf)
-
+plot(r_diff_NDVI_standardized,ext=extent(fire_poly_sp))
+plot(fire_poly_sp,add=T)
+spplot(fire_poly_sp)
 cat_names<-unique(ecoreg_spdf$ECO_NAME)
 
-extract_pix_fire_poly_df<- extract(r_NDVI_ts,y=fire_poly_sp,sp=T)
+extract_pix_fire_poly_df<- extract(r_NDVI_ts,y=fire_poly_sp)
 
-###
+#let's plot polygons one since it has a variety of pixels and was heavily affected
+class(extract_pix_fire_poly_df[[1]])
+dim(extract_pix_fire_poly_df[[1]])
 
+NDVI_fire_dat_dz <- zoo(mean_fire_NDVI_ts_df,dates_val) #create zoo object from data.frame and date sequence object
 
-###################
-freq(subset(r_var,3)) #
+###############################################
+######## Let's carry out a PCA in T-mode #######
 
 #Correlate long term mean to PC!
 cor_mat_layerstats <- layerStats(r_NDVI_ts, 'pearson', na.rm=T)
@@ -315,9 +320,40 @@ dim(cor_matrix)
 View(cor_matrix)
 image(cor_matrix)
 
+test<-principal(cor_matrix,nfactors=3,rotate="none")
+class(test$loadings)
+str(test$loadings)
+plot(test$loadings[,1],type="b")
+plot(test$loadings[,2],type="b")
+plot(test$loadings[,3],type="b")
 
+#find the predicted scores (The B set)
+df_test <- as(r_NDVI_ts,"SpatialPointsDataFrame")
+df_test2 <- as.data.frame(df_test)[,1:23]
+names(df_test2) <- paste0("pc_",seq(1,23,1))
+names(df_test2)
+
+pca_all <- as.data.frame(predict(test,df_test2)) 
+
+coordinates(pca_all) <- coordinates(df_test)
+class(pca_all)
+
+rasterize()
+raster_name <- paste0("pc1_NDVI_2005.tif")
+r_pc1<-rasterize(pca_all,r_NDVI_ts,"PC1",fun=min,overwrite=TRUE,
+                  filename=raster_name)
+
+plot(r_pc1)
+layerStats(r_pc1,r_NDVI_mean )
+cor_pc <- layerStats(stack(r_pc1,r_NDVI_mean),'pearson', na.rm=T)
+cor_pc #PC1 correspond to the average mean by pixel as expected.
+
+### Produce all the scores maps at once using the function I developed
+
+#pca_to_raster_fun()
 
 ################### End of Script #########################
 
 #To explore later:
 #http://stackoverflow.com/questions/12670972/doing-pca-on-very-large-data-set-in-r
+#http://web.missouri.edu/~huangf/data/mvnotes/Documents/pca_in_r_2.html
