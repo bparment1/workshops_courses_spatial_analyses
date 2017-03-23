@@ -10,7 +10,7 @@
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
 #
-#COMMIT: adding time series analyses for exercise 2, AAG workshop
+#COMMIT: generating pc2 and testing function , AAG workshop
 #
 #################################################################################################
 
@@ -39,8 +39,10 @@ library(psych)
 ###### Functions used in this script
 
 function_preprocessing_and_analyses <- "fire_alaska_analyses_preprocessing_functions_03102017.R" #PARAM 1
+function_analyses <- "exercise2_fire_alaska_analyses_functions_03232017.R" #PARAM 1
 script_path <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/R_scripts"
 source(file.path(script_path,function_preprocessing_and_analyses)) #source all functions used in this script 1.
+source(file.path(script_path,function_analyses)) #source all functions used in this script 1.
 
 #####  Parameters and argument set up ###########
 
@@ -101,16 +103,11 @@ r_var <- stack(lf_var)
 dim(r_var)
 plot(r_var)
 
-#filename(r_wwf)
-#plot(r_wwf)
-
 ##### 
 tb_freq <- freq(subset(r_var,6)) #  count of pixels by burn scars
 projection(r_var) #note that there is no projection assigned
 projection(r_var) <- CRS_reg
 
-#/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_2/data/
-#infile_ecoreg<-"wwf_terr_ecos_Alaska.shp"
 ecoreg_spdf<-readOGR(dsn=in_dir_var,sub(".shp","",infile_ecoreg))
 proj4string(ecoreg_spdf)
 proj4string(ecoreg_spdf) <- CRS_reg
@@ -239,7 +236,8 @@ r_change_NDVI_neg <-  r_diff_NDVI_standardized < -1.96
 plot(r_change_NDVI_pos)
 plot(r_change_NDVI_neg)
 
-#writeRaster(r_change)
+writeRaster(r_change_NDVI_pos,"r_change_NDVI_pos_196.tif",overwrite=T)
+writeRaster(r_change_NDVI_neg,"r_change_NDVI_neg_196.tif",overwrite=T)
 
 ####### PART III: Change analyses via image differencing and ratioing ##########
 
@@ -342,15 +340,23 @@ rasterize()
 raster_name <- paste0("pc1_NDVI_2005.tif")
 r_pc1<-rasterize(pca_all,r_NDVI_ts,"PC1",fun=min,overwrite=TRUE,
                   filename=raster_name)
+raster_name <- paste0("pc2_NDVI_2005.tif")
+r_pc2<-rasterize(pca_all,r_NDVI_ts,"PC2",fun=min,overwrite=TRUE,
+                 filename=raster_name)
 
 plot(r_pc1)
 layerStats(r_pc1,r_NDVI_mean )
 cor_pc <- layerStats(stack(r_pc1,r_NDVI_mean),'pearson', na.rm=T)
 cor_pc #PC1 correspond to the average mean by pixel as expected.
+plot(r_pc2)
 
 ### Produce all the scores maps at once using the function I developed
 
-#pca_to_raster_fun()
+#pc_scores_lf <- pca_to_raster_fun(pc_spdf=pca_all,ref_raster=r_NDVI_ts,NA_val=NAvalue(r_NDVI_ts),file_format=".tif",out_suffix="")
+
+#### Your turn: 
+#Compute the average using the ecoregions as zonal areas for PC1 and PC2
+#Plot averages in the PC1-PC2. Are these variables useful to separate the variaous ecoregions?
 
 ################### End of Script #########################
 
