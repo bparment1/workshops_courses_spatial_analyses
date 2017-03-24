@@ -8,7 +8,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/17/2017 
-#DATE MODIFIED: 03/21/2017
+#DATE MODIFIED: 03/24/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
@@ -53,7 +53,7 @@ out_dir <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/worksho
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise3_03172017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise3_03242017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 ################# START SCRIPT ###############################
@@ -85,10 +85,6 @@ if(create_out_dir_param==TRUE){
 #7) Biodiversity hotspot raster file
 #8) Florida managed areas shapefile
 
-#tl_2011_12019_roads.shp
-#tl_2011_12019_roads_prj.shp
-#tl_2010_12019_roads.shp
-
 strat_hab_fname <- "Strat_hab_con_areas1.tif" #1)Strategic Habitat conservation areas raster file
 roads_fname <- "tl_2011_12019_roads_prj.shp" #2) Missing:Tiger Roads shapefile
 regional_counties_fname <- "Regional_Counties.shp" #3) County shapefile
@@ -115,27 +111,27 @@ plot(r_priority_wet_hab)
 #plot(r_habitat,add=T)
 plot(roads_sp,add=T)
 
-
 ##### Before starting the production of sustainability let's check the projection, resolution for each layer
 
 #raster layers:
 
 list_raster <- c(r_strat_hab,r_priority_wet_hab,r_habitat,r_bio_hotspot)
 
-lapply(list_raster,function(x){res(x)})
-lapply(list_raster,function(x){projection(x)})
-lapply(list_raster,function(x){extent(x)})
+## Examine information on rasters using lapply
+lapply(list_raster,function(x){res(x)}) #spatial resolution
+lapply(list_raster,function(x){projection(x)}) #spatial projection
+lapply(list_raster,function(x){extent(x)}) #extent of rasters
 
-## PART 0: generate reference layer
+### PART 0: generate reference layer
 
-## let's use the resolution 55x55 as the reference
+## let's use the resolution 55x55 as the reference since it corresponds to finer resolution
 ## Select clay county
 clay_county_sp <- subset(reg_counties_sp,NAME=="CLAY")
 plot(r_strat_hab)
 plot(clay_county_sp,border="red",add=T)
 
 ## Crop r_strat_hab
-r_ref <- crop(r_strat_hab,clay_county_sp) #make a referenc image
+r_ref <- crop(r_strat_hab,clay_county_sp) #make a reference image for use in the processing
 plot(r_ref)
 plot(clay_county_sp,border="red",add=T)
 
@@ -144,7 +140,7 @@ freq(r_clay)
 ##Use raster of Clay county definining the study area to mask pixels
 plot(r_clay)
 dim(r_clay)
-dim(r_priority_wet_hab_w)
+#dim(r_priority_wet_hab_w)
 
 # PART I: P1- PRIORITY1- IDENTIFY LANDS WITH HIGH NATIVE BIODIVERSITY
 
@@ -170,7 +166,7 @@ m <- c(5, 1000, 9,
 
 rclmat <- matrix(m, ncol=3, byrow=TRUE)
 
-?raster::reclassify
+#?raster::reclassify: ton find out information on 
 
 rc_strat_hab_reg <- reclassify(r_strat_hab_masked, rclmat)
 plot(rc_strat_hab_reg)
@@ -182,30 +178,22 @@ r_bio_hotspot_w <- crop(r_bio_hotspot,clay_county_sp)
 plot(r_bio_hotspot_w)
 plot(clay_county_sp,border="red",add=T)
 
-r_bio_clay_masked <- mask(r_bio_hotspot_w,r_clay) ## Does not work!! because resolution don't match
+#r_bio_clay_masked <- mask(r_bio_hotspot_w,r_clay) ## Does not work!! because resolution don't match
 #match resolution:
 projection(r_bio_hotspot_w)==projection(r_clay)
 res(r_bio_hotspot_w)==res(r_clay)
 
 ## Find about resample
-?raster::resample
-r_bio_hotspot_reg <- resample(r_bio_hotspot_w,r_clay, method='bilinear')
+#?raster::resample
+r_bio_hotspot_reg <- resample(r_bio_hotspot_w,r_clay, method='bilinear') #Use resample to match resolutions
 
-r_bio_hotspot_reg <- mask(r_bio_hotspot_reg,r_clay) ## Does not work!! because resolution don't match
+r_bio_hotspot_reg <- mask(r_bio_hotspot_reg,r_clay) ## It now works because resolutions were matched
 plot(r_bio_hotspot_reg)
 
+### Reclassify using instructions/informaiton given to us:
 #Criteria for value assignment: Cells with 7 or more focal species or an actual species occurrence record
 #location were assigned a value of 9; a value of 8 was assigned to cells with 5–8 focal species; 7 was
 #assigned to cells with 3–4 focal species; all other cells were assigned a value of 1.
-
-# reclassify the values into three groups 
-# all values >= 0 and <= 0.25 become 1, etc.
-#m <- c(0, 0.25, 1,  
-#       0.25, 0.5, 2,  
-#       0.5, 1, 3)
-
-#rclmat <- matrix(m, ncol=3, byrow=TRUE)
-#rc <- reclassify(r, rclmat)
 
 m <- c(9, 1000, 9,  
        5, 8, 8,  
@@ -226,8 +214,6 @@ plot(rc_bio_hotspot_reg)
 #1–3 wetland or upland focal species. The value 1 was assigned to all other cells.
 #Rationale for value assignment: The better the habitat for focal wetland species, the higher the priority.
 #Output: Wetland Biodiversity SUA (CG1O11SO111)
-
-#r_priority_wet_hab <- raster(file.path(in_dir_var,priority_wet_habitats_fname))
 
 plot(r_priority_wet_hab)
 #check projection
@@ -287,15 +273,13 @@ plot(r_bio_factor)
 
 #setp 2: distance from existing managed land
 
-r_roads_counts <- rasterize(roads_sp, r_clay, fun='count')
-writeRaster(r_roads_counts,"roads_counts.tif",overwrite=T)
-#filter()
+### Takes 7 minutes on my laptop for each of the operations
+#r_roads_counts <- rasterize(roads_sp, r_clay, fun='count')
+#writeRaster(r_roads_counts,"roads_counts.tif",overwrite=T)
+r_roads <- rasterize(roads_sp, r_clay)
+writeRaster(r_roads,"roads.tif",overwrite=T)
 
-#r3 <- focal(x=r, w=matrix(1,nrow=3,ncol=3), fun=sum)
-#plot(r3)
-#do distance to road?
-
-?raster::distance
+#?raster::distance
 #See the gdistance package for more advanced distances, and the geosphere package for greatcircle
 #distances (and more) between points in longitude/latitude coordinates
 
@@ -316,24 +300,15 @@ n_values <- "1"
 #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,"-values",n_values,sep=" ")
 cmd_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile),"-values",n_values,sep=" ")
 #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
-
 system(cmd_str)
 
 #Now reverse the distance...
-
 
 #Get distance from managed land
 #b. Which parts of Clay County contain proximity-to-managed-lands characteristics that would make them more favorable to be used as conservation lands?
 
 #gDistance(spatialpoints, rasterToPoints(r, fun=function(x) {x == 15}))
 #r_dist <- distance(r_init)
-
-#gdal_proximity.py srcfile dstfile [-srcband n] [-dstband n]
-#[-of format] [-co name=value]*
-#  [-ot Byte/Int16/Int32/Float32/etc]
-#[-values n,n,n] [-distunits PIXEL/GEO]
-#[-maxdist n] [-nodata n] [-use_input_nodata YES/NO]
-#[-fixed-buf-val n]
 
 #gDistance(spatialpoints, rasterToPoints(r, fun=function(x) {x == 15}))
 
@@ -348,6 +323,11 @@ system(cmd_str)
 clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
 
 r_parcels_clay <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="min")
+r_parcels_clay <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="min")
+r_parcels_clay_max <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="max")
+
+writeRaster(subset(r_bio_factor,"equal_weights"),"bio_factor_equal_weights.tif")
+parcels_clay_avg_index <- zonal(subset(r_bio_factor,1), z=r_parcels_clay, fun='mean', digits=0, na.rm=TRUE) 
 
 #This step takes about 18 minutes on my laptop.
 #r_parcels_clay_index <- extract(subset(r_bio_factor,1),clay_sp_parcels_reg,sp=T)
@@ -356,36 +336,3 @@ class(parcels_clay_avg_index)
 View(parcels_clay_avg_index)
 
 ###################### END OF SCRIPT #####################
-
-#
-#
-#
-#
-#?rasterize
-#fun=length
-
-#roads_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(roads_fname))) #too large for workshop
-#r_test <- rasterize(roads_sp,r_clay,"LINEARID",fun="length")
-#r_test <- rasterize(roads_sp,r_clay
-#                    ,fun="length")
-
-#http://gis.stackexchange.com/questions/119993/convert-line-shapefile-to-raster-value-total-length-of-lines-within-cell
-
-
-#setwd("D:/TEST/RDSUM")
-#roads <- readOGR(getwd(), "TZA_roads")
-#roads <- spTransform(roads, CRS("+init=epsg:21037"))
-#rrst <- raster(extent(roads), crs=projection(roads))
-
-# Intersect lines with raster "polygons" and add length to new lines segments
-#rrst.poly <- rasterToPolygons(rrst)
-#rp <- gIntersection(roads, rrst.poly, byid=TRUE)
-#rp <- SpatialLinesDataFrame(rp, data.frame(row.names=sapply(slot(rp, "lines"), 
-#                                                            function(x) slot(x, "ID")), ID=1:length(rp), 
-#                                           length=SpatialLinesLengths(rp)/1000) ) 
-
-# Rasterize using sum of intersected lines                            
-#rd.rst <- rasterize(rp, rrst, field="length", fun="sum")
-
-
-#http://gis.stackexchange.com/questions/138861/calculating-road-density-in-r-using-kernel-density
