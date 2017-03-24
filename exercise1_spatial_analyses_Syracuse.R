@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/21/2017 
-#DATE MODIFIED: 03/22/2017
+#DATE MODIFIED: 03/24/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
@@ -281,8 +281,8 @@ y_length_reg <- extent_matrix[2,2] - extent_matrix[2,1]
 #res_x <- 100
 #res_y <- 100
 res_val <- 100
-r = raster (ext=extent_reg, res=res_val)
-plot(r) #will not work since there is no value.
+r = raster(ext=extent_reg, res=res_val)
+#plot(r) #will not work since there is no value.
 dim(r)
 values(r) <- 1:ncell(r)
 #assign projection system
@@ -329,7 +329,7 @@ hist(census_lead_sp$diff)
 spplot(census_lead_sp,"diff",col.regions=col_palette)
 
 raster_name <- file.path(out_dir,paste0("r_lead",out_suffix,file_format))
-writeRaster(r_lead,filename = raster_name)
+writeRaster(r_lead,filename = raster_name,overwrite=T)
 
 ##### PART IV: Vulnerability to metals #############
 #Examine the relationship between metals, Pb and vulnerable populations in Syracuse
@@ -355,7 +355,7 @@ plot(census_lead_sp,border="blue")
 plot.nb(list_nb,coordinates(census_lead_sp),add=T)
 
 #generate weights
-nb2listw
+#nb2listw
 list_w <- nb2listw(list_nb, glist=NULL, style="W", zero.policy=NULL) #use row standardized
 can.be.simmed(list_w)
 summary(list_w)
