@@ -270,97 +270,79 @@ plot(r_bio_factor)
 #local road density and distance from existing managed lands using a combination 
 #of the Clip, Extract by Mask, Euclidean Distance, Line Density, Project, Reclassify, and Weighted Sum tools.
 
-#Step 1: create a road density layer
-
-#setp 2: distance from existing managed land
-
-### Takes 7 minutes on my laptop for each of the operations
-#r_roads_counts <- rasterize(roads_sp, r_clay, fun='count')
-#writeRaster(r_roads_counts,"roads_counts.tif",overwrite=T)
-#r_roads <- rasterize(roads_sp, r_clay)
-#writeRaster(r_roads,"roads.tif",overwrite=T)
+#Step 1: prepare files to create a distance to road layer
 
 #r_roads <- raster("roads.tif")
 r_roads <- raster("roads_counts.tif")
+### Processs roads first
+#set1f <- function(x){rep(NA, x)}
+#r_init <- init(r_clay, fun=set1f)
+r_roads_bool <- r_roads > 0
+NAvalue(r_roads_bool ) <- 0 
+roads_bool_fname <- file.path(out_dir,paste0("roads_bool_",out_suffix,file_format))
+r_roads_bool <- writeRaster(r_roads_bool,filename=roads_bool_fname,overwrite=T)
 
-#?raster::distance
-#See the gdistance package for more advanced distances, and the geosphere package for greatcircle
-#distances (and more) between points in longitude/latitude coordinates
+#setp 2: prepare files to create a distance to existing managed land
 
-#A list of target pixel values in the source image to be considered target pixels. If not specified, all non-zero pixels will be considered target pixels.
+florida_managed_areas_fname <- "flma_jun13.shp" #8) Florida managed areas shapefile
+flma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname ))) #too large for workshop
+r_flma_clay <- rasterize(flma_sp,r_clay,"OBJECTID_1",fun="max")
+r_flma_clay_bool <- r_flma_clay > 0
+NAvalue(r_flma_clay_bool) <- 0 
+r_flma_clay_bool_fname <- file.path(out_dir,paste0("r_flma_clay_bool_",out_suffix,file_format))
+r_flma_clay_bool <- writeRaster(r_flma_clay_bool,filename=r_flma_clay_bool_fname,overwrite=T)
+plot(r_flma_clay_bool)
 
-#
 if(gdal_installed==TRUE){
   
-  set1f <- function(x){rep(NA, x)}
-  r_init <- init(r_clay, fun=set1f)
-  r_init <- r_roads > 0
-  NAvalue(r_init) <- 0 
-  srcfile <- file.path(out_dir,paste("feature_target_", out_suffix,file_format,sep=""))
-  r_init <- writeRaster(r_init,filename=srcfile,overwrite=T)
-  
-  #Sys.getpid
-  dstfile <- file.path(out_dir,paste("feature_target_distance_",out_suffix,file_format,sep=""))
+  ## Roads
+  srcfile <- roads_bool_fname 
+  dstfile_roads <- file.path(out_dir,paste("roads_distance_",out_suffix,file_format,sep=""))
   n_values <- "1"
   
   ### Note that gdal_proximity doesn't like when path is too long
-  #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,"-values",n_values,sep=" ")
-  cmd_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile),"-values",n_values,sep=" ")
+  cmd_roads_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_roads),"-values",n_values,sep=" ")
+  #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
+  
+  ### Prepare command for FLMA
+  
+  srcfile <- r_flma_clay_bool_fname 
+  dstfile_flma <- file.path(out_dir,paste("r_flma_clay_bool_distance_",out_suffix,file_format,sep=""))
+  n_values <- "1"
+  
+  ### Note that gdal_proximity doesn't like when path is too long
+  cmd_flma_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_flma),"-values",n_values,sep=" ")
   #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
   
   sys_info<- as.list(Sys.info())$sysname
+  
   if(sys_info$sysname=="Windows"){
-    shell(cmd_str)
+    shell(cmd_roads_str)
+    shell(cmd_flma_str)
   }else{
-    system(cmd_str)
+    system(cmd_roads_str)
+    system(cmd_flma_str)
   }
+  r_flma_distance <- raster(dstfile_flma)
+  r_roads_distance <- raster(dstfile_roads)
+  
 }else{
-  dstfile <- file.path(out_dir,paste("feature_target_distance_",out_suffix,file_format,sep=""))
+  r_roads_distance <- raster(file.path(in_dir,paste("roads_bool_distance_",file_format,sep="")))
+  r_flma_distance <- raster(file.path(in_dir_var,paste("r_flma_clay_bool_distance",file_format,sep="")))
 }
 
-r_distance_roads <- distance(r_init)
-r_distance_roads <- distance(r_init,filename="r_distance_roads.tif")
-
-r_w <- raster("focus_zone1.tif")
-r_init_w <- crop(r_init,r_w)
-srcfile <- file.path(out_dir,paste("feature_target_w_", out_suffix,file_format,sep=""))
-r_init_w <- writeRaster(r_init_w,filename=srcfile,overwrite=T)
-
-r_distance_roads_w <- distance(r_init_w)
-
-## Error with distance function in R
-#r_distance_roads_w <- distance(r_init_w)
-#Error in if (file == "") file <- stdout() else if (is.character(file)) { : 
-#    argument is of length zero
-#  In addition: There were 50 or more warnings (use warnings() to see the first 50)
-#  > r_distance_roads <- distance(r_init,filename="r_distance_roads.tif")
-#  Error in distance(r_init, filename = "r_distance_roads.tif") : 
-#    unused argument (filename = "r_distance_roads.tif")
-#  > r_distance_roads <- distance(r_init)
-#  Error in if (file == "") file <- stdout() else if (is.character(file)) { : 
-#      argument is of length zero
-#    In addition: There were 50 or more warnings (use warnings() to see the first 50)
-    
 #Now reverse the distance...
+
+r_flma_distance <- raster(dstfile_flma)
+r_roads_distance <- raster(dstfile_roads)
+
+min_val <- cellStats(r_flma_distance,min) 
+max_val <- cellStats(r_flma_distance,max)
+r <- abs(r_flma_distance  - min_val)/ (max_val - min_val) #no need to inverse...
 
 #Get distance from managed land
 #b. Which parts of Clay County contain proximity-to-managed-lands characteristics that would make them more favorable to be used as conservation lands?
 
-#gDistance(spatialpoints, rasterToPoints(r, fun=function(x) {x == 15}))
-#r_dist <- distance(r_init)
-roads_spdf <- as(r_roads,"SpatialPointsDataFrame")
-gDistance(spatialpoints, rasterToPoints(r, fun=function(x) {x == 15}))
-r_distance_test <- gDistance(r_roads,roads_spdf)
-
-tr1 <- transition(r_init, transitionFunction=mean, directions=8)
-
-
-r <- raster(ncol=36,nrow=18)
-r[] <- NA
-r[500] <- 1
-dist <- distance(r) 
-
-tr1 <- transition(r, transitionFunction=mean, directions=8)
 
 ##########################
 #P3- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION TO PARCEL VALUES AND ACREAGES
@@ -369,14 +351,18 @@ tr1 <- transition(r, transitionFunction=mean, directions=8)
 #a combination of the Extract by Mask, Polygon to Raster, Project, Reclassify, and Weighted Sum tools.
 
 #Now summarize by parcels!!
+r_focus_zone1 <- raster("focus_zone1.tif")
 
-clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
-
+#clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
 r_parcels_clay <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="min")
-r_parcels_clay <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="min")
-r_parcels_clay_max <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="max")
 
-writeRaster(subset(r_bio_factor,"equal_weights"),"bio_factor_equal_weights.tif")
+r_parcels_clay_min <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="min")
+#r_parcels_clay <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="max")
+#r_parcels_clay_max <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="max")
+
+#writeRaster(subset(r_bio_factor,"equal_weights"),"bio_factor_equal_weights.tif")
+writeRaster(subset(r_bio_factor,1),"bio_factor_equal_weights.tif")
+
 parcels_clay_avg_index <- zonal(subset(r_bio_factor,1), z=r_parcels_clay, fun='mean', digits=0, na.rm=TRUE) 
 
 #This step takes about 18 minutes on my laptop.
