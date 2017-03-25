@@ -8,7 +8,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/17/2017 
-#DATE MODIFIED: 03/24/2017
+#DATE MODIFIED: 03/25/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
@@ -50,6 +50,7 @@ out_dir <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/worksho
 
 #CRS_reg <- CRS_WGS84 # PARAM 4
 
+gdal_installed <- TRUE #if true use the system/shell command else use the distance layer provided
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
@@ -224,13 +225,13 @@ r_priority_wet_hab_w <- crop(r_priority_wet_hab,clay_county_sp)
 plot(r_priority_wet_hab_w)
 plot(clay_county_sp,border="red",add=T)
 
-r_priority_wet_hab_reg <- mask(r_priority_wet_hab_w,r_clay) ## Does not work!! because resolution don't match
+#r_priority_wet_hab_reg <- mask(r_priority_wet_hab_w,r_clay) ## Does not work!! because resolution don't match
 #match resolution:
 ## Find about resample
 
 r_priority_wet_hab_reg <- resample(r_priority_wet_hab_w,r_clay, method='bilinear') #resolution matching the study region
 
-r_priority_wet_hab_reg <- mask(r_priority_wet_hab_reg,r_clay) ## Does not work!! because resolution don't match
+#r_priority_wet_hab_reg <- mask(r_priority_wet_hab_reg,r_clay) ## Does not work!! because resolution don't match
 plot(r_priority_wet_hab_reg)
 
 ### Now reclass
@@ -276,8 +277,11 @@ plot(r_bio_factor)
 ### Takes 7 minutes on my laptop for each of the operations
 #r_roads_counts <- rasterize(roads_sp, r_clay, fun='count')
 #writeRaster(r_roads_counts,"roads_counts.tif",overwrite=T)
-r_roads <- rasterize(roads_sp, r_clay)
-writeRaster(r_roads,"roads.tif",overwrite=T)
+#r_roads <- rasterize(roads_sp, r_clay)
+#writeRaster(r_roads,"roads.tif",overwrite=T)
+
+#r_roads <- raster("roads.tif")
+r_roads <- raster("roads_counts.tif")
 
 #?raster::distance
 #See the gdistance package for more advanced distances, and the geosphere package for greatcircle
@@ -285,23 +289,58 @@ writeRaster(r_roads,"roads.tif",overwrite=T)
 
 #A list of target pixel values in the source image to be considered target pixels. If not specified, all non-zero pixels will be considered target pixels.
 
-set1f <- function(x){rep(NA, x)}
-r_init <- init(r_clay, fun=set1f)
-r_init <- r_roads > 0
-NAvalue(r_init) <- 0 
-srcfile <- file.path(out_dir,paste("feature_target_", out_suffix,file_format,sep=""))
-writeRaster(r_init,filename=srcfile,overwrite=T)
+#
+if(gdal_installed==TRUE){
+  
+  set1f <- function(x){rep(NA, x)}
+  r_init <- init(r_clay, fun=set1f)
+  r_init <- r_roads > 0
+  NAvalue(r_init) <- 0 
+  srcfile <- file.path(out_dir,paste("feature_target_", out_suffix,file_format,sep=""))
+  r_init <- writeRaster(r_init,filename=srcfile,overwrite=T)
+  
+  #Sys.getpid
+  dstfile <- file.path(out_dir,paste("feature_target_distance_",out_suffix,file_format,sep=""))
+  n_values <- "1"
+  
+  ### Note that gdal_proximity doesn't like when path is too long
+  #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,"-values",n_values,sep=" ")
+  cmd_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile),"-values",n_values,sep=" ")
+  #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
+  
+  sys_info<- as.list(Sys.info())$sysname
+  if(sys_info$sysname=="Windows"){
+    shell(cmd_str)
+  }else{
+    system(cmd_str)
+  }
+}else{
+  dstfile <- file.path(out_dir,paste("feature_target_distance_",out_suffix,file_format,sep=""))
+}
 
-#Sys.getpid
-dstfile <- file.path(out_dir,paste("feature_target_distance",out_suffix,file_format,sep=""))
-n_values <- "1"
+r_distance_roads <- distance(r_init)
+r_distance_roads <- distance(r_init,filename="r_distance_roads.tif")
 
-### Note that gdal_proximity doesn't like when path is too long
-#cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,"-values",n_values,sep=" ")
-cmd_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile),"-values",n_values,sep=" ")
-#cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
-system(cmd_str)
+r_w <- raster("focus_zone1.tif")
+r_init_w <- crop(r_init,r_w)
+srcfile <- file.path(out_dir,paste("feature_target_w_", out_suffix,file_format,sep=""))
+r_init_w <- writeRaster(r_init_w,filename=srcfile,overwrite=T)
 
+r_distance_roads_w <- distance(r_init_w)
+
+## Error with distance function in R
+#r_distance_roads_w <- distance(r_init_w)
+#Error in if (file == "") file <- stdout() else if (is.character(file)) { : 
+#    argument is of length zero
+#  In addition: There were 50 or more warnings (use warnings() to see the first 50)
+#  > r_distance_roads <- distance(r_init,filename="r_distance_roads.tif")
+#  Error in distance(r_init, filename = "r_distance_roads.tif") : 
+#    unused argument (filename = "r_distance_roads.tif")
+#  > r_distance_roads <- distance(r_init)
+#  Error in if (file == "") file <- stdout() else if (is.character(file)) { : 
+#      argument is of length zero
+#    In addition: There were 50 or more warnings (use warnings() to see the first 50)
+    
 #Now reverse the distance...
 
 #Get distance from managed land
@@ -309,8 +348,19 @@ system(cmd_str)
 
 #gDistance(spatialpoints, rasterToPoints(r, fun=function(x) {x == 15}))
 #r_dist <- distance(r_init)
+roads_spdf <- as(r_roads,"SpatialPointsDataFrame")
+gDistance(spatialpoints, rasterToPoints(r, fun=function(x) {x == 15}))
+r_distance_test <- gDistance(r_roads,roads_spdf)
 
-#gDistance(spatialpoints, rasterToPoints(r, fun=function(x) {x == 15}))
+tr1 <- transition(r_init, transitionFunction=mean, directions=8)
+
+
+r <- raster(ncol=36,nrow=18)
+r[] <- NA
+r[500] <- 1
+dist <- distance(r) 
+
+tr1 <- transition(r, transitionFunction=mean, directions=8)
 
 ##########################
 #P3- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION TO PARCEL VALUES AND ACREAGES
