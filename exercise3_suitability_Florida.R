@@ -251,7 +251,6 @@ rc_priority_wet_hab_reg <- reclassify(r_priority_wet_hab_reg, rclmat)
 plot(rc_priority_wet_hab_reg )
 freq_tb <- freq(rc_priority_wet_hab_reg)
 
-
 ### STEP 4: Combine all the three layers with weigthed sum
 
 f_weights <- c(1,1,1)/3
@@ -350,6 +349,20 @@ max_val <- cellStats(r_flma_distance,max)
 a = (9 - 0) /(max_val - min_val) #linear rescaling factor
 r_flma_dist <- r_flma_distance * a
 
+### Combine with weights...
+f_weights <- c(1,1)/2
+r_dist_factor <- f_weights[1]*r_roads_dist + f_weights[2]*r_flma_dist #weighted sum with equal weight
+
+### Let's assume same weight for factor and distance?
+f_weights <- c(2/3,1/3)
+r_suitability_factor <- f_weights[1]*r_bio_factor + f_weights[2]*r_dist_factor #weighted sum with equal weight
+names(r_suitability_factor) <- c("suitability1","suitability2")
+plot(r_suitability_factor)
+
+### Write out later
+#writeRaster(,"bio_factor_equal_weights.tif")
+#writeRaster(subset(r_bio_factor,1),"bio_factor_equal_weights.tif")
+
 ##########################
 #P3- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION TO PARCEL VALUES AND ACREAGES
 #GOAL: Create two raster maps showing parcels in Clay County, Florida that have would 
@@ -361,37 +374,16 @@ r_focus_zone1 <- raster("focus_zone1.tif")
 projection(r_focus_zone1)<- projection(r_clay)
 
 clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
-r_parcels_clay_max <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="max")
+parcels_focus_zone1_sp <- intersect(clay_sp_parcels_reg,r_focus_zone1)
 
-r_parcels_clay_min <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="min")
-r_parcels_clay_mean <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="mean")
-r_parcels_clay <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1")
+parcels_avg_suitability <- extract(r_suitability_factor,parcels_focus_zone1_sp,fun=mean,sp=T)
+#spplot(parcels_avg_suitability,"equal_weights")
 
-val_max <- unique(r_parcels_clay_max)
-val_min <- unique(r_parcels_clay_max)
-val_mean <- unique(r_parcels_clay_max)
-val <- unique(r_parcels_clay)
+## Select top 10 parcels to target for conservation
+parcels_avg_suitability <- parcels_avg_suitability[order(parcels_avg_suitability$suitability1,decreasing = T),] 
+plot(parcels_avg_suitability$suitability1,main="Suitability index by parcel in focus zone 1")
 
-setdiff(val_max,val_min)
-setdiff(val_mean,val_min)
-setdiff(val,val_min)
+spplot(parcels_avg_suitability[1:10,],"suitability1",main="Selected top 10 parcels for possible conservation")
 
-#r_parcels_clay_max <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="max")
-
-test <- intersect(clay_sp_parcels_reg,r_focus_zone1)
-
-#test <- crop(r_parcels_clay_min,r_focus_zone1)
-#writeRaster(subset(r_bio_factor,"equal_weights"),"bio_factor_equal_weights.tif")
-#writeRaster(subset(r_bio_factor,1),"bio_factor_equal_weights.tif")
-
-#parcels_clay_avg_index <- zonal(subset(r_bio_factor,1), z=r_parcels_clay, fun='mean', digits=0, na.rm=TRUE) 
-parcels_clay_avg_index <- extract(subset(r_bio_factor,1),test,fun=mean)
-
-#This step takes about 18 minutes on my laptop.
-#r_parcels_clay_index <- extract(subset(r_bio_factor,1),clay_sp_parcels_reg,sp=T)
-parcels_clay_avg_index <- extract(subset(r_bio_factor,1),clay_sp_parcels_reg,fun=mean)
-
-class(parcels_clay_avg_index)
-View(parcels_clay_avg_index)
 
 ###################### END OF SCRIPT #####################
