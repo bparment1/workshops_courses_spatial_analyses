@@ -8,7 +8,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/17/2017 
-#DATE MODIFIED: 03/25/2017
+#DATE MODIFIED: 03/27/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
@@ -238,6 +238,7 @@ plot(r_priority_wet_hab_reg)
 #The value of 9 was assigned to 10–12 wetland focal species, 8 was assigned to 7–9 wetland focal
 #species, 7 was assigned to 4–6 wetland focal species and 4–6 upland focal species, 6 was assigned to
 #1–3 wetland or upland focal species. The value 1 was assigned to all other cells.
+
 m <- c(10, 12, 9,  
        7, 9, 8,  
        4, 6, 7,  
@@ -314,9 +315,9 @@ if(gdal_installed==TRUE){
   cmd_flma_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_flma),"-values",n_values,sep=" ")
   #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
   
-  sys_info<- as.list(Sys.info())$sysname
+  sys_os <- as.list(Sys.info())$sysname
   
-  if(sys_info$sysname=="Windows"){
+  if(sys_os=="Windows"){
     shell(cmd_roads_str)
     shell(cmd_flma_str)
   }else{
@@ -331,18 +332,23 @@ if(gdal_installed==TRUE){
   r_flma_distance <- raster(file.path(in_dir_var,paste("r_flma_clay_bool_distance",file_format,sep="")))
 }
 
-#Now reverse the distance...
+#Now rescale the distance...
+min_val <- cellStats(r_roads_distance,min) 
+max_val <- cellStats(r_roads_distance,max)
 
-r_flma_distance <- raster(dstfile_flma)
-r_roads_distance <- raster(dstfile_roads)
-
-min_val <- cellStats(r_flma_distance,min) 
-max_val <- cellStats(r_flma_distance,max)
-r <- abs(r_flma_distance  - min_val)/ (max_val - min_val) #no need to inverse...
+#linear rescaling:
+#y = ax + b with b=0
+#with 9 being new max and 0 being new min
+a = (9 - 0) /(max_val - min_val)
+r_roads_dist <- r_roads_distance * a
 
 #Get distance from managed land
 #b. Which parts of Clay County contain proximity-to-managed-lands characteristics that would make them more favorable to be used as conservation lands?
 
+min_val <- cellStats(r_flma_distance,min) 
+max_val <- cellStats(r_flma_distance,max)
+a = (9 - 0) /(max_val - min_val) #linear rescaling factor
+r_flma_dist <- r_flma_distance * a
 
 ##########################
 #P3- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION TO PARCEL VALUES AND ACREAGES
@@ -352,22 +358,39 @@ r <- abs(r_flma_distance  - min_val)/ (max_val - min_val) #no need to inverse...
 
 #Now summarize by parcels!!
 r_focus_zone1 <- raster("focus_zone1.tif")
+projection(r_focus_zone1)<- projection(r_clay)
 
-#clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
-r_parcels_clay <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="min")
+clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
+r_parcels_clay_max <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="max")
 
 r_parcels_clay_min <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="min")
-#r_parcels_clay <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="max")
+r_parcels_clay_mean <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="mean")
+r_parcels_clay <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1")
+
+val_max <- unique(r_parcels_clay_max)
+val_min <- unique(r_parcels_clay_max)
+val_mean <- unique(r_parcels_clay_max)
+val <- unique(r_parcels_clay)
+
+setdiff(val_max,val_min)
+setdiff(val_mean,val_min)
+setdiff(val,val_min)
+
 #r_parcels_clay_max <- rasterize(clay_sp_parcels_reg,r_clay,"OBJECTID_1",fun="max")
 
-#writeRaster(subset(r_bio_factor,"equal_weights"),"bio_factor_equal_weights.tif")
-writeRaster(subset(r_bio_factor,1),"bio_factor_equal_weights.tif")
+test <- intersect(clay_sp_parcels_reg,r_focus_zone1)
 
-parcels_clay_avg_index <- zonal(subset(r_bio_factor,1), z=r_parcels_clay, fun='mean', digits=0, na.rm=TRUE) 
+#test <- crop(r_parcels_clay_min,r_focus_zone1)
+#writeRaster(subset(r_bio_factor,"equal_weights"),"bio_factor_equal_weights.tif")
+#writeRaster(subset(r_bio_factor,1),"bio_factor_equal_weights.tif")
+
+#parcels_clay_avg_index <- zonal(subset(r_bio_factor,1), z=r_parcels_clay, fun='mean', digits=0, na.rm=TRUE) 
+parcels_clay_avg_index <- extract(subset(r_bio_factor,1),test,fun=mean)
 
 #This step takes about 18 minutes on my laptop.
 #r_parcels_clay_index <- extract(subset(r_bio_factor,1),clay_sp_parcels_reg,sp=T)
 parcels_clay_avg_index <- extract(subset(r_bio_factor,1),clay_sp_parcels_reg,fun=mean)
+
 class(parcels_clay_avg_index)
 View(parcels_clay_avg_index)
 
