@@ -1,19 +1,18 @@
-####################################    Spatial Analyses: Suitability analyses   #######################################
-############################################  Analyse data from Florida #######################################
 #This script performs basic analyses for the Exercise 3 of the workshop using Florida data.
-# The overall goal is to perform a multi-criteria/sustainabiltiy analysis to select areas suitable for conservation.     
+# The overall goal is to perform a multi-criteria/sustainabiltiy analysis to select areas suitable 
+#for conservation.     
 #
-#Goal: Determine the ten (10) parcels of land within Clay County, FL most suitable for purchase
-#towards conversion to conservation lands.
+#Goal: Determine the ten (10) parcels of land within Clay County in the focus zone most suitable for purchase
+#towards conversion to land conservation.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/17/2017 
-#DATE MODIFIED: 03/27/2017
+#DATE MODIFIED: 03/29/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
 #
-#COMMIT: processing data for the exercise, AAG workshop
+#COMMIT: clean up and modifications, AAG workshop
 #
 #################################################################################################
 
@@ -23,7 +22,7 @@ library(sp) # spatial/geographfic objects and functions
 library(rgdal) #GDAL/OGR binding for R with functionalities
 library(spdep) #spatial analyses operations, functions etc.
 library(gtools) # contains mixsort and other useful functions
-library(maptools) # 
+library(maptools) # tools to manipulate spatial data
 library(parallel) # parallel computation, part of base package no
 library(rasterVis) # raster visualization operations
 library(raster) # raster functionalities
@@ -34,8 +33,14 @@ library(lubridate) # dates functionality
 library(colorRamps) #contains matlab.like color palette
 library(rgeos) #contains topological operations
 library(sphet) #contains spreg, spatial regression modeling
-library(BMS) #contains hex2bin and bin2hex
-library(bitops) #
+library(BMS) #contains hex2bin and bin2hex, Bayesian methods
+library(bitops) # function for bitwise operations
+library(foreign) # import datasets from SAS, spss, stata and other sources
+library(gdata) #read xls, dbf etc., not recently updated but useful
+library(classInt) #methods to generate class limits
+library(plyr) #data wrangling: various operations for splitting, combining data
+library(gstat) #spatial interpolation and kriging methods
+library(readxl) #functionalities to read in excel type data
 
 ###### Functions used in this script
 
@@ -48,19 +53,24 @@ source(file.path(script_path,function_preprocessing_and_analyses)) #source all f
 in_dir_var <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_3/data"
 out_dir <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_3/outputs"
 
-#CRS_reg <- CRS_WGS84 # PARAM 4
+strat_hab_fname <- "Strat_hab_con_areas1.tif" #1)Strategic Habitat conservation areas raster file
+regional_counties_fname <- "Regional_Counties.shp" #2) County shapefile
+roads_fname <- "tl_2011_12019_roads_prj.shp" #3) Roads shapefile
+priority_wet_habitats_fname <- "Priority_Wet_Habitats1.tif" #4) Priority Wetlands Habitat raster file
+clay_parcels_fname <- "Clay_Parcels.shp" #5) Clay County parcel shapefile
+habitat_fname <- "Habitat.tif" #6) General Habitat raster file
+biodiversity_hotspot_fname <- "Biodiversity_Hot_Spots1.tif" #7) Biodiversity hotspot raster file
+florida_managed_areas_fname <- "flma_jun13.shp" #8) Florida managed areas shapefile
+focus_zone1_filename <- "focus_zone1.tif" #9) focus zone as raster file
 
 gdal_installed <- TRUE #if true use the system/shell command else use the distance layer provided
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise3_03242017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise3_03292017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 ################# START SCRIPT ###############################
-
-### PART I READ AND PREPARE DATA FOR REGRESSIONS #######
-
 
 ## First create an output directory
 
@@ -76,43 +86,38 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-##Inputs
+####  PART I READ AND DISPLAY INPUTS #######
+
+##Inputs:
 #1) Strategic Habitat conservation areas raster file
-#2) Tiger Roads shapefile
-#3) County shapefile
+#2) County shapefile
+#3) Roads shapefil
 #4) Priority Wetlands Habitat raster file
 #5) Clay County parcel shapefile
 #6) General Habitat raster file
 #7) Biodiversity hotspot raster file
 #8) Florida managed areas shapefile
+#9) Focus area as raster file
 
-strat_hab_fname <- "Strat_hab_con_areas1.tif" #1)Strategic Habitat conservation areas raster file
-roads_fname <- "tl_2011_12019_roads_prj.shp" #2) Missing:Tiger Roads shapefile
-regional_counties_fname <- "Regional_Counties.shp" #3) County shapefile
-priority_wet_habitats_fname <- "Priority_Wet_Habitats1.tif" #4) Priority Wetlands Habitat raster file
-clay_parcels_fname <- "Clay_Parcels.shp" #5) Clay County parcel shapefile
-habitat_fname <- "Habitat.tif" #6) General Habitat raster file
-biodiversity_hotspot_fname <- "Biodiversity_Hot_Spots1.tif" #7) Biodiversity hotspot raster file
-florida_managed_areas_fname <- "flma_jun13.shp" #8) Florida managed areas shapefile
-
-## read in
+## Read in the datasets
 r_strat_hab <- raster(file.path(in_dir_var,strat_hab_fname))
-roads_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(roads_fname))) #too large for workshop
-reg_counties_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(regional_counties_fname))) #too large for workshop
+reg_counties_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(regional_counties_fname))) 
+roads_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(roads_fname)))
 r_priority_wet_hab <- raster(file.path(in_dir_var,priority_wet_habitats_fname))
-clay_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(clay_parcels_fname))) #too large for workshop
+clay_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(clay_parcels_fname))) 
 r_habitat <- raster(file.path(in_dir_var,habitat_fname))
 r_bio_hotspot <- raster(file.path(in_dir_var,biodiversity_hotspot_fname))
-fma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname))) #too large for workshop
-clay_parcels_fname <- "Clay_Parcels.shp" #5) Clay County parcel shapefile
+fma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname))) 
 
+## Visualize a few datasets
 plot(r_strat_hab, main="strategic habitat")
 plot(reg_counties_sp,add=T)
-plot(r_priority_wet_hab)
+plot(r_priority_wet_hab, main="Priority wetland habitat")
 #plot(r_habitat,add=T)
 plot(roads_sp,add=T)
 
-##### Before starting the production of sustainability let's check the projection, resolution for each layer
+##### Before starting the production of the sustainability factor let's check the projection, 
+#resolution for each layer relevant to the calculation
 
 #raster layers:
 
@@ -125,10 +130,12 @@ lapply(list_raster,function(x){extent(x)}) #extent of rasters
 
 ### PART 0: generate reference layer
 
-## let's use the resolution 55x55 as the reference since it corresponds to finer resolution
+## Let's use the resolution 55x55 m as the reference since it corresponds to finer resolution relevant
+# for this study. The focus region provides the extent for the final step.
 ## Select clay county
 clay_county_sp <- subset(reg_counties_sp,NAME=="CLAY")
-plot(r_strat_hab)
+
+plot(r_strat_hab, main="strategic habitat")
 plot(clay_county_sp,border="red",add=T)
 
 ## Crop r_strat_hab
@@ -137,42 +144,44 @@ plot(r_ref)
 plot(clay_county_sp,border="red",add=T)
 
 r_clay <- rasterize(clay_county_sp,r_ref) #this can be used as mask for the study area
-freq(r_clay)
+freq(r_clay) #check the distribution of values: 1 and NA 
 ##Use raster of Clay county definining the study area to mask pixels
 plot(r_clay)
-dim(r_clay)
-#dim(r_priority_wet_hab_w)
+dim(r_clay) #number of rows and columns as well as number of layers/bands
 
-# PART I: P1- PRIORITY1- IDENTIFY LANDS WITH HIGH NATIVE BIODIVERSITY
+####  PART II :  HIGH BIODIVERSITY SUITABILITY LAYERS #######
+## P1- PRIORITY1- IDENTIFY LANDS WITH HIGH NATIVE BIODIVERSITY
 
 ### STEP 1: Strategic Habitat conservation areas
 
 #Input data layer: Habitat
+#We will use information from the National Heritage Froundation to reclassify the Habitat layer as input
+#criterion for the suitability analysis.
 #Criteria for value assignment: Habitat ranked by the Natural Heritage Program as having high native
 #biodiversity were given a value of 9. Habitat ranked as having a moderate native biodiversity were given
 #a value of 5, and all other habitat types were given a value of 1.
 #Rationale for value assignment: Certain habitat types are known to have higher native biodiversity than
 #others, consequently those with higher native biodiversity were given higher suitability rankings.
-#Output: Habitat Biodiversity SUA (CG1O11SO114)
+#Output: Habitat Biodiversity 
 
 #strategic habitat conservation areas
-plot(r_strat_hab)
-r_strat_hab_w <- crop(r_strat_hab,r_clay) #did this up there
-r_strat_hab_masked <- mask(r_strat_hab_w,r_clay)
+r_strat_hab_w <- crop(r_strat_hab,r_clay) #Crop habitat conservation layer covering the State of Florida
+r_strat_hab_masked <- mask(r_strat_hab_w,r_clay) # Mask layer matching the Clay county area
 
-## Now reclassify
-m <- c(5, 1000, 9,  
+## Now reclassify: create a matrix of reclassification
+#values are: from, to, assigned value
+m <- c(5, 1000, 9,   #use 1000 as upper limit, can be any value greater than max
        4, 5, 5,  
        1, 3, 1)  
 
 rclmat <- matrix(m, ncol=3, byrow=TRUE)
 
-#?raster::reclassify: ton find out information on 
+#?raster::reclassify: to find out information on the function
 
 rc_strat_hab_reg <- reclassify(r_strat_hab_masked, rclmat)
-plot(rc_strat_hab_reg)
+plot(rc_strat_hab_reg,main="Reclassified Strategic Habit in Clay County")
 
-### STEP 2: Identify Lands With High Native Biodiversity: based on species count 
+### STEP 2: Identify Lands With High Native Biodiversity based on species count 
 
 ## Crop bio raster
 r_bio_hotspot_w <- crop(r_bio_hotspot,clay_county_sp)
@@ -181,17 +190,17 @@ plot(clay_county_sp,border="red",add=T)
 
 #r_bio_clay_masked <- mask(r_bio_hotspot_w,r_clay) ## Does not work!! because resolution don't match
 #match resolution:
-projection(r_bio_hotspot_w)==projection(r_clay)
-res(r_bio_hotspot_w)==res(r_clay)
+projection(r_bio_hotspot_w)==projection(r_clay) #projection match
+res(r_bio_hotspot_w)==res(r_clay) #the resolutions do not match, we will need to resample
 
 ## Find about resample
-#?raster::resample
-r_bio_hotspot_reg <- resample(r_bio_hotspot_w,r_clay, method='bilinear') #Use resample to match resolutions
+#?raster::resample #to find out about the resample function from the raster package
+r_bio_hotspot_reg <- raster::resample(x=r_bio_hotspot_w,y=r_clay, method="bilinear") #Use resample to match resolutions
 
 r_bio_hotspot_reg <- mask(r_bio_hotspot_reg,r_clay) ## It now works because resolutions were matched
-plot(r_bio_hotspot_reg)
+plot(r_bio_hotspot_reg,main="Resampled biodiversity layer to 55m")
 
-### Reclassify using instructions/informaiton given to us:
+### Reclassify using instructions/information given to us:
 #Criteria for value assignment: Cells with 7 or more focal species or an actual species occurrence record
 #location were assigned a value of 9; a value of 8 was assigned to cells with 5–8 focal species; 7 was
 #assigned to cells with 3–4 focal species; all other cells were assigned a value of 1.
@@ -204,7 +213,7 @@ rclmat <- matrix(m, ncol=3, byrow=TRUE)
 
 rc_bio_hotspot_reg <- reclassify(r_bio_hotspot_reg, rclmat)
 
-plot(rc_bio_hotspot_reg)
+plot(rc_bio_hotspot_reg, main="Bio hotspot reclassified")
 
 ### STEP 3: Wetland priority 
 
@@ -214,25 +223,21 @@ plot(rc_bio_hotspot_reg)
 #species, 7 was assigned to 4–6 wetland focal species and 4–6 upland focal species, 6 was assigned to
 #1–3 wetland or upland focal species. The value 1 was assigned to all other cells.
 #Rationale for value assignment: The better the habitat for focal wetland species, the higher the priority.
-#Output: Wetland Biodiversity SUA (CG1O11SO111)
+#Output: Wetland Biodiversity 
 
-plot(r_priority_wet_hab)
 #check projection
 projection(r_priority_wet_hab)
 
 ## Crop Wetland priority raster
 r_priority_wet_hab_w <- crop(r_priority_wet_hab,clay_county_sp)
-plot(r_priority_wet_hab_w)
-plot(clay_county_sp,border="red",add=T)
 
 #r_priority_wet_hab_reg <- mask(r_priority_wet_hab_w,r_clay) ## Does not work!! because resolution don't match
 #match resolution:
-## Find about resample
-
-r_priority_wet_hab_reg <- resample(r_priority_wet_hab_w,r_clay, method='bilinear') #resolution matching the study region
+r_priority_wet_hab_reg <- raster::resample(r_priority_wet_hab_w,r_clay, method='bilinear') #resolution matching the study region
 
 #r_priority_wet_hab_reg <- mask(r_priority_wet_hab_reg,r_clay) ## Does not work!! because resolution don't match
-plot(r_priority_wet_hab_reg)
+plot(r_priority_wet_hab_reg,main="Priority Wetland Habitat resampled")
+plot(clay_county_sp,border="red",add=T)
 
 ### Now reclass
 #The value of 9 was assigned to 10–12 wetland focal species, 8 was assigned to 7–9 wetland focal
@@ -248,10 +253,12 @@ m <- c(10, 12, 9,
 rclmat <- matrix(m, ncol=3, byrow=TRUE)
 
 rc_priority_wet_hab_reg <- reclassify(r_priority_wet_hab_reg, rclmat)
-plot(rc_priority_wet_hab_reg )
 freq_tb <- freq(rc_priority_wet_hab_reg)
+freq_tb
+plot(rc_priority_wet_hab_reg,main="Priority Wetland Habitat reclassified")
+plot(clay_county_sp,border="red",add=T)
 
-### STEP 4: Combine all the three layers with weigthed sum
+### STEP 4: Combine all the three input criteria layers with weigthed/unweighted sum
 
 f_weights <- c(1,1,1)/3
 r_bio_es_factor <- (f_weights[1]*rc_strat_hab_reg + f_weights[2]*rc_bio_hotspot_reg + f_weights[3]*rc_priority_wet_hab_reg) #weighted sum
@@ -261,6 +268,7 @@ r_bio_ws_factor <- (f_weights[1]*rc_strat_hab_reg + f_weights[2]*rc_bio_hotspot_
 
 r_bio_factor <- stack(r_bio_es_factor,r_bio_ws_factor)
 names(r_bio_factor) <- c("equal_weights","weigthed_sum")
+#plot(r_bio_factor,main="Bio factor for suitability analysis")
 plot(r_bio_factor)
 
 ##########################
