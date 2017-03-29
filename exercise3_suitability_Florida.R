@@ -55,7 +55,7 @@ out_dir <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/worksho
 
 strat_hab_fname <- "Strat_hab_con_areas1.tif" #1)Strategic Habitat conservation areas raster file
 regional_counties_fname <- "Regional_Counties.shp" #2) County shapefile
-roads_fname <- "tl_2011_12019_roads_prj.shp" #3) Roads shapefile
+roads_fname <- "roads_counts.tif" #3) Roads count raster
 priority_wet_habitats_fname <- "Priority_Wet_Habitats1.tif" #4) Priority Wetlands Habitat raster file
 clay_parcels_fname <- "Clay_Parcels.shp" #5) Clay County parcel shapefile
 habitat_fname <- "Habitat.tif" #6) General Habitat raster file
@@ -102,12 +102,13 @@ if(create_out_dir_param==TRUE){
 ## Read in the datasets
 r_strat_hab <- raster(file.path(in_dir_var,strat_hab_fname))
 reg_counties_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(regional_counties_fname))) 
-roads_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(roads_fname)))
+r_roads <- raster(file.path(in_dir_var,roads_fname))
 r_priority_wet_hab <- raster(file.path(in_dir_var,priority_wet_habitats_fname))
 clay_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(clay_parcels_fname))) 
 r_habitat <- raster(file.path(in_dir_var,habitat_fname))
 r_bio_hotspot <- raster(file.path(in_dir_var,biodiversity_hotspot_fname))
 fma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname))) 
+r_focus_zone1 <- raster(file.path(in_dir_var,focus_zone1_filename))
 
 ## Visualize a few datasets
 plot(r_strat_hab, main="strategic habitat")
@@ -271,8 +272,15 @@ names(r_bio_factor) <- c("equal_weights","weigthed_sum")
 #plot(r_bio_factor,main="Bio factor for suitability analysis")
 plot(r_bio_factor)
 
-##########################
-#P2- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION WITH ROAD DENSITY AND EXISTING MANAGED LANDS
+out_suffix_str <- paste0(names(r_bio_factor),"_",out_suffix) # this needs to be matching the number of outputs files writeRaste
+
+##Write out raster file:
+writeRaster(r_bio_factor,filename="r_bio_factor_clay.tif",
+            bylayer=T,datatype="FLT4S",options="COMPRESS=LZW",suffix=out_suffix_str,overwrite=T)
+
+####  PART III :  HIGH BIODIVERSITY SUITABILITY LAYERS #######
+
+#P2- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION WITH DISTANCE TO ROADS AND EXISTING MANAGED LANDS
 #GOAL: Create two raster maps showing lands in Clay County, 
 #Florida that have would have higher conservation potential based on 
 #local road density and distance from existing managed lands using a combination 
@@ -280,11 +288,8 @@ plot(r_bio_factor)
 
 #Step 1: prepare files to create a distance to road layer
 
-#r_roads <- raster("roads.tif")
-r_roads <- raster("roads_counts.tif")
 ### Processs roads first
-#set1f <- function(x){rep(NA, x)}
-#r_init <- init(r_clay, fun=set1f)
+plot(r_roads,main="Roads_count in Clay county")
 r_roads_bool <- r_roads > 0
 NAvalue(r_roads_bool ) <- 0 
 roads_bool_fname <- file.path(out_dir,paste0("roads_bool_",out_suffix,file_format))
@@ -292,14 +297,13 @@ r_roads_bool <- writeRaster(r_roads_bool,filename=roads_bool_fname,overwrite=T)
 
 #setp 2: prepare files to create a distance to existing managed land
 
-florida_managed_areas_fname <- "flma_jun13.shp" #8) Florida managed areas shapefile
-flma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname ))) #too large for workshop
 r_flma_clay <- rasterize(flma_sp,r_clay,"OBJECTID_1",fun="max")
 r_flma_clay_bool <- r_flma_clay > 0
 NAvalue(r_flma_clay_bool) <- 0 
 r_flma_clay_bool_fname <- file.path(out_dir,paste0("r_flma_clay_bool_",out_suffix,file_format))
 r_flma_clay_bool <- writeRaster(r_flma_clay_bool,filename=r_flma_clay_bool_fname,overwrite=T)
-plot(r_flma_clay_bool)
+plot(r_flma_clay_bool,"Management areas in Clay County")
+plot(clay_county_sp,border="red",add=T)
 
 if(gdal_installed==TRUE){
   
@@ -343,7 +347,7 @@ if(gdal_installed==TRUE){
 min_val <- cellStats(r_roads_distance,min) 
 max_val <- cellStats(r_roads_distance,max)
 
-#linear rescaling:
+#Linear rescaling:
 #y = ax + b with b=0
 #with 9 being new max and 0 being new min
 a = (9 - 0) /(max_val - min_val)
@@ -357,28 +361,34 @@ max_val <- cellStats(r_flma_distance,max)
 a = (9 - 0) /(max_val - min_val) #linear rescaling factor
 r_flma_dist <- r_flma_distance * a
 
-### Combine with weights...
-f_weights <- c(1,1)/2
+####  PART IV : COMBINE FACTORS AND DETERMINE MOST SUITABLE PARCELS #######
+####
+#P3- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION TO PARCEL SUITABILITY
+#GOAL: Create two raster maps showing parcels in Clay County, Florida that have would 
+#have higher conservation potential based on parcel values.
+#First, factors must be combined to generate a suitability index.
+
+### Step 1:  Combine distance factors with weights...
+f_weights <- c(1,1)/2 #factor weights for distance to roads
 r_dist_factor <- f_weights[1]*r_roads_dist + f_weights[2]*r_flma_dist #weighted sum with equal weight
 
-### Let's assume same weight for factor and distance?
-f_weights <- c(2/3,1/3)
+### Step 3: Combine distance factor and bio factor
+f_weights <- c(2/3,1/3) #We are weighting factor bio more for this exercise
 r_suitability_factor <- f_weights[1]*r_bio_factor + f_weights[2]*r_dist_factor #weighted sum with equal weight
 names(r_suitability_factor) <- c("suitability1","suitability2")
 plot(r_suitability_factor)
+
+out_suffix_str <- paste0(names(r_suitability_factor),"_",out_suffix) # this needs to be matching the number of outputs files writeRaste
+
+writeRaster(r_suitability_factor,filename="r_suitability_factor_clay.tif",
+            bylayer=T,datatype="FLT4S",options="COMPRESS=LZW",suffix=out_suffix_str,overwrite=T)
 
 ### Write out later
 #writeRaster(,"bio_factor_equal_weights.tif")
 #writeRaster(subset(r_bio_factor,1),"bio_factor_equal_weights.tif")
 
-##########################
-#P3- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION TO PARCEL VALUES AND ACREAGES
-#GOAL: Create two raster maps showing parcels in Clay County, Florida that have would 
-#have higher conservation potential based on parcel value and parcel size (acreage) using 
-#a combination of the Extract by Mask, Polygon to Raster, Project, Reclassify, and Weighted Sum tools.
+# Step 3: summarize by parcels!!
 
-#Now summarize by parcels!!
-r_focus_zone1 <- raster("focus_zone1.tif")
 projection(r_focus_zone1)<- projection(r_clay)
 
 clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
@@ -391,7 +401,7 @@ parcels_avg_suitability <- extract(r_suitability_factor,parcels_focus_zone1_sp,f
 parcels_avg_suitability <- parcels_avg_suitability[order(parcels_avg_suitability$suitability1,decreasing = T),] 
 plot(parcels_avg_suitability$suitability1,main="Suitability index by parcel in focus zone 1")
 
-spplot(parcels_avg_suitability[1:10,],"suitability1",main="Selected top 10 parcels for possible conservation")
-
+p<- spplot(parcels_avg_suitability[1:10,],"suitability1",main="Selected top 10 parcels for possible conservation")
+print(p)
 
 ###################### END OF SCRIPT #####################
