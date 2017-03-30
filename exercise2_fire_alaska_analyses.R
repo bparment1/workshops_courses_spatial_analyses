@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2017 
-#DATE MODIFIED: 03/23/2017
+#DATE MODIFIED: 03/30/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
@@ -20,7 +20,7 @@ library(sp) # spatial/geographfic objects and functions
 library(rgdal) #GDAL/OGR binding for R with functionalities
 library(spdep) #spatial analyses operations, functions etc.
 library(gtools) # contains mixsort and other useful functions
-library(maptools) # 
+library(maptools) # tools to manipulate spatial data
 library(parallel) # parallel computation, part of base package no
 library(rasterVis) # raster visualization operations
 library(raster) # raster functionalities
@@ -31,10 +31,15 @@ library(lubridate) # dates functionality
 library(colorRamps) #contains matlab.like color palette
 library(rgeos) #contains topological operations
 library(sphet) #contains spreg, spatial regression modeling
-library(BMS) #contains hex2bin and bin2hex
-library(bitops) #
-#
-library(psych)
+library(BMS) #contains hex2bin and bin2hex, Bayesian methods
+library(bitops) # function for bitwise operations
+library(foreign) # import datasets from SAS, spss, stata and other sources
+library(gdata) #read xls, dbf etc., not recently updated but useful
+library(classInt) #methods to generate class limits
+library(plyr) #data wrangling: various operations for splitting, combining data
+library(gstat) #spatial interpolation and kriging methods
+library(readxl) #functionalities to read in excel type data
+library(psych) #pca/eigenvector decomposition functionalities
 
 ###### Functions used in this script
 
@@ -58,7 +63,7 @@ CRS_reg <- "+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +e
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise_03232017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise_03302017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 ################# START SCRIPT ###############################
@@ -318,25 +323,31 @@ dim(cor_matrix)
 View(cor_matrix)
 image(cor_matrix)
 
-test<-principal(cor_matrix,nfactors=3,rotate="none")
-class(test$loadings)
-str(test$loadings)
-plot(test$loadings[,1],type="b")
-plot(test$loadings[,2],type="b")
-plot(test$loadings[,3],type="b")
+pca_mod <-principal(cor_matrix,nfactors=3,rotate="none")
+class(pca_mod$loadings)
+str(pca_mod$loadings)
+plot(pca_mod$loadings[,1],type="b",ylim=c(-1,1),col="blue")
+lines(pca_mod$loadings[,2],type="b",col="red")
+lines(pca_mod$loadings[,3],type="b",col="black")
+title("Loadings for the first three components using T-mode")
 
-#find the predicted scores (The B set)
-df_test <- as(r_NDVI_ts,"SpatialPointsDataFrame")
-df_test2 <- as.data.frame(df_test)[,1:23]
-names(df_test2) <- paste0("pc_",seq(1,23,1))
-names(df_test2)
+## Add scree plot
+plot(pca_mod$values,main="Scree plot: Variance explained",type="b")
+
+### Generate scores from eigenvectors
+## Do it two different ways:
+
+#By converting data and working with matrix:
+df_NDVI_ts <- as(r_NDVI_ts,"SpatialPointsDataFrame")
+df_NDVI_ts <- as.data.frame(df_NDVI_ts)[,1:23] #drop x, y column
+names(df_NDVI_ts) <- paste0("pc_",seq(1,23,1))
+names(df_NDVI_ts)
 
 pca_all <- as.data.frame(predict(test,df_test2)) 
 
 coordinates(pca_all) <- coordinates(df_test)
 class(pca_all)
 
-rasterize()
 raster_name <- paste0("pc1_NDVI_2005.tif")
 r_pc1<-rasterize(pca_all,r_NDVI_ts,"PC1",fun=min,overwrite=TRUE,
                   filename=raster_name)
@@ -344,11 +355,20 @@ raster_name <- paste0("pc2_NDVI_2005.tif")
 r_pc2<-rasterize(pca_all,r_NDVI_ts,"PC2",fun=min,overwrite=TRUE,
                  filename=raster_name)
 
+### Using predict function: this is recommended for raster imagery!!
+# note the use of the 'index' argument
+r_pca <- predict(r_NDVI_ts, pca_mod, index=1:3,filename="pc_scores.tif",overwrite=T) # fast
+plot(r_pca)
+
 plot(r_pc1)
-layerStats(r_pc1,r_NDVI_mean )
+#layerStats(r_pc1,r_NDVI_mean )
 cor_pc <- layerStats(stack(r_pc1,r_NDVI_mean),'pearson', na.rm=T)
 cor_pc #PC1 correspond to the average mean by pixel as expected.
 plot(r_pc2)
+
+## Use animate function
+#animate()
+#animate(r_NDVI_ts, pause=0.25, main, zlim, maxpixels=50000, n=1, ...)
 
 ### Produce all the scores maps at once using the function I developed
 
