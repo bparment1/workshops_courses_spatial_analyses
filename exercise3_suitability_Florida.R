@@ -7,7 +7,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/17/2017 
-#DATE MODIFIED: 03/29/2017
+#DATE MODIFIED: 03/30/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
@@ -185,7 +185,7 @@ plot(rc_strat_hab_reg,main="Reclassified Strategic Habit in Clay County")
 ### STEP 2: Identify Lands With High Native Biodiversity based on species count 
 
 ## Crop bio raster
-r_bio_hotspot_w <- crop(r_bio_hotspot,clay_county_sp)
+r_bio_hotspot_w <- crop(r_bio_hotspot,clay_county_sp)wetlan
 plot(r_bio_hotspot_w)
 plot(clay_county_sp,border="red",add=T)
 
@@ -202,9 +202,7 @@ r_bio_hotspot_reg <- mask(r_bio_hotspot_reg,r_clay) ## It now works because reso
 plot(r_bio_hotspot_reg,main="Resampled biodiversity layer to 55m")
 
 ### Reclassify using instructions/information given to us:
-#Criteria for value assignment: Cells with 7 or more focal species or an actual species occurrence record
-#location were assigned a value of 9; a value of 8 was assigned to cells with 5–8 focal species; 7 was
-#assigned to cells with 3–4 focal species; all other cells were assigned a value of 1.
+ 
 
 m <- c(9, 1000, 9,  
        5, 8, 8,  
@@ -278,7 +276,7 @@ out_suffix_str <- paste0(names(r_bio_factor),"_",out_suffix) # this needs to be 
 writeRaster(r_bio_factor,filename="r_bio_factor_clay.tif",
             bylayer=T,datatype="FLT4S",options="COMPRESS=LZW",suffix=out_suffix_str,overwrite=T)
 
-####  PART III :  HIGH BIODIVERSITY SUITABILITY LAYERS #######
+####  PART III : SUITABILITY LAYERS #######
 
 #P2- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION WITH DISTANCE TO ROADS AND EXISTING MANAGED LANDS
 #GOAL: Create two raster maps showing lands in Clay County, 
