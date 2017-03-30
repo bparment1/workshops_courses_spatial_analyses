@@ -273,12 +273,11 @@ title("Average NDVI for fire polygons")
 
 ######### PART V: time series analyses #################
 
-#1. Extract time series
-#2. Generate movies through looping
-#3. Compute temporal corr
-#4. Compute autocorr
-#5. Performa PCA
-#4. compute averages by WWF ecoregions
+#1. Extract time series from fire polygon
+#2. Visuazlize time series using zoo
+#3. Compute ACF
+#4. Perform PCA
+#5. Generate movie using animate
 
 # Using LST time series perform similar analysis
 #r_NDVI_mean <- stackApply(r_NDVI_ts, indices=rep(1,23), fun=mean,na.rm=T) # works too but slower
@@ -304,13 +303,26 @@ plot(fire_poly_sp,add=T)
 spplot(fire_poly_sp)
 cat_names<-unique(ecoreg_spdf$ECO_NAME)
 
-extract_pix_fire_poly_df<- extract(r_NDVI_ts,y=fire_poly_sp)
+extract_pix_fire_poly_df<- extract(r_NDVI_ts,y=fire_poly_sp,sp=T,cellnumbers=T)
 
 #let's plot polygons one since it has a variety of pixels and was heavily affected
 class(extract_pix_fire_poly_df[[1]])
 dim(extract_pix_fire_poly_df[[1]])
+#> extract_pix_fire_poly_df[[1]][1:10]
+#[1] 1363201 1363202 1363203 1363204 1363205 1365641 1365642 1365643 1365644 1365645
+## Extract pixel xy by number?
 
+pix_fire_poly1_sp <- extract_pix_fire_poly_df[[1]]
+coordinates(pix_fire_poly1_sp) <- 
+pix_fire_poly1_df  <- as.data.frame(t(extract_pix_fire_poly_df[[1]]))
 NDVI_fire_dat_dz <- zoo(mean_fire_NDVI_ts_df,dates_val) #create zoo object from data.frame and date sequence object
+dim(NDVI_fire_dat_dz)
+
+NDVI_fire_dat_dz <- zoo(pix_fire_poly1,dates_val) #create zoo object from data.frame and date sequence object
+##Explore Time series
+plot(NDVI_fire_dat_dz[,1000:1010])
+acf(NDVI_fire_dat_dz[,1000], type = "correlation") #burnt pixel
+acf(NDVI_fire_dat_dz[,1006], type = "correlation") #Note the difference in the acf for unburnt pixel
 
 ###############################################
 ######## Let's carry out a PCA in T-mode #######
