@@ -10,7 +10,7 @@
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
 #
-#COMMIT: generating pc2 and testing function , AAG workshop
+#COMMIT: pca predictions modifications , AAG workshop
 #
 #################################################################################################
 
@@ -326,10 +326,34 @@ image(cor_matrix)
 pca_mod <-principal(cor_matrix,nfactors=3,rotate="none")
 class(pca_mod$loadings)
 str(pca_mod$loadings)
-plot(pca_mod$loadings[,1],type="b",ylim=c(-1,1),col="blue")
+plot(pca_mod$loadings[,1],type="b",
+     xlab="time steps",
+     ylab="PC loadings",
+     ylim=c(-1,1),
+     col="blue")
 lines(pca_mod$loadings[,2],type="b",col="red")
 lines(pca_mod$loadings[,3],type="b",col="black")
 title("Loadings for the first three components using T-mode")
+legend()
+
+##Make this a time series
+loadings_df <- as.data.frame(pca_mod$loadings[,1:3])
+pca_loadings_dz <- zoo(loadings_df,dates_val) #create zoo object from data.frame and date sequence object
+#?plot.zoo to find out about zoo time series plotting of indexes
+plot(pca_loadings_dz,
+     type="b",
+     plot.type="single",
+     col=c("blue","red","black"),
+     xlab="time steps",
+     ylab="PC loadings",
+     ylim=c(-1,1))
+title("Loadings for the first three components using T-mode")
+names_vals <- c("pc1","pc2","pc3")
+legend("topright",legend=names_vals,
+       pt.cex=0.8,cex=1.1,col=c("blue","red","black"),
+       lty=c(1,1), # set legend symbol as lines
+       pch=1, #add circle symbol to line
+       lwd=c(1,1),bty="n")
 
 ## Add scree plot
 plot(pca_mod$values,main="Scree plot: Variance explained",type="b")
@@ -343,15 +367,15 @@ df_NDVI_ts <- as.data.frame(df_NDVI_ts)[,1:23] #drop x, y column
 names(df_NDVI_ts) <- paste0("pc_",seq(1,23,1))
 names(df_NDVI_ts)
 
-pca_all <- as.data.frame(predict(test,df_test2)) 
+pca_all <- as.data.frame(predict(pca_mod,df_NDVI_ts)) ## Apply model object on the data.frame
 
-coordinates(pca_all) <- coordinates(df_test)
-class(pca_all)
+coordinates(pca_all) <- coordinates(df_test) #Assign coordinates
+class(pca_all) #Check type of class
 
-raster_name <- paste0("pc1_NDVI_2005.tif")
+raster_name <- paste0("pc1_NDVI_2005.tif") #output raster name for component 1
 r_pc1<-rasterize(pca_all,r_NDVI_ts,"PC1",fun=min,overwrite=TRUE,
                   filename=raster_name)
-raster_name <- paste0("pc2_NDVI_2005.tif")
+raster_name <- paste0("pc2_NDVI_2005.tif") #output raster name for component 2
 r_pc2<-rasterize(pca_all,r_NDVI_ts,"PC2",fun=min,overwrite=TRUE,
                  filename=raster_name)
 
@@ -360,26 +384,18 @@ r_pc2<-rasterize(pca_all,r_NDVI_ts,"PC2",fun=min,overwrite=TRUE,
 r_pca <- predict(r_NDVI_ts, pca_mod, index=1:3,filename="pc_scores.tif",overwrite=T) # fast
 plot(r_pca)
 
-plot(r_pc1)
+plot(stack(r_pc1,r_pc2))
 #layerStats(r_pc1,r_NDVI_mean )
 cor_pc <- layerStats(stack(r_pc1,r_NDVI_mean),'pearson', na.rm=T)
 cor_pc #PC1 correspond to the average mean by pixel as expected.
 plot(r_pc2)
 
 ## Use animate function
-#animate()
-#animate(r_NDVI_ts, pause=0.25, main, zlim, maxpixels=50000, n=1, ...)
-
-### Produce all the scores maps at once using the function I developed
-
-#pc_scores_lf <- pca_to_raster_fun(pc_spdf=pca_all,ref_raster=r_NDVI_ts,NA_val=NAvalue(r_NDVI_ts),file_format=".tif",out_suffix="")
+#animate(r_NDVI_ts, pause=0.25, n=1)
 
 #### Your turn: 
 #Compute the average using the ecoregions as zonal areas for PC1 and PC2
-#Plot averages in the PC1-PC2. Are these variables useful to separate the variaous ecoregions?
+#Plot averages in the PC1-PC2. Are these variables useful to separate the various ecoregions?
+#Correlate average times series for PC2 to the loadings. What does it tell you?
 
 ################### End of Script #########################
-
-#To explore later:
-#http://stackoverflow.com/questions/12670972/doing-pca-on-very-large-data-set-in-r
-#http://web.missouri.edu/~huangf/data/mvnotes/Documents/pca_in_r_2.html
