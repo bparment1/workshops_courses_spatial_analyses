@@ -1,7 +1,8 @@
 ####################################    Fire Alaska Analyses   #######################################
 ############################  Analyse using time series and fire locations  #######################################
-#This script performs analyzes for the Exercise 2 of the workshop using NDVI data.
-# The overall goal is to explore the impact of fire on surface state variables observed from Remote Sensing.     
+#This script performs analyzes for the Exercise 2 of the workshop using NDVI data derived from MODIS.
+#The overall goal is to explore the impact of fire on surface state variables observed from Remote Sensing.
+#Additional data is provided with location of three fire polygons containing pixels affected by fire. 
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2017 
@@ -92,7 +93,7 @@ lf_NDVI <- list.files(path=in_dir_NDVI, pattern="*.tif",full.names=T)
 r_NDVI_ts <- stack(lf_NDVI)
 
 plot(r_NDVI_ts)
-date_range <- c("2005.01.01","2005.12.31") #NDVI Alaska
+date_range <- c("2005.01.01","2005.12.31") #NDVI Alaska, year 2005 (this is a 16 days product)
   
 #generate dates for 16 days product
 dates_val <- generate_dates_by_step(date_range[1],date_range[2],16)$dates #NDVI Katrina
@@ -102,11 +103,11 @@ dataType(r_NDVI_ts) #Examine the data type used in the storing of data, this is 
 inMemory(r_NDVI_ts) #Is the data in memory? Raster package does not load in memory automatically.
 dim(r_NDVI_ts) #dimension of the raster object: rows, cols, layers/bands
 
-##### Now examine other files used in the exercise ##############
+##### PART I: DISPLAY AND EXPLORE DATA ##############
 
 lf_var <- list.files(path=in_dir_var,pattern="*.tif$",full.names=T)
-r_var <- stack(lf_var)
-dim(r_var)
+r_var <- stack(lf_var) # create a raster stack, this is not directly stored in memory
+dim(r_var) #dimension of the stack with 
 plot(r_var)
 
 ##### 
@@ -151,7 +152,7 @@ data_name<-paste("ecoregion_map",sep="")
 raster_name<-paste(data_name,file_format, sep="") #Remember file_format ".tif" is set at the beginning
 writeRaster(ecoreg_rast, filename=raster_name,NAflag=-999,overwrite=TRUE)  #Writing the data in a raster file format...
 
-###Plottting raster:
+###An example of plottting raster data for publication:
 
 ## Generate a color palette/color ramp
 col_eco<-rainbow(nb_col)
@@ -193,15 +194,13 @@ dev.off()
 ## Studying change by image differencing
 #look for NDVI 2002 and 2009 and select each average
 
-r_NDVI_avg_2002 <- subset(r_var,4)
+r_NDVI_avg_2002 <- subset(r_var,4) #select layer 4 from raster stack
 r_NDVI_avg_2009 <- subset(r_var,5)
 
 r_diff_NDVI <- r_NDVI_avg_2009 - r_NDVI_avg_2002 #if negative Higher NDVI in 2002, hence decrease in NDVI over 2002-2009
 r_ratio_NDVI <- r_NDVI_avg_2009/r_NDVI_avg_2002
 
-plot(r_ratio_NDVI,col=matlab.like(255),zlim=c(0.5,1.5))
-
-plot(r_diff_NDVI,col=matlab.like(255))
+plot(r_ratio_NDVI,col=matlab.like(255),zlim=c(0.5,1.5)) #zlim to control the range displayed
 plot(r_diff_NDVI,col=matlab.like(255),zlim=c(-0.5,0.5))
 
 ### Quick histogram
@@ -210,7 +209,6 @@ hist(r_diff_NDVI)
 
 hist_bins <- seq(-1,1,by=0.05)
 hist(r_diff_NDVI,breaks=hist_bins)
-#hist_bins <- seq(-0.3,0.3,by=0.05)
 hist(r_diff_NDVI,breaks=hist_bins,xlim=c(-0.3,0.3))
 
 plot(r_diff_NDVI,col=matlab.like(255),zlim=c(-0.2,0.2))
@@ -315,12 +313,21 @@ poly_fire_spdf <- as(crop(r_stack,extent(fire_poly_sp)),"SpatialPointsDataFrame"
 poly_fire_spdf <- rename(poly_fire_spdf,c("r_OVERLAY_ID_83_399_144_TEST_BURNT_83_144_399_reclassed"="fire_id"))
 table(poly_fire_spdf$fire_id)
 barplot(table(poly_fire_spdf$fire_id), main="Pixel count by fire polygon (1,2,3) in focus area")
-        
+       
+## labels
+labelat <- c(0, 1, 2,3)
+
+labeltext <- c("background","fire1","fire2","fire3")
+
 spplot(poly_fire_spdf,"fire_id",        
         main="Pixel count in small area",
-        at = c(0,1,2,3)) #need to fix the legend
-#colorkey = list(labels = list( labels = c("0%", "1%","2%","3%","4%","5%","6%","7%"),        
-#                               width = 2, cex = 2)))
+        col.regions=c("white","blue","yellow","red")#,
+        #colorkey = list(width=1,
+        #                space="right",
+        #                tick.number=5,
+        #                labels = list(at = labelat,labeltext)
+        #               )
+)
 
 #let's plot polygons one since it has a variety of pixels and was heavily affected
 
@@ -330,7 +337,8 @@ names(pix_fire_poly1_df) <- paste0("pix_",1:ncol(pix_fire_poly1_df))
 NDVI_fire_dat_dz <- zoo(mean_fire_NDVI_ts_df,dates_val) #create zoo object from data.frame and date sequence object
 dim(NDVI_fire_dat_dz)
 
-pix_fire_poly1_dz <- zoo(pix_fire_poly1_df,dates_val) #create zoo object from data.frame and date sequence object
+pix_fire_poly1_dz <- zoo(p
+                          ix_fire_poly1_df,dates_val) #create zoo object from data.frame and date sequence object
 #colnames(pix_fire_poly1_dz) <- names(pix_fire_poly1_df)
 ##Explore Time series
 plot(pix_fire_poly1_dz[,1000:1010])
