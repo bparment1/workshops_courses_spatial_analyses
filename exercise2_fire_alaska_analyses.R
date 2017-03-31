@@ -5,12 +5,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2017 
-#DATE MODIFIED: 03/30/2017
+#DATE MODIFIED: 03/31/2017
 #Version: 1
 #PROJECT: AAG 2017 workshop preparation
 #TO DO:
 #
-#COMMIT: pca predictions modifications , AAG workshop
+#COMMIT: more clean up in the code, AAG workshop
 #
 #################################################################################################
 
@@ -56,6 +56,7 @@ in_dir_var <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/work
 out_dir <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_2/outputs"
 
 infile_ecoreg <- "wwf_terr_ecos_Alaska_ECOREGIONS_ECOSYS_ALB83.shp" #WWF ecoregions 2001 for Alaska
+fire_poly_shp_fname <- "OVERLAY_ID_83_399_144_TEST_BURNT_83_144_399_reclassed.shp"
 
 #region coordinate reference system
 CRS_reg <- "+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
@@ -68,7 +69,7 @@ create_out_dir_param=TRUE #PARAM9
 
 ################# START SCRIPT ###############################
 
-### PART I READ AND PREPARE DATA FOR REGRESSIONS #######
+### PART I: READ AND PREPARE DATA FOR ANALYSES #######
 
 
 ## First create an output directory
@@ -244,7 +245,7 @@ plot(r_change_NDVI_neg)
 writeRaster(r_change_NDVI_pos,"r_change_NDVI_pos_196.tif",overwrite=T)
 writeRaster(r_change_NDVI_neg,"r_change_NDVI_neg_196.tif",overwrite=T)
 
-####### PART III: Change analyses via image differencing and ratioing ##########
+####### PART III: Change analyses by comparing averages in fire polygons ##########
 
 ##Extract values by fire scars
 
@@ -259,10 +260,17 @@ mean_fire_poly_df$year <- c(2002,2009)
 
 ## Plot the average NDVI by burn scars
 #Note that the decrease in NDVI varies according to the burned intensity
-plot(fire_pol1 ~year,data=mean_fire_poly_df,type="b",ylim=c(0.1,0.4))
+plot(fire_pol1 ~year,data=mean_fire_poly_df,type="b",
+     ylim=c(0.1,0.4),ylab="Average NDVI")
 lines(fire_pol2 ~year,data=mean_fire_poly_df,type="b",col="red")
 lines(fire_pol3 ~year,data=mean_fire_poly_df,type="b",col="blue")
 title("Average NDVI for fire polygons")
+names_vals <- c("pol1","pol2","pol3")
+legend("topright",legend=names_vals,
+       pt.cex=0.8,cex=1.1,col=c("black","red","blue"),
+       lty=c(1,1), # set legend symbol as lines
+       pch=1, #add circle symbol to line
+       lwd=c(1,1),bty="n")
 
 ### Your turn: use albedo images to define image of changes, what do you think is a good threshold for change?
 
@@ -271,10 +279,10 @@ title("Average NDVI for fire polygons")
 #3.Generate Image of changes
 #4.Compute average by polygons of fire and compare to NDVI.
 
-######### PART V: time series analyses #################
+######### PART IV: time series analyses #################
 
 #1. Extract time series from fire polygon
-#2. Visuazlize time series using zoo
+#2. Visualize time series using zoo object
 #3. Compute ACF
 #4. Perform PCA
 #5. Generate movie using animate
@@ -292,37 +300,42 @@ names(mean_fire_NDVI_ts_df) <- c("fire_pol1","fire_pol2","fire_pol3")
 NDVI_fire_dat_dz <- zoo(mean_fire_NDVI_ts_df,dates_val) #create zoo object from data.frame and date sequence object
 plot(NDVI_fire_dat_dz,main="Times series of average NDVI in fire polygons for 2005",type="b")
 #Note the sudden decrease in NDVI. It is related to the fire event. It is an average so the decresease may not be
-#strong. Let's examine a file pixel from the fire scars.
+#strong. Let's examine pixel level temporal profiles now.
 
-#fire_poly_sp <- rasterToPolygons(r_fire_poly)
-fire_poly_shp_fname <- "OVERLAY_ID_83_399_144_TEST_BURNT_83_144_399_reclassed.shp"
+#Read in fire plygon
 fire_poly_sp <-readOGR(dsn=in_dir_var,sub(".shp","",fire_poly_shp_fname))
 proj4string(fire_poly_sp) <- CRS_reg
 plot(r_diff_NDVI_standardized,ext=extent(fire_poly_sp))
 plot(fire_poly_sp,add=T)
 spplot(fire_poly_sp)
-cat_names<-unique(ecoreg_spdf$ECO_NAME)
 
-extract_pix_fire_poly_df<- extract(r_NDVI_ts,y=fire_poly_sp,sp=T,cellnumbers=T)
+r_stack <- stack(r_NDVI_ts,r_fire_poly)
+inMemory(r_stack) #check that it is not stored in memory
+poly_fire_spdf <- as(crop(r_stack,extent(fire_poly_sp)),"SpatialPointsDataFrame")
+poly_fire_spdf <- rename(poly_fire_spdf,c("r_OVERLAY_ID_83_399_144_TEST_BURNT_83_144_399_reclassed"="fire_id"))
+table(poly_fire_spdf$fire_id)
+barplot(table(poly_fire_spdf$fire_id), main="Pixel count by fire polygon (1,2,3) in focus area")
+        
+spplot(poly_fire_spdf,"fire_id",        
+        main="Pixel count in small area",
+        at = c(0,1,2,3)) #need to fix the legend
+#colorkey = list(labels = list( labels = c("0%", "1%","2%","3%","4%","5%","6%","7%"),        
+#                               width = 2, cex = 2)))
 
 #let's plot polygons one since it has a variety of pixels and was heavily affected
-class(extract_pix_fire_poly_df[[1]])
-dim(extract_pix_fire_poly_df[[1]])
-#> extract_pix_fire_poly_df[[1]][1:10]
-#[1] 1363201 1363202 1363203 1363204 1363205 1365641 1365642 1365643 1365644 1365645
-## Extract pixel xy by number?
 
-pix_fire_poly1_sp <- extract_pix_fire_poly_df[[1]]
-coordinates(pix_fire_poly1_sp) <- 
-pix_fire_poly1_df  <- as.data.frame(t(extract_pix_fire_poly_df[[1]]))
+#pix_fire_poly1_df  <- as.data.frame(t(subset(poly_fire_spdf,fire_id==1)))
+pix_fire_poly1_df  <- as.data.frame(t(as.data.frame(subset(poly_fire_spdf,fire_id==1))))
+names(pix_fire_poly1_df) <- paste0("pix_",1:ncol(pix_fire_poly1_df))
 NDVI_fire_dat_dz <- zoo(mean_fire_NDVI_ts_df,dates_val) #create zoo object from data.frame and date sequence object
 dim(NDVI_fire_dat_dz)
 
-NDVI_fire_dat_dz <- zoo(pix_fire_poly1,dates_val) #create zoo object from data.frame and date sequence object
+pix_fire_poly1_dz <- zoo(pix_fire_poly1_df,dates_val) #create zoo object from data.frame and date sequence object
+#colnames(pix_fire_poly1_dz) <- names(pix_fire_poly1_df)
 ##Explore Time series
-plot(NDVI_fire_dat_dz[,1000:1010])
-acf(NDVI_fire_dat_dz[,1000], type = "correlation") #burnt pixel
-acf(NDVI_fire_dat_dz[,1006], type = "correlation") #Note the difference in the acf for unburnt pixel
+plot(pix_fire_poly1_dz[,1000:1010])
+acf(pix_fire_poly1_dz[,1000], type = "correlation") #burnt pixel
+acf(pix_fire_poly1_dz[,1007], type = "correlation") #Note the difference in the acf for unburnt pixel
 
 ###############################################
 ######## Let's carry out a PCA in T-mode #######
@@ -346,7 +359,6 @@ plot(pca_mod$loadings[,1],type="b",
 lines(pca_mod$loadings[,2],type="b",col="red")
 lines(pca_mod$loadings[,3],type="b",col="black")
 title("Loadings for the first three components using T-mode")
-legend()
 
 ##Make this a time series
 loadings_df <- as.data.frame(pca_mod$loadings[,1:3])
