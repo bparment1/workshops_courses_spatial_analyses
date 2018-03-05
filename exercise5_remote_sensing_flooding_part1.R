@@ -200,12 +200,12 @@ dim(r_refl_ts) #dimension of the raster object: rows, cols, layers/bands
 #plot(r_var)
 
 reg_sf <- st_read(infile_reg_outline)
-reg_sf <- st_transform(reg_sf,crs=CRS_reg)
+reg_sf <- st_transform(reg_sf,
+                       crs=CRS_reg)
 reg_sp <-as(reg_sf, "Spatial") 
 plot(reg_sf$geometry)
 
-r_tmp <- subset(r_refl_ts,1)
-
+#r_tmp <- subset(r_refl_ts,1)
 r_tmp <- brick(lf_reflectance[1])
 
 r_ref <- rasterize(reg_sp,
@@ -216,9 +216,43 @@ r_ref <- rasterize(reg_sp,
 r_before <- brick(lf_reflectance[34])
 r_after <- brick(lf_reflectance[35])
 
+r_before <- r_before*(1/0.0001)
+r_after <- r_after*(1/0.0001)
+
 plot(r_after)
 
 test <- st_centroid(reg_sf)
+test
+
+df_before <- extract(r_before,test)
+df_after <- extract(r_after,test)
+
+plot(df_before[2,],type="l")
+lines(df_after[2,],col="red")
+
+### Need to reorder the bands:
+
+#500m Surface Reflectance Band 1 (620–670 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
+#500m Surface Reflectance Band 2 (841–876 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
+#500m Surface Reflectance Band 3 (459–479 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
+#500m Surface Reflectance Band 4 (545–565 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
+#500m Surface Reflectance Band 5 (1230–1250 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
+#500m Surface Reflectance Band 6 (1628–1652 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
+#500m Surface Reflectance Band 7 (2105–2155 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
+
+#names(r_before) <- 
+#### Add by land cover here:
+
+####
+# Generate flood index?
+
+# NRT MODIS
+
+# Other
+
+# Do relationship with flood zone using ROC?
+
+
 
 ##### 
 tb_freq <- freq(subset(r_var,6)) #  count of pixels by burn scars
