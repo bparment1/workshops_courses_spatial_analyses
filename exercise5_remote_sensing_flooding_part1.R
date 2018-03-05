@@ -200,21 +200,26 @@ dim(r_refl_ts) #dimension of the raster object: rows, cols, layers/bands
 #plot(r_var)
 
 reg_sf <- st_read(infile_reg_outline)
+reg_sf <- st_transform(reg_sf,crs=CRS_reg)
 reg_sp <-as(reg_sf, "Spatial") 
 plot(reg_sf$geometry)
 
 r_tmp <- subset(r_refl_ts,1)
 
 r_tmp <- brick(lf_reflectance[1])
+
 r_ref <- rasterize(reg_sp,
                    r_tmp,
                    field="OBJECTID_1",
                    fun="first")
 
 r_before <- brick(lf_reflectance[34])
-r_after <- brick(lf_reflectance[34])
+r_after <- brick(lf_reflectance[35])
 
-plot()
+plot(r_after)
+
+test <- st_centroid(reg_sf)
+
 ##### 
 tb_freq <- freq(subset(r_var,6)) #  count of pixels by burn scars
 projection(r_var) #note that there is no projection assigned
