@@ -227,11 +227,12 @@ test
 df_before <- extract(r_before,test)
 df_after <- extract(r_after,test)
 
+### We need to rethink the ordering of band:
 plot(df_before[2,],type="l")
 lines(df_after[2,],col="red")
 
+## Read in table info?
 ### Need to reorder the bands:
-
 #500m Surface Reflectance Band 1 (620–670 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
 #500m Surface Reflectance Band 2 (841–876 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
 #500m Surface Reflectance Band 3 (459–479 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
@@ -240,11 +241,79 @@ lines(df_after[2,],col="red")
 #500m Surface Reflectance Band 6 (1628–1652 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
 #500m Surface Reflectance Band 7 (2105–2155 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
 
+#SWIR1 (1230–1250 nm), SWIR2 (1628–1652 nm) and SWIR3 (2105–2155 nm).
+band_refl_order <- c(3,4,1,2,5,6,7)
+
+names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
+names(r_after) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
+
+plot(df_before[2,band_refl_order],type="l")
+lines(df_after[2,band_refl_order],col="red")
+plot(df_before[1,band_refl_order],type="l")
+lines(df_after[1,band_refl_order],col="red")
+plot(df_after[1,band_refl_order],col="red")
+
+#Feature space NIR1 and Red
+plot(subset(r_before,"Red"),subset(r_before,"NIR1"))
+
 #names(r_before) <- 
 #### Add by land cover here:
 
 ####
 # Generate flood index?
+#The NDWI (Gao, 1996) is a satellite-derived index from the NIR and Short Wave Infrared (SWIR) channels, defined as:
+#NDVI = NIR - VIS / (NIR +VIS)
+
+#MODIS has two bands in the SWIR region: band 5 (1230 to
+#                                                1250 nm) and band 6 (1.628 to 1.652 m) while band 2
+#represents the NIR region; while ABI has two bands in the
+#SWIR region, band 4 (1.3705 to 1.3855 m) and band 5 (1.58
+#                                                    to 1.64 m).
+#
+# NDWI = NIR - SWIR / NIR + SWIR
+#
+names(r_before)
+r_date1_NDVI <- subset(r_before,"NIR") - subset(r_before,"Red")/(subset(r_before,"NIR") - subset(r_before,"Red"))
+plot(r_date1_NDVI,zlim=c(-1,1))
+r_date2_NDVI <- subset(r_after,"NIR") - subset(r_after,"Red")/(subset(r_after,"NIR") - subset(r_after,"Red"))
+plot(r_date2_NDVI,zlim=c(-1,1))
+
+r_date1_NDWI <- r_before[,,2] - r_before[,,6] / r_before[,,2] - r_before[,,6]  
+r_date1_NDWI <- subset(r_before,2) - subset(r_before,6) / (subset(r_before,2) - subset(r_before,6))  
+
+plot(r_NDWI)
+
+r_date2_NDWI <- r_after[,,2] - r_after[,,6] / r_after[,,2] - r_after[,,6]  
+r_date2_NDWI <- subset(r_after,2) - subset(r_after,6) / (subset(r_after,2) - subset(r_after,6))  
+
+plot(r_date1_NDWI)
+plot(r_date2_NDWI)
+
+plot(r_date1_NDWI,zlim=c(-1,1))
+plot(r_date2_NDWI,zlim=c(-1,1))
+
+r_test <- r_date2_NDWI - r_date1_NDWI
+plot(r_test,zlim=c(-1,1))
+plot(r_date1_NDVI > 1000)
+#According to Gao (1996), NDWI is a good
+#indicator for vegetation liquid water content and is less
+#sensitive to atmospheric scattering effects than NDVI. In this
+#study, MODIS band 6 is used for the NDWI calculation,
+#because it is found that MODIS band 6 is sensitive to water
+#types and contents (Li et al., 2011), while band 5 is sensitive
+#to vegetation liquid water content (Gao, 1996).
+
+
+
+#According to Gao (1996), NDWI is a good
+#indicator for vegetation liquid water content and is less
+#sensitive to atmospheric scattering effects than NDVI. In this
+#study, MODIS band 6 is used for the NDWI calculation,
+#because it is found that MODIS band 6 is sensitive to water
+#types and contents (Li et al., 2011), while band 5 is sensitive
+#to vegetation liquid water content (Gao, 1996).
+
+
 
 # NRT MODIS
 
@@ -252,86 +321,6 @@ lines(df_after[2,],col="red")
 
 # Do relationship with flood zone using ROC?
 
-
-
-##### 
-tb_freq <- freq(subset(r_var,6)) #  count of pixels by burn scars
-projection(r_var) #note that there is no projection assigned
-projection(r_var) <- CRS_reg
-
-ecoreg_spdf<-readOGR(dsn=in_dir_var,sub(".shp","",infile_ecoreg))
-proj4string(ecoreg_spdf)
-proj4string(ecoreg_spdf) <- CRS_reg
-plot(ecoreg_spdf)
-spplot(ecoreg_spdf)
-
-cat_names<-unique(ecoreg_spdf$ECO_NAME)
-
-nb_col<-length(unique(cat_names))
-# Wrong order in terms of the categories of ecoreg so assign them
-cat_names<-c("Alaska Peninsula montane taiga",
-             "Alaska St Elias Range tundra",
-             "Aleutian Islands tundra",
-             "Arctic coastal tundra",
-             "Arctic foothills tundra",
-             "Beringia lowland tundra",
-             "Beringia upland tundra",
-             "Brooks-British Range tundra",
-             "Cook Inlet taiga",
-             "Copper Plateau taiga",
-             "Interior Alaska-Yukon lowland taiga",
-             "Interior Yukon-Alaska alpine tundra",
-             "Northern Cordillera forests",
-             "Northern Pacific coastal forests",
-             "Ogilvie-Mackenzie alpine tundra",
-             "Pacific Coastal Mountain icefields and tundra",
-             "Rock and Ice")
-
-ecoreg_spdf$ECO_NAME<-cat_names
-#problem with extent, ecoreg_spdf is not the same extent as raster images!!
-lf_eco<-list.files(pattern="ecoregion_map.rst$")
-
-ecoreg_rast<-rasterize(ecoreg_spdf,r_var,"DATA_VALUE")
-data_name<-paste("ecoregion_map",sep="")
-raster_name<-paste(data_name,file_format, sep="") #Remember file_format ".tif" is set at the beginning
-writeRaster(ecoreg_rast, filename=raster_name,NAflag=-999,overwrite=TRUE)  #Writing the data in a raster file format...
-
-###An example of plottting raster data for publication:
-
-## Generate a color palette/color ramp
-col_eco<-rainbow(nb_col)
-col_eco[16]<-"brown"
-col_eco[11]<-"darkgreen"
-col_eco[7]<-"lightblue"
-col_eco[6]<-"grey"
-col_eco[12]<-"yellowgreen"
-
-plot(ecoreg_rast)
-plot(ecoreg_rast,col=col_eco)
-
-##Figure 1: wwf ecoregion
-res_pix<-960
-col_mfrow<-1
-row_mfrow<-1
-png(filename=paste("Figure1_paper1_wwf_ecoreg_Alaska",out_suffix,".png",sep=""),
-    width=col_mfrow*res_pix,height=row_mfrow*res_pix)
-#par(mfrow=c(1,2))
-
-
-plot(ecoreg_rast,col=col_eco,legend=FALSE,axes="FALSE")
-legend("topright",legend=cat_names,title="WWF ecoregions",
-       pt.cex=1.1,cex=1.1,fill=col_eco,bty="n")
-scale_position<-c(450000, 600000)
-arrow_position<-c(900000, 600000)
-
-label_scalebar<-c("0","125","250")
-scalebar(d=250000, xy=scale_position, type = 'bar', 
-         divs=3,label=label_scalebar,below="kilometers",
-         cex=1.8)
-#this work on non sp plot too
-SpatialPolygonsRescale(layout.north.arrow(), offset = arrow_position, 
-                       scale = 150000, fill=c("transparent","black"),plot.grid=FALSE)
-dev.off()
 
 ####### PART II: Change analyses via image differencing and ratioing ##########
 
