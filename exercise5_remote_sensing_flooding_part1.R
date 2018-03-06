@@ -219,7 +219,13 @@ r_after <- brick(lf_reflectance[35])
 r_before <- r_before*(1/0.0001)
 r_after <- r_after*(1/0.0001)
 
-plot(r_after)
+"/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10"
+
+###
+tb_before <- freq(r_before,merge=T)
+View(tb_before)
+plot(r_after,colNA="black")
+plot(r_before,colNA="black")
 
 test <- st_centroid(reg_sf)
 test
@@ -278,11 +284,13 @@ plot(r_date1_NDVI,zlim=c(-1,1))
 r_date2_NDVI <- subset(r_after,"NIR") - subset(r_after,"Red")/(subset(r_after,"NIR") - subset(r_after,"Red"))
 plot(r_date2_NDVI,zlim=c(-1,1))
 
-r_date1_NDWI <- r_before[,,2] - r_before[,,6] / r_before[,,2] - r_before[,,6]  
-r_date1_NDWI <- subset(r_before,2) - subset(r_before,6) / (subset(r_before,2) - subset(r_before,6))  
-
 plot(r_NDWI)
-
+tb_NDWI <- freq(r_NDWI)
+barplot(tb_NDWI[,2])
+barplot(tb_NDWI[,2],xlim=c(-100,100))
+histogram(tb_NDWI[,2],xlim=c(-100,100))
+hist(tb_NDWI[,2])
+View(tb_NDWI)
 r_date2_NDWI <- r_after[,,2] - r_after[,,6] / r_after[,,2] - r_after[,,6]  
 r_date2_NDWI <- subset(r_after,2) - subset(r_after,6) / (subset(r_after,2) - subset(r_after,6))  
 
@@ -290,20 +298,13 @@ plot(r_date1_NDWI)
 plot(r_date2_NDWI)
 
 plot(r_date1_NDWI,zlim=c(-1,1))
+plot(r_date1_NDWI,zlim=c(-100,100))
+
 plot(r_date2_NDWI,zlim=c(-1,1))
 
 r_test <- r_date2_NDWI - r_date1_NDWI
 plot(r_test,zlim=c(-1,1))
 plot(r_date1_NDVI > 1000)
-#According to Gao (1996), NDWI is a good
-#indicator for vegetation liquid water content and is less
-#sensitive to atmospheric scattering effects than NDVI. In this
-#study, MODIS band 6 is used for the NDWI calculation,
-#because it is found that MODIS band 6 is sensitive to water
-#types and contents (Li et al., 2011), while band 5 is sensitive
-#to vegetation liquid water content (Gao, 1996).
-
-
 
 #According to Gao (1996), NDWI is a good
 #indicator for vegetation liquid water content and is less
@@ -314,6 +315,16 @@ plot(r_date1_NDVI > 1000)
 #to vegetation liquid water content (Gao, 1996).
 
 
+
+#According to Gao (1996), NDWI is a good
+#indicator for vegetation liquid water content and is less
+#sensitive to atmospheric scattering effects than NDVI. In this
+#study, MODIS band 6 is used for the NDWI calculation,
+#because it is found that MODIS band 6 is sensitive to water
+#types and contents (Li et al., 2011), while band 5 is sensitive
+#to vegetation liquid water content (Gao, 1996).
+
+resample()
 
 # NRT MODIS
 
