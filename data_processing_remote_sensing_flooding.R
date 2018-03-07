@@ -44,7 +44,7 @@ library(sf)
 
 ###### Functions used in this script
 
-data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03072018.R" #PARAM 1
+data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03072018b.R" #PARAM 1
 script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/R_scripts"
 source(file.path(script_path,data_processing_functions)) #source all functions used in this script 1.
 
@@ -131,8 +131,51 @@ inMemory(r_refl_ts) #Is the data in memory? Raster package does not load in memo
 dim(r_refl_ts) #dimension of the raster object: rows, cols, layers/bands
 
 
-##### PART I: DISPLAY AND EXPLORE DATA ##############
+######################## PART I: PROCESS NLCD ##############
 
+r_2006_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img")
+r_2011_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img")
+
+#r_nlcd_2006_30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006.tif")
+r_2006_nlcd30m
+r_2011_nlcd30m
+dataType(r_2006_nlcd30m)
+dataType(r_2011_nlcd30m)
+
+reg_sf_nlcd <- st_transform(reg_sf,projection(r_2006_nlcd30m))
+reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
+r_2006_nlcd30m_RITA <- crop(r_2006_nlcd30m,reg_sp_nlcd,"r_2006_nlcd30m.tif",overwrite=T)
+r_2011_nlcd30m_RITA <- crop(r_2011_nlcd30m,reg_sp_nlcd,"r_2011_nlcd30m.tif",overwrite=T)
+
+plot(r_2006_nlcd30m_RITA)
+plot(r_2011_nlcd30m_RITA)
+
+
+#freq(r_nlcd30m_RITA)
+
+## input files to aggregate
+l_rast <- list(r_2006_nlcd30m_RITA,r_2011_nlcd30m_RITA)
+zonal_col_names <- NULL
+rast_ref_1km <- 
+  
+### Get to 1km:
+debug(aggregate_raster_fun)
+agg_obj_1km <- aggregate_raster_fun(l_rast,
+                                    zonal_colnames,
+                                    use_majority=T,
+                                    agg_fact=33,
+                                    agg_fun=mean,
+                                    file_format=file_format,
+                                    rast_ref="",
+                                    num_cores=num_cores,
+                                    out_suffix=out_suffix, 
+                                    out_dir=out_dir)
+
+
+
+################## PART II: MODIS REFLECTANCE ##############
+
+  
 #lf_var <- list.files(path=in_dir_var,pattern="*.tif$",full.names=T)
 #r_var <- stack(lf_var) # create a raster stack, this is not directly stored in memory
 
@@ -159,390 +202,13 @@ r_after <- brick(lf_reflectance[35])
 r_before <- r_before*(1/0.0001)
 r_after <- r_after*(1/0.0001)
 
-
-r_2006_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img")
-
-r_nlcd_2006_30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006.tif")
-r_nlcd30m
-dataType(r_nlcd30m)
-
-reg_sf_nlcd <- st_transform(reg_sf,projection(r_nlcd30m))
-reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
-r_nlcd30m_RITA <- crop(r_nlcd30m,reg_sp_nlcd,"test.tif",overwrite=T)
-r_nlcd30m_RITA
-
-
-debug(aggregate_raster_fun)
-aggregate_raster_fun(l_rast,
-                     zonal_colnames,
-                     use_majority,
-                     agg_fact,
-                     agg_fun,
-                     file_format,
-                     rast_ref,
-                     num_cores,
-                     out_suffix, 
-                     out_dir)
-  
-plot(r_nlcd30m_RITA)
-plot(r_nlcd30m_RITA)
-plot(r_nlcd30m_RITA==95)
-
-r_nlcd30m_RITA <- crop(r_nlcd30m,r_ref)
-r_nlcd30m_RITA
-
-freq(r_nlcd30m_RITA)
-###
-tb_before <- freq(r_before,merge=T)
-View(tb_before)
-plot(r_after,colNA="black")
-plot(r_before,colNA="black")
-
-test <- st_centroid(reg_sf)
-test
-
-df_before <- extract(r_before,test)
-df_after <- extract(r_after,test)
-
-### We need to rethink the ordering of band:
-plot(df_before[2,],type="l")
-lines(df_after[2,],col="red")
-
-## Read in table info?
-### Need to reorder the bands:
-#500m Surface Reflectance Band 1 (620–670 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 2 (841–876 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 3 (459–479 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 4 (545–565 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 5 (1230–1250 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 6 (1628–1652 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 7 (2105–2155 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-
 #SWIR1 (1230–1250 nm), SWIR2 (1628–1652 nm) and SWIR3 (2105–2155 nm).
 band_refl_order <- c(3,4,1,2,5,6,7)
 
 names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 names(r_after) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 
-plot(df_before[2,band_refl_order],type="l")
-lines(df_after[2,band_refl_order],col="red")
-plot(df_before[1,band_refl_order],type="l")
-lines(df_after[1,band_refl_order],col="red")
-plot(df_after[1,band_refl_order],col="red")
+#resample()
 
-#Feature space NIR1 and Red
-plot(subset(r_before,"Red"),subset(r_before,"NIR1"))
-
-#names(r_before) <- 
-#### Add by land cover here:
-
-####
-# Generate flood index?
-#The NDWI (Gao, 1996) is a satellite-derived index from the NIR and Short Wave Infrared (SWIR) channels, defined as:
-#NDVI = NIR - VIS / (NIR +VIS)
-
-#MODIS has two bands in the SWIR region: band 5 (1230 to
-#                                                1250 nm) and band 6 (1.628 to 1.652 m) while band 2
-#represents the NIR region; while ABI has two bands in the
-#SWIR region, band 4 (1.3705 to 1.3855 m) and band 5 (1.58
-#                                                    to 1.64 m).
-#
-# NDWI = NIR - SWIR / NIR + SWIR
-#
-names(r_before)
-r_date1_NDVI <- subset(r_before,"NIR") - subset(r_before,"Red")/(subset(r_before,"NIR") - subset(r_before,"Red"))
-plot(r_date1_NDVI,zlim=c(-1,1))
-r_date2_NDVI <- subset(r_after,"NIR") - subset(r_after,"Red")/(subset(r_after,"NIR") - subset(r_after,"Red"))
-plot(r_date2_NDVI,zlim=c(-1,1))
-
-plot(r_NDWI)
-tb_NDWI <- freq(r_NDWI)
-barplot(tb_NDWI[,2])
-barplot(tb_NDWI[,2],xlim=c(-100,100))
-histogram(tb_NDWI[,2],xlim=c(-100,100))
-hist(tb_NDWI[,2])
-View(tb_NDWI)
-r_date2_NDWI <- r_after[,,2] - r_after[,,6] / r_after[,,2] - r_after[,,6]  
-r_date2_NDWI <- subset(r_after,2) - subset(r_after,6) / (subset(r_after,2) - subset(r_after,6))  
-
-plot(r_date1_NDWI)
-plot(r_date2_NDWI)
-
-plot(r_date1_NDWI,zlim=c(-1,1))
-plot(r_date1_NDWI,zlim=c(-100,100))
-
-plot(r_date2_NDWI,zlim=c(-1,1))
-
-r_test <- r_date2_NDWI - r_date1_NDWI
-plot(r_test,zlim=c(-1,1))
-plot(r_date1_NDVI > 1000)
-
-#According to Gao (1996), NDWI is a good
-#indicator for vegetation liquid water content and is less
-#sensitive to atmospheric scattering effects than NDVI. In this
-#study, MODIS band 6 is used for the NDWI calculation,
-#because it is found that MODIS band 6 is sensitive to water
-#types and contents (Li et al., 2011), while band 5 is sensitive
-#to vegetation liquid water content (Gao, 1996).
-
-
-
-#According to Gao (1996), NDWI is a good
-#indicator for vegetation liquid water content and is less
-#sensitive to atmospheric scattering effects than NDVI. In this
-#study, MODIS band 6 is used for the NDWI calculation,
-#because it is found that MODIS band 6 is sensitive to water
-#types and contents (Li et al., 2011), while band 5 is sensitive
-#to vegetation liquid water content (Gao, 1996).
-
-resample()
-
-# NRT MODIS
-
-# Other
-
-# Do relationship with flood zone using ROC?
-
-
-####### PART II: Change analyses via image differencing and ratioing ##########
-
-## Studying change by image differencing
-#look for NDVI 2002 and 2009 and select each average
-
-r_NDVI_avg_2002 <- subset(r_var,4) #select layer 4 from raster stack
-r_NDVI_avg_2009 <- subset(r_var,5)
-
-r_diff_NDVI <- r_NDVI_avg_2009 - r_NDVI_avg_2002 #if negative Higher NDVI in 2002, hence decrease in NDVI over 2002-2009
-r_ratio_NDVI <- r_NDVI_avg_2009/r_NDVI_avg_2002
-
-plot(r_ratio_NDVI,col=matlab.like(255),zlim=c(0.5,1.5)) #zlim to control the range displayed
-plot(r_diff_NDVI,col=matlab.like(255),zlim=c(-0.5,0.5))
-
-### Quick histogram
-hist(r_diff_NDVI)
-##Adjust the bins
-
-hist_bins <- seq(-1,1,by=0.05)
-hist(r_diff_NDVI,breaks=hist_bins)
-hist(r_diff_NDVI,breaks=hist_bins,xlim=c(-0.3,0.3))
-
-plot(r_diff_NDVI,col=matlab.like(255),zlim=c(-0.2,0.2))
-
-## Threshold your inputs
-plot(r_diff_NDVI < -0.2)
-plot(r_diff_NDVI < -0.1)
-plot(r_diff_NDVI > 0.1)
-
-##Standardize images and define change
-#r <- as.data.frame(cellStats(x,mean))
-val_diff_mean <- cellStats(r_diff_NDVI,mean)
-val_diff_sd <- cellStats(r_diff_NDVI,sd)
-
-r_diff_NDVI_standardized <- (r_diff_NDVI - val_diff_mean)/val_diff_sd
-plot(r_diff_NDVI_standardized,col=matlab.like(255))#
-plot(r_diff_NDVI_standardized,col=matlab.like(255),zlim=c(-10,5))#
-
-hist_bins <- seq(-15,15,by=0.5)
-hist(r_diff_NDVI_standardized,breaks=hist_bins)
-hist(r_diff_NDVI_standardized,breaks=hist_bins,xlim=c(-5,5)) # zoom in
-
-hist(r_diff_NDVI_standardized)
-#shapiro.test(values(r_diff_NDVI_standardized))
-#qqnorm(values(r_diff_NDVI_standardized))
-
-r_change_NDVI_pos <-  r_diff_NDVI_standardized > 1.96
-r_change_NDVI_neg <-  r_diff_NDVI_standardized < -1.96
-plot(r_change_NDVI_pos)
-plot(r_change_NDVI_neg)
-
-writeRaster(r_change_NDVI_pos,"r_change_NDVI_pos_196.tif",overwrite=T)
-writeRaster(r_change_NDVI_neg,"r_change_NDVI_neg_196.tif",overwrite=T)
-
-####### PART III: Change analyses by comparing averages in fire polygons ##########
-
-##Extract values by fire scars
-
-r_fire_poly <- subset(r_var,6)
-plot(r_fire_poly)
-mean_fire_poly_tb <- zonal(stack(r_NDVI_avg_2002,r_NDVI_avg_2009),r_fire_poly,fun="mean") #mean square error
-mean_fire_poly_df <- as.data.frame(t(mean_fire_poly_tb[-1,-1]))
-
-names(mean_fire_poly_df) <- c("fire_pol1","fire_pol2","fire_pol3")
-#write.table(as.data.frame(mean_wind_zones_tb),"mean_wind_zones_tb.txt",sep=",")
-mean_fire_poly_df$year <- c(2002,2009)
-
-## Plot the average NDVI by burn scars
-#Note that the decrease in NDVI varies according to the burned intensity
-plot(fire_pol1 ~year,data=mean_fire_poly_df,type="b",
-     ylim=c(0.1,0.4),ylab="Average NDVI")
-lines(fire_pol2 ~year,data=mean_fire_poly_df,type="b",col="red")
-lines(fire_pol3 ~year,data=mean_fire_poly_df,type="b",col="blue")
-title("Average NDVI for fire polygons")
-names_vals <- c("pol1","pol2","pol3")
-legend("topright",legend=names_vals,
-       pt.cex=0.8,cex=1.1,col=c("black","red","blue"),
-       lty=c(1,1), # set legend symbol as lines
-       pch=1, #add circle symbol to line
-       lwd=c(1,1),bty="n")
-
-### Your turn: use albedo images to define image of changes, what do you think is a good threshold for change?
-
-#1.Select Albedo images
-#2.Peform differencing, and standardization
-#3.Generate Image of changes
-#4.Compute average by polygons of fire and compare to NDVI.
-
-######### PART IV: time series analyses #################
-
-#1. Extract time series from fire polygon
-#2. Visualize time series using zoo object
-#3. Compute ACF
-#4. Perform PCA
-#5. Generate movie using animate
-
-# Using LST time series perform similar analysis
-#r_NDVI_mean <- stackApply(r_NDVI_ts, indices=rep(1,23), fun=mean,na.rm=T) # works too but slower
-r_NDVI_mean <- mean(r_NDVI_ts, na.rm=TRUE) # mean by pixel
-projection(r_NDVI_ts) <- CRS_reg
-
-mean_fire_NDVI_ts_tb <- zonal(stack(r_NDVI_ts),r_fire_poly,fun="mean") #mean square error
-mean_fire_NDVI_ts_df <- as.data.frame(t(mean_fire_NDVI_ts_tb[-1,-1]))
-names(mean_fire_NDVI_ts_df) <- c("fire_pol1","fire_pol2","fire_pol3")
-
-## Make a time series object
-NDVI_fire_dat_dz <- zoo(mean_fire_NDVI_ts_df,dates_val) #create zoo object from data.frame and date sequence object
-plot(NDVI_fire_dat_dz,main="Times series of average NDVI in fire polygons for 2005",type="b")
-#Note the sudden decrease in NDVI. It is related to the fire event. It is an average so the decresease may not be
-#strong. Let's examine pixel level temporal profiles now.
-
-#Read in fire plygon
-fire_poly_sp <-readOGR(dsn=in_dir_var,sub(".shp","",fire_poly_shp_fname))
-proj4string(fire_poly_sp) <- CRS_reg
-plot(r_diff_NDVI_standardized,ext=extent(fire_poly_sp))
-plot(fire_poly_sp,add=T)
-spplot(fire_poly_sp)
-
-r_stack <- stack(r_NDVI_ts,r_fire_poly)
-inMemory(r_stack) #check that it is not stored in memory
-poly_fire_spdf <- as(crop(r_stack,extent(fire_poly_sp)),"SpatialPointsDataFrame")
-poly_fire_spdf <- rename(poly_fire_spdf,c("r_OVERLAY_ID_83_399_144_TEST_BURNT_83_144_399_reclassed"="fire_id"))
-table(poly_fire_spdf$fire_id)
-barplot(table(poly_fire_spdf$fire_id), main="Pixel count by fire polygon (1,2,3) in focus area")
-       
-## labels
-labelat <- c(0, 1, 2,3)
-
-labeltext <- c("background","fire1","fire2","fire3")
-
-spplot(poly_fire_spdf,"fire_id",        
-        main="Pixel count in small area",
-        col.regions=c("white","blue","yellow","red")#,
-        #colorkey = list(width=1,
-        #                space="right",
-        #                tick.number=5,
-        #                labels = list(at = labelat,labeltext)
-        #               )
-)
-
-#let's plot polygons one since it has a variety of pixels and was heavily affected
-
-#pix_fire_poly1_df  <- as.data.frame(t(subset(poly_fire_spdf,fire_id==1)))
-pix_fire_poly1_df  <- as.data.frame(t(as.data.frame(subset(poly_fire_spdf,fire_id==1))))
-names(pix_fire_poly1_df) <- paste0("pix_",1:ncol(pix_fire_poly1_df))
-NDVI_fire_dat_dz <- zoo(mean_fire_NDVI_ts_df,dates_val) #create zoo object from data.frame and date sequence object
-dim(NDVI_fire_dat_dz)
-
-pix_fire_poly1_dz <- zoo(pix_fire_poly1_df,dates_val) #create zoo object from data.frame and date sequence object
-#colnames(pix_fire_poly1_dz) <- names(pix_fire_poly1_df)
-##Explore Time series
-plot(pix_fire_poly1_dz[,1000:1010])
-acf(pix_fire_poly1_dz[,1000], type = "correlation") #burnt pixel
-acf(pix_fire_poly1_dz[,1007], type = "correlation") #Note the difference in the acf for unburnt pixel
-
-###############################################
-######## Let's carry out a PCA in T-mode #######
-
-#Correlate long term mean to PC!
-cor_mat_layerstats <- layerStats(r_NDVI_ts, 'pearson', na.rm=T)
-cor_matrix <- cor_mat_layerstats$`pearson correlation coefficient`
-class(cor_matrix)
-dim(cor_matrix)
-View(cor_matrix)
-image(cor_matrix)
-
-pca_mod <-principal(cor_matrix,nfactors=3,rotate="none")
-class(pca_mod$loadings)
-str(pca_mod$loadings)
-plot(pca_mod$loadings[,1],type="b",
-     xlab="time steps",
-     ylab="PC loadings",
-     ylim=c(-1,1),
-     col="blue")
-lines(pca_mod$loadings[,2],type="b",col="red")
-lines(pca_mod$loadings[,3],type="b",col="black")
-title("Loadings for the first three components using T-mode")
-
-##Make this a time series
-loadings_df <- as.data.frame(pca_mod$loadings[,1:3])
-pca_loadings_dz <- zoo(loadings_df,dates_val) #create zoo object from data.frame and date sequence object
-#?plot.zoo to find out about zoo time series plotting of indexes
-plot(pca_loadings_dz,
-     type="b",
-     plot.type="single",
-     col=c("blue","red","black"),
-     xlab="time steps",
-     ylab="PC loadings",
-     ylim=c(-1,1))
-title("Loadings for the first three components using T-mode")
-names_vals <- c("pc1","pc2","pc3")
-legend("topright",legend=names_vals,
-       pt.cex=0.8,cex=1.1,col=c("blue","red","black"),
-       lty=c(1,1), # set legend symbol as lines
-       pch=1, #add circle symbol to line
-       lwd=c(1,1),bty="n")
-
-## Add scree plot
-plot(pca_mod$values,main="Scree plot: Variance explained",type="b")
-
-### Generate scores from eigenvectors
-## Do it two different ways:
-
-#By converting data and working with matrix:
-df_NDVI_ts <- as(r_NDVI_ts,"SpatialPointsDataFrame")
-df_NDVI_ts <- as.data.frame(df_NDVI_ts) #convert to data.frame because predict works on data.frame
-names(df_NDVI_ts) <- c(paste0("pc_",seq(1,23,1)),"x","y")
-names(df_NDVI_ts)
-
-pca_all <- as.data.frame(predict(pca_mod,df_NDVI_ts[,1:23])) ## Apply model object on the data.frame
-#pca_all <-predict(pca_mod,df_NDVI_ts) ## Apply model object on the data.frame
-
-coordinates(pca_all) <- df_NDVI_ts[,c("x","y")] #Assign coordinates
-class(pca_all) #Check type of class
-
-raster_name <- paste0("pc1_NDVI_2005.tif") #output raster name for component 1
-r_pc1<-rasterize(pca_all,r_NDVI_ts,"PC1",fun=min,overwrite=TRUE,
-                  filename=raster_name)
-raster_name <- paste0("pc2_NDVI_2005.tif") #output raster name for component 2
-r_pc2<-rasterize(pca_all,r_NDVI_ts,"PC2",fun=min,overwrite=TRUE,
-                 filename=raster_name)
-
-### Using predict function: this is recommended for raster imagery!!
-# note the use of the 'index' argument
-r_pca <- predict(r_NDVI_ts, pca_mod, index=1:3,filename="pc_scores.tif",overwrite=T) # fast
-plot(r_pca)
-
-plot(stack(r_pc1,r_pc2))
-#layerStats(r_pc1,r_NDVI_mean )
-cor_pc <- layerStats(stack(r_pc1,r_NDVI_mean),'pearson', na.rm=T)
-cor_pc #PC1 correspond to the average mean by pixel as expected.
-plot(r_pc2)
-
-## Use animate function
-#animate(r_NDVI_ts, pause=0.25, n=1)
-
-#### Your turn: 
-#Compute the average using the ecoregions as zonal areas for PC1 and PC2
-#Plot averages in the PC1-PC2. Are these variables useful to separate the various ecoregions?
-#Correlate average times series for PC2 to the loadings. What does it tell you?
 
 ################### End of Script #########################
