@@ -44,7 +44,7 @@ library(sf)
 
 ###### Functions used in this script
 
-data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03072018b.R" #PARAM 1
+data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03072018c.R" #PARAM 1
 script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/R_scripts"
 source(file.path(script_path,data_processing_functions)) #source all functions used in this script 1.
 
@@ -150,28 +150,30 @@ r_2011_nlcd30m_RITA <- crop(r_2011_nlcd30m,reg_sp_nlcd,"r_2011_nlcd30m.tif",over
 plot(r_2006_nlcd30m_RITA)
 plot(r_2011_nlcd30m_RITA)
 
-
 #freq(r_nlcd30m_RITA)
 
 ## input files to aggregate
 l_rast <- list(r_2006_nlcd30m_RITA,r_2011_nlcd30m_RITA)
-zonal_col_names <- NULL
-rast_ref_1km <- 
-  
+#cat_names <- NULL
+names(l_rast) <- c("nlcd2006_RITA","nlcd2011_RITA")
+cat_names <- c("nlcd2006_RITA","nlcd2011_RITA")
+
+rast_ref_1km <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
+
 ### Get to 1km:
 debug(aggregate_raster_fun)
+
+
 agg_obj_1km <- aggregate_raster_fun(l_rast,
-                                    zonal_colnames,
+                                    cat_names=cat_names,
                                     use_majority=T,
-                                    agg_fact=33,
+                                    agg_fact=NULL, #if null will look for the ref image to determine
                                     agg_fun=mean,
                                     file_format=file_format,
-                                    rast_ref="",
+                                    rast_ref=rast_ref_1km,
                                     num_cores=num_cores,
                                     out_suffix=out_suffix, 
                                     out_dir=out_dir)
-
-
 
 ################## PART II: MODIS REFLECTANCE ##############
 
