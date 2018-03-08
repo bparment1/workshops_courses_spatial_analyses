@@ -103,8 +103,48 @@ generate_dates_by_step <-function(start_date,end_date,step_date){
 
 aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg_fun,file_format,rast_ref,num_cores,out_suffix, out_dir){
   #
+  #Aggregate raster from raster input and reference file
+  #INPUT arguments:
+  #1) l_rast : set of input input raster layers as list
+  #2) zonal_col_names: 
+  #3) use_majority
+  #4) agg_fact: factor to aggregate
+  #5) agg_fun: default is mean
+  #6) file_format
+  #7) rast_ref: reference raster to match in resolution, if NULL then send a message
+  #6) file_Format: raster format used e.g. .tif
+  #5) num_cores: 
+  #5) out_suffix: output suffix
+  #7) out_dir: output directory
+  #8) out_rast_name: output raster name if null it is created from the input file name
+  #OUTPUT:
+  # out_raster_name: name of the file containing the aggregated raster
+  #
+  # Authors: Benoit Parmentier
+  # Created: 03/02/2017
+  # Modified: 03/07/2018
+  # To Do: 
+  # - Add option to disaggregate
+  #
+  ################################
+  
+  
+  #
   #Function to aggregate input raster stack
   #if use majority then the zonal layer is aggregated and then reclassfied based by the majority rule
+  
+  debug(aggregate_raster)
+  lf_agg_test <- aggregate_raster(l_rast[[1]],
+                     #r_in=raster(lf_layerized_bool[1]),
+                     agg_fact=agg_fact,
+                     reg_ref_rast=NULL,
+                     #agg_fun="mean",
+                     agg_fun=agg_fun,
+                     out_suffix=NULL,
+                     file_format=file_format,
+                     out_dir=out_dir,
+                     out_rast_name = NULL) 
+  
   
   lf_agg <- mclapply(l_rast,
                      FUN=aggregate_raster,
