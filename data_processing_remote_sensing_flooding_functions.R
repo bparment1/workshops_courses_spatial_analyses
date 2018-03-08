@@ -101,19 +101,19 @@ generate_dates_by_step <-function(start_date,end_date,step_date){
   return(dates_obj)
 }
 
-aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg_fun,file_format,rast_ref,num_cores,out_suffix, out_dir){
+aggregate_raster_fun <- function(l_rast,cat_names,use_majority,agg_fact,agg_fun,file_format=".tif",rast_ref=NULL,num_cores=1,out_suffix=NULL, out_dir=NULL){
   #
   #Aggregate raster from raster input and reference file
   #INPUT arguments:
-  #1) l_rast : set of input input raster layers as list
-  #2) zonal_col_names: 
-  #3) use_majority
+  #1) l_rast : set of input raster layers as list
+  #2) cat_names: within the list, give names of raster that contain categorical variables  
+  #3) use_majority: if TRUE, will use this rule for cat variables
   #4) agg_fact: factor to aggregate
   #5) agg_fun: default is mean
-  #6) file_format
+  #6) file_format: e.g. ".tif"
   #7) rast_ref: reference raster to match in resolution, if NULL then send a message
   #6) file_Format: raster format used e.g. .tif
-  #5) num_cores: 
+  #5) num_cores: number of cores to use:
   #5) out_suffix: output suffix
   #7) out_dir: output directory
   #8) out_rast_name: output raster name if null it is created from the input file name
@@ -122,7 +122,7 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
   #
   # Authors: Benoit Parmentier
   # Created: 03/02/2017
-  # Modified: 03/07/2018
+  # Modified: 03/08/2018
   # To Do: 
   # - Add option to disaggregate
   #
@@ -133,35 +133,38 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
   #Function to aggregate input raster stack
   #if use majority then the zonal layer is aggregated and then reclassfied based by the majority rule
   
-  debug(aggregate_raster)
-  lf_agg_test <- aggregate_raster(l_rast[[1]],
-                     #r_in=raster(lf_layerized_bool[1]),
-                     agg_fact=agg_fact,
-                     reg_ref_rast=NULL,
-                     #agg_fun="mean",
-                     agg_fun=agg_fun,
-                     out_suffix=NULL,
-                     file_format=file_format,
-                     out_dir=out_dir,
-                     out_rast_name = NULL) 
+  #debug(aggregate_raster)
+  #lf_agg_test <- aggregate_raster(l_rast[[1]],
+  #                   #r_in=raster(lf_layerized_bool[1]),
+  #                   agg_fact=agg_fact,
+  #                   reg_ref_rast=NULL,
+  #                   #agg_fun="mean",
+  #                   agg_fun=agg_fun,
+  #                   out_suffix=NULL,
+  #                   file_format=file_format,
+  #                   out_dir=out_dir,
+  #                   out_rast_name = NULL) 
   
   
-  lf_agg <- mclapply(l_rast,
-                     FUN=aggregate_raster,
-                     #r_in=raster(lf_layerized_bool[1]),
-                     agg_fact=agg_fact,
-                     reg_ref_rast=NULL,
-                     #agg_fun="mean",
-                     agg_fun=agg_fun,
-                     out_suffix=NULL,
-                     file_format=file_format,
-                     out_dir=out_dir,
-                     out_rast_name = NULL,
-                     mc.preschedule=FALSE,
-                     mc.cores = num_cores) 
-  
-  l_rast_original <- l_rast
-  l_rast <- unlist(lf_agg) 
+  if(!is.null(l_rast)){
+    lf_agg <- mclapply(l_rast,
+                       FUN=aggregate_raster,
+                       #r_in=raster(lf_layerized_bool[1]),
+                       agg_fact=agg_fact,
+                       reg_ref_rast=reg_ref_rast,
+                       #agg_fun="mean",
+                       agg_fun=agg_fun,
+                       out_suffix=NULL,
+                       file_format=file_format,
+                       out_dir=out_dir,
+                       out_rast_name = NULL,
+                       mc.preschedule=FALSE,
+                       mc.cores = num_cores) 
+    
+    l_rast_original <- l_rast
+    l_rast <- unlist(lf_agg) 
+    
+  }
   
   ###Break out and get mean per class and do majority rule!
   
@@ -170,40 +173,55 @@ aggregate_raster_fun <- function(l_rast,zonal_colnames,use_majority,agg_fact,agg
     #l_rast_original
     #r_r_srtm_Katrina_rec2_NDVI_Katrina_03162017.rst"
     #r <- raster(paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
-    raster_name <- (paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
-    out_suffix_str <- paste0("agg5_zonal","_",out_suffix)
+    
+    selected_cat_layers <- names(l_rast)==cat_names
+    #raster_name <- (paste0("r_",cat_names,"_",out_suffix,file_format,sep="")) #can be a list of names
+    #out_suffix_str <- paste0("agg_zonal","_",out_suffix)
+    out_suffix_str <- out_suffix #may change this to included "majority" in the name
     #debug(generate_soft_cat_aggregated_raster_fun)
-    lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,
-                                                           reg_ref_rast=NULL,
-                                                           agg_fact,
-                                                           agg_fun,
-                                                           num_cores,
-                                                           NA_flag_val=NA_flag_val,
-                                                           file_format,
-                                                           out_dir,
-                                                           out_suffix_str)
+    #l_rast[selected_cat_layers]
     
-    reclass_val <- unique(raster(raster_name)) #unique zonal values to reassign
-    #reclass_val <- c(0,1,2) # value for the elevation reclassified
+    ## Use loop because we already have a num_cores
+    for(i in 1:length(selected_cat_layers)){
+      
+      #debug(generate_soft_cat_aggregated_raster_fun)
+      raster_name_cat <- l_rast[selected_cat_layers][[i]]
+      lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name_cat,
+                                                             reg_ref_rast=reg_ref_rast,
+                                                             agg_fact,
+                                                             agg_fun,
+                                                             num_cores,
+                                                             NA_flag_val=NA_flag_val,
+                                                             file_format,
+                                                             out_dir,
+                                                             out_suffix_str)
+      
+      if(raster_name_cat=="character"){
+        raster_name_cat <- raster(raster_name_cat)
+      }
+      
+      reclass_val <- unique(raster_name_cat) #unique zonal values to reassign
+      #reclass_val <- c(0,1,2) # value for the elevation reclassified
+      
+      #debug(reclass_in_majority)
+      r_stack <- stack(lf_agg_soft)
+      r_reclass_obj <- reclass_in_majority(r_stack= r_stack,
+                                           threshold_val=NULL,
+                                           max_aggregation = TRUE,
+                                           reclass_val = reclass_val)
+      
+      plot(r_reclass_obj$r_rec)
+      rast_zonal <- r_reclass_obj$r_rec
+      #zonal_colnames
+      raster_name <- paste0("agg_",agg_fact,"_","r_",cat_names[i],"_",out_suffix,file_format)
+      
+      writeRaster(rast_zonal,
+                  filename=file.path(out_dir,raster_name),
+                  overwrite=TRUE)  
+      
+      
+    }
     
-    #function_spatial_regression_analyses <- "SPatial_analysis_spatial_reg_functions_04072017b.R" #PARAM 1
-    #script_path <- "/home/bparmentier/Google Drive/Space_beats_time/sbt_scripts"
-    #source(file.path(script_path,function_spatial_regression_analyses)) #source all functions used in this script 1.
-    #debug(reclass_in_majority)
-    
-    r_reclass_obj <- reclass_in_majority(r_stack=stack(lf_agg_soft),
-                                         threshold_val=NULL,
-                                         max_aggregation = TRUE,
-                                         reclass_val = reclass_val)
-    
-    plot(r_reclass_obj$r_rec)
-    rast_zonal <- r_reclass_obj$r_rec
-    #zonal_colnames
-    raster_name <- paste0("agg_",agg_fact,"_","r_",zonal_colnames,"_",out_suffix,file_format)
-    
-    writeRaster(rast_zonal,
-                filename=file.path(out_dir,raster_name),
-                overwrite=TRUE)  
     
   }
   
@@ -310,13 +328,17 @@ generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_
   if(class(r)!="RasterLayer"){
     r <- raster(r)
   }
-  
+
+
   NAvalue(r) <- NA_flag_val #make sure we have a flag value assigned
   
   ###### STEP 1: BREAK OUT
   ## Breakout layers: separate categories in individual layers
   
   freq_tb <- as.data.frame(freq(r)) #zero is NA?
+  out_filename_freq <- paste("freq_tb_",out_suffix,".txt",sep="")
+  write.table(freq_tb,file= file.path(out_dir,out_filename_freq))
+  
   ## get the names
   names_val <- freq_tb$value
   names_val <- names_val[!is.na(names_val)] #remove NA
@@ -347,6 +369,8 @@ generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_
                              file_format,sep="")
               ,overwrite=T)
   
+  #browser()
+  
   lf_layerized_bool <- paste("r_layerized_bool_",names_val,"_",out_suffix,file_format,sep="")
   #names(r_layerized) <- 
   #inMemory(r_date_layerized)
@@ -374,11 +398,23 @@ generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_
   #                               out_rast_name = NULL)
   #r_var_s <- mclapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
   
+  #debug(aggregate_raster)
+  #lf_agg <- aggregate_raster(lf_layerized_bool[1],
+  #                           #r_in=raster(lf_layerized_bool[1]),
+  #                           agg_fact=agg_fact,
+  #                           reg_ref_rast=reg_ref_rast,
+  #                           #agg_fun="mean",
+  #                           agg_fun=agg_fun,
+  #                           out_suffix=NULL,
+  #                           file_format=file_format,
+  #                           out_dir=out_dir,
+  #                           out_rast_name = NULL)
+
   lf_agg <- mclapply(lf_layerized_bool,
                      FUN=aggregate_raster,
                      #r_in=raster(lf_layerized_bool[1]),
                      agg_fact=agg_fact,
-                     reg_ref_rast=NULL,
+                     reg_ref_rast=reg_ref_rast,
                      #agg_fun="mean",
                      agg_fun=agg_fun,
                      out_suffix=NULL,
@@ -415,7 +451,7 @@ aggregate_raster <- function(r_in, agg_fact, reg_ref_rast=NULL,agg_fun="mean",ou
   #
   # Authors: Benoit Parmentier
   # Created: 10/15/2015
-  # Modified: 05/10/2016
+  # Modified: 03/08/2017
   # To Do: 
   # - Add option to disaggregate
   #
@@ -424,6 +460,11 @@ aggregate_raster <- function(r_in, agg_fact, reg_ref_rast=NULL,agg_fun="mean",ou
   ##If file is provided rather than RasterLayer
   if(class(r_in)!="RasterLayer"){
     r_in <- raster(r_in)
+  }
+
+  ##If file is provided rather than RasterLayer
+  if(class(reg_ref_rast)!="RasterLayer"){
+    reg_ref_rast <- raster(reg_ref_rast)
   }
   
   if(is.null(agg_fact)){
@@ -451,7 +492,11 @@ aggregate_raster <- function(r_in, agg_fact, reg_ref_rast=NULL,agg_fun="mean",ou
     #out_rast_name <- raster_name #for use in function later...
   }
   
-  r_agg <- aggregate(r_in, fact=agg_fact,FUN=agg_fun,filename=out_rast_name,overwrite=TRUE)
+  r_agg <- aggregate(r_in, 
+                     fact=agg_fact,
+                     FUN=agg_fun,
+                     filename=out_rast_name,
+                     overwrite=TRUE)
   
   return(out_rast_name)
   
