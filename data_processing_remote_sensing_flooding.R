@@ -5,12 +5,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/07/2018
+#DATE MODIFIED: 03/08/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
 #
-#COMMIT: initial commit
+#COMMIT: soft coarsening option using NLCD
 #
 #################################################################################################
 
@@ -44,7 +44,7 @@ library(sf)
 
 ###### Functions used in this script
 
-data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03072018c.R" #PARAM 1
+data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03082018.R" #PARAM 1
 script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/R_scripts"
 source(file.path(script_path,data_processing_functions)) #source all functions used in this script 1.
 
