@@ -44,7 +44,7 @@ library(sf)
 
 ###### Functions used in this script
 
-data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03082018.R" #PARAM 1
+data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03082018b.R" #PARAM 1
 script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/R_scripts"
 source(file.path(script_path,data_processing_functions)) #source all functions used in this script 1.
 
@@ -160,13 +160,12 @@ cat_names <- c("nlcd2006_RITA","nlcd2011_RITA")
 
 rast_ref_1km <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
 
-### Get to 1km:
+### Get to 1km (or ~926m):
 debug(aggregate_raster_fun)
-
 
 agg_obj_1km <- aggregate_raster_fun(l_rast,
                                     cat_names=cat_names,
-                                    use_majority=T,
+                                    agg_method_cat="majority",
                                     agg_fact=NULL, #if null will look for the ref image to determine
                                     agg_fun=mean,
                                     file_format=file_format,
