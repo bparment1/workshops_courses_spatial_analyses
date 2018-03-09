@@ -219,26 +219,6 @@ r_after <- brick(lf_reflectance[35])
 r_before <- r_before*(1/0.0001)
 r_after <- r_after*(1/0.0001)
 
-
-r_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img")
-
-r_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006.tif")
-r_nlcd30m
-dataType(r_nlcd30m)
-
-reg_sf_nlcd <- st_transform(reg_sf,projection(r_nlcd30m))
-reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
-r_nlcd30m_RITA <- crop(r_nlcd30m,reg_sp_nlcd,"test.tif",overwrite=T)
-r_nlcd30m_RITA
-
-plot(r_nlcd30m_RITA)
-plot(r_nlcd30m_RITA)
-plot(r_nlcd30m_RITA==95)
-
-r_nlcd30m_RITA <- crop(r_nlcd30m,r_ref)
-r_nlcd30m_RITA
-
-freq(r_nlcd30m_RITA)
 ###
 tb_before <- freq(r_before,merge=T)
 View(tb_before)
@@ -254,6 +234,7 @@ df_after <- extract(r_after,test)
 ### We need to rethink the ordering of band:
 plot(df_before[2,],type="l")
 lines(df_after[2,],col="red")
+
 
 ## Read in table info?
 ### Need to reorder the bands:
@@ -277,11 +258,37 @@ plot(df_before[1,band_refl_order],type="l")
 lines(df_after[1,band_refl_order],col="red")
 plot(df_after[1,band_refl_order],col="red")
 
+###### Now do a extraction for nlcd data
+
+
+nlcd_2006_filename <- "nlcd_2006_RITA.tif"
+nlcd2006_reg <- raster(nlcd_2006_filename)
+
+avg_nlcd <- zonal(r_before,nlcd2006_reg,fun="mean")
+
+avg_nlcd
+View(avg_nlcd)
+names(avg_nlcd)
+plot()
+
+col_ordering <- band_refl_order + 1
+plot(avg_nlcd[9,col_ordering],type="l") #42 evergreen forest
+lines(avg_nlcd[6,col_ordering],type="l") #22 developed,High intensity
+
+#############
+
 #Feature space NIR1 and Red
-plot(subset(r_before,"Red"),subset(r_before,"NIR1"))
+plot(subset(r_before,"Red"),subset(r_before,"NIR"))
 
 #names(r_before) <- 
 #### Add by land cover here:
+#Label all pixel with majority vegetation in NIR-Red
+#Label all pixel with majority water in NIR-Red
+#Label all pixel with majority urban in NIR-Red
+
+
+############## Generating indices:
+
 
 ####
 # Generate flood index?
