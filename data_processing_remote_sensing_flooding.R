@@ -158,7 +158,8 @@ l_rast <- list(r_2006_nlcd30m_RITA,r_2011_nlcd30m_RITA)
 names(l_rast) <- c("nlcd2006_RITA","nlcd2011_RITA")
 cat_names <- c("nlcd2006_RITA","nlcd2011_RITA")
 
-rast_ref_1km <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
+#this is at 926m
+rast_ref_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
 
 ### Get to 1km (or ~926m):
 debug(aggregate_raster_fun)
@@ -174,9 +175,24 @@ agg_obj_1km <- aggregate_raster_fun(l_rast,
                                     out_suffix=out_suffix, 
                                     out_dir=out_dir)
 
+agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif
+agg_31_r_nlcd2011_RITA_nlcd2011_RITA_exercise5_03052018.tif
+
+rast_ref
+
+rast_agg31_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif")
+rast_ref <- raster(rast_ref_filename)
+projection(rast_ref) <- CRS_reg
+nlcd2006_reg <- projectRaster(rast_agg31_nlcd2006,rast_ref,metho="ngb")
+plot(nlcd2006_reg)
+nlcd2006_reg
+
+writeRaster(nlcd2006_reg,filename = "nlcd_2006_RITA.tif")
+rast_agg31_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif")
+
+
 ################## PART II: MODIS REFLECTANCE ##############
 
-  
 #lf_var <- list.files(path=in_dir_var,pattern="*.tif$",full.names=T)
 #r_var <- stack(lf_var) # create a raster stack, this is not directly stored in memory
 
@@ -210,6 +226,10 @@ names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 names(r_after) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 
 #resample()
+plot(r_before)
 
+r_before <- projectRaster(r_before,rast_ref,method="bilinear")
+plot(r_before_1km)
+plot(r_before_1km,y=5)
 
 ################### End of Script #########################
