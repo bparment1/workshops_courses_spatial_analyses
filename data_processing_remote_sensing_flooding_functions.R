@@ -16,6 +16,7 @@
 
 ###Loading R library and packages                                                      
 
+#library(gstat) #spatial interpolation and kriging methods
 library(sp) # spatial/geographfic objects and functions
 library(rgdal) #GDAL/OGR binding for R with functionalities
 library(spdep) #spatial analyses operations, functions etc.
@@ -37,7 +38,6 @@ library(foreign) # import datasets from SAS, spss, stata and other sources
 library(gdata) #read xls, dbf etc., not recently updated but useful
 library(classInt) #methods to generate class limits
 library(plyr) #data wrangling: various operations for splitting, combining data
-library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf)
@@ -101,13 +101,13 @@ generate_dates_by_step <-function(start_date,end_date,step_date){
   return(dates_obj)
 }
 
-aggregate_raster_fun <- function(l_rast,cat_names,use_majority,agg_fact,agg_fun,file_format=".tif",rast_ref=NULL,num_cores=1,out_suffix=NULL, out_dir=NULL){
+aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_fact=2,agg_fun=mean,file_format=".tif",rast_ref=NULL,num_cores=1,out_suffix=NULL, out_dir=NULL){
   #
   #Aggregate raster from raster input and reference file
   #INPUT arguments:
-  #1) l_rast : set of input raster layers as list
+  #1) l_rast : set of input raster layers as list, can be filenames or raster layers objects
   #2) cat_names: within the list, give names of raster that contain categorical variables  
-  #3) use_majority: if TRUE, will use this rule for cat variables
+  #3) agg_method_cat: aggregation rule for categorical variable, default is majority
   #4) agg_fact: factor to aggregate
   #5) agg_fun: default is mean
   #6) file_format: e.g. ".tif"
@@ -133,25 +133,35 @@ aggregate_raster_fun <- function(l_rast,cat_names,use_majority,agg_fact,agg_fun,
   #Function to aggregate input raster stack
   #if use majority then the zonal layer is aggregated and then reclassfied based by the majority rule
   
-  #debug(aggregate_raster)
-  #lf_agg_test <- aggregate_raster(l_rast[[1]],
-  #                   #r_in=raster(lf_layerized_bool[1]),
-  #                   agg_fact=agg_fact,
-  #                   reg_ref_rast=NULL,
-  #                   #agg_fun="mean",
-  #                   agg_fun=agg_fun,
-  #                   out_suffix=NULL,
-  #                   file_format=file_format,
-  #                   out_dir=out_dir,
-  #                   out_rast_name = NULL) 
+  if(!is.null(cat_names)==TRUE){
+    selected_continuous_layers <- names(l_rast)!=cat_names #use set it will be cleaner?
+    #continuous_layers <- l_rast[selected_continuous_layers]
+    selected_cat_layers <- names(l_rast)==cat_names
+  }else{
+    selected_continuous_layers <- rep(1,length=length(l_rast))
+  }
+
   
+  #if(!is.null(l_rast)){
+  if(sum(selected_continuous_layers)>0){
   
-  if(!is.null(l_rast)){
-    lf_agg <- mclapply(l_rast,
+    #debug(aggregate_raster)
+    #lf_agg_test <- aggregate_raster(l_rast[[1]],
+    #                   #r_in=raster(lf_layerized_bool[1]),
+    #                   agg_fact=agg_fact,
+    #                   reg_ref_rast=NULL,
+    #                   #agg_fun="mean",
+    #                   agg_fun=agg_fun,
+    #                   out_suffix=NULL,
+    #                   file_format=file_format,
+    #                   out_dir=out_dir,
+    #                   out_rast_name = NULL) 
+    
+    lf_agg <- mclapply(l_rast[selected_continuous_layers],
                        FUN=aggregate_raster,
                        #r_in=raster(lf_layerized_bool[1]),
                        agg_fact=agg_fact,
-                       reg_ref_rast=reg_ref_rast,
+                       reg_ref_rast=rast_ref,
                        #agg_fun="mean",
                        agg_fun=agg_fun,
                        out_suffix=NULL,
@@ -161,33 +171,41 @@ aggregate_raster_fun <- function(l_rast,cat_names,use_majority,agg_fact,agg_fun,
                        mc.preschedule=FALSE,
                        mc.cores = num_cores) 
     
-    l_rast_original <- l_rast
-    l_rast <- unlist(lf_agg) 
-    
+    #l_rast_original <- l_rast
+    #l_rast <- unlist(lf_agg) 
+    l_rast_continuous <- lf_agg
+  }else{
+    l_rast_continuous <- NULL
   }
   
   ###Break out and get mean per class and do majority rule!
   
-  if(use_majority==TRUE){
+  #if(use_majority==TRUE){
+  #if(!is.null(cat_names)==TRUE){
+  if(sum(selected_cat_layers)>0){
+      
     
     #l_rast_original
     #r_r_srtm_Katrina_rec2_NDVI_Katrina_03162017.rst"
     #r <- raster(paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
     
-    selected_cat_layers <- names(l_rast)==cat_names
+    #selected_cat_layers <- names(l_rast)==cat_names
     #raster_name <- (paste0("r_",cat_names,"_",out_suffix,file_format,sep="")) #can be a list of names
     #out_suffix_str <- paste0("agg_zonal","_",out_suffix)
-    out_suffix_str <- out_suffix #may change this to included "majority" in the name
     #debug(generate_soft_cat_aggregated_raster_fun)
     #l_rast[selected_cat_layers]
     
     ## Use loop because we already have a num_cores
+    l_rast_cat <- vector("list",length=length(selected_cat_layers))
     for(i in 1:length(selected_cat_layers)){
       
       #debug(generate_soft_cat_aggregated_raster_fun)
+      #out_suffix_str <- out_suffix #may change this to included "majority" in the name
+      out_suffix_str <- paste(cat_names[i],"_",out_suffix,sep="")
       raster_name_cat <- l_rast[selected_cat_layers][[i]]
+      
       lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name_cat,
-                                                             reg_ref_rast=reg_ref_rast,
+                                                             reg_ref_rast=rast_ref,
                                                              agg_fact,
                                                              agg_fun,
                                                              num_cores,
@@ -196,7 +214,7 @@ aggregate_raster_fun <- function(l_rast,cat_names,use_majority,agg_fact,agg_fun,
                                                              out_dir,
                                                              out_suffix_str)
       
-      if(raster_name_cat=="character"){
+      if(class(raster_name_cat)=="character"){
         raster_name_cat <- raster(raster_name_cat)
       }
       
@@ -205,46 +223,54 @@ aggregate_raster_fun <- function(l_rast,cat_names,use_majority,agg_fact,agg_fun,
       
       #debug(reclass_in_majority)
       r_stack <- stack(lf_agg_soft)
-      r_reclass_obj <- reclass_in_majority(r_stack= r_stack,
-                                           threshold_val=NULL,
-                                           max_aggregation = TRUE,
-                                           reclass_val = reclass_val)
       
-      plot(r_reclass_obj$r_rec)
-      rast_zonal <- r_reclass_obj$r_rec
-      #zonal_colnames
-      raster_name <- paste0("agg_",agg_fact,"_","r_",cat_names[i],"_",out_suffix,file_format)
+      if(agg_method_cat=="majority"){
+        r_reclass_obj <- reclass_in_majority(r_stack= r_stack,
+                                             threshold_val=NULL,
+                                             max_aggregation = TRUE,
+                                             reclass_val = reclass_val)
+        plot(r_reclass_obj$r_rec)
+        rast_zonal <- r_reclass_obj$r_rec
+      }
+      
+      #Other method here
+      
+      if(is.null(agg_fact)){
+        if(is.character(rast_ref)){
+          rast_ref <- raster(rast_ref)
+        }
+        res_ref <- res(rast_ref) #assumes square cells, and decimal degrees from WGS84 for now...
+        res_in <- res(raster_name_cat) #input resolution, assumes decimal degrees
+        agg_fact_val <- unique(round(res_ref/res_in)) #find the factor needed..
+        
+        #fix this to add other otpions e.g. aggregating down
+      }
+      #output aggregated categorical layer:
+      raster_name <- paste0("agg_",agg_fact_val,"_","r_",cat_names[i],"_",out_suffix_str,file_format)
       
       writeRaster(rast_zonal,
                   filename=file.path(out_dir,raster_name),
                   overwrite=TRUE)  
       
+      l_rast_cat[[i]] <- rast_zonal 
       
     }
     
-    
+  }else{
+    l_rast_cat <- NULL
   }
-  
-  if(use_majority==FALSE){
-    #sure SRTM and reclass based on threshold values?
-    
-  }
-  
-  #r_srtm_Katrina_rec2
-  #-rw-rw-r-- 1 bparmentier bparmentier 1894 Apr  7 12:33 r_r_srtm_Katrina_rec2_NDVI_Katrina_04062017.tif
-  #-rw-rw-r-- 1 bparmentier bparmentier 1016 Apr  7 12:34 agg_5_r_r_srtm_Katrina_rec2_NDVI_Katrina_04062017.tif
   
   ###
-  zonal_colnames <- gsub(extension(raster_name),"",raster_name)
+  #zonal_colnames <- gsub(extension(raster_name),"",raster_name)
   ##
   
   ##########################
   #### prepare return object
   
-  obj <- list(zonal_colnames,l_rast,l_rast_original)
-  names(obj) <- c("zonal_colnames","l_rast","l_rast_original")
+  obj_agg <- list(cat_names,l_rast_cat,l_rast_continuous)
+  names(obj_agg) <- c("cat_names","l_rast_cat","l_rast_continuous")
   
-  return(obj)
+  return(obj_agg)
 }
 
 reclass_in_majority <- function(r_stack,threshold_val=0.5,max_aggregation=FALSE,reclass_val){
@@ -286,7 +312,8 @@ reclass_in_majority <- function(r_stack,threshold_val=0.5,max_aggregation=FALSE,
     r_ties <- sum(r_max_rec_s) #find out ties
     #this may be long
     #freq_r_rec_df <- freq(r_rec_max,merge=T)
-    
+    r_ties_mask <- r_ties > 1
+    r_max_rec_s <- mask(r_max_rec_s,r_ties_mask,maskvalue=1)
     r_rec_val_s <- lapply(1:nlayers(r_max_rec_s),
                           function(i,r_stack){df_subs <- data.frame(id=c(0,1),v=c(0,reclass_val[i]));
                           x <- subs(subset(r_stack,i), df_subs)},r_stack=r_max_rec_s)
