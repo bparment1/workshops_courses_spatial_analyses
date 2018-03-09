@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/05/2018 
-#DATE MODIFIED: 03/05/2018
+#DATE MODIFIED: 03/07/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -219,8 +219,26 @@ r_after <- brick(lf_reflectance[35])
 r_before <- r_before*(1/0.0001)
 r_after <- r_after*(1/0.0001)
 
-"/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10"
 
+r_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img")
+
+r_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006.tif")
+r_nlcd30m
+dataType(r_nlcd30m)
+
+reg_sf_nlcd <- st_transform(reg_sf,projection(r_nlcd30m))
+reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
+r_nlcd30m_RITA <- crop(r_nlcd30m,reg_sp_nlcd,"test.tif",overwrite=T)
+r_nlcd30m_RITA
+
+plot(r_nlcd30m_RITA)
+plot(r_nlcd30m_RITA)
+plot(r_nlcd30m_RITA==95)
+
+r_nlcd30m_RITA <- crop(r_nlcd30m,r_ref)
+r_nlcd30m_RITA
+
+freq(r_nlcd30m_RITA)
 ###
 tb_before <- freq(r_before,merge=T)
 View(tb_before)
