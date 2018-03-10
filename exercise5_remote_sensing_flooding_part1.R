@@ -264,7 +264,8 @@ plot(df_after[1,band_refl_order],col="red")
 nlcd_2006_filename <- "nlcd_2006_RITA.tif"
 nlcd2006_reg <- raster(nlcd_2006_filename)
 
-avg_nlcd <- zonal(r_before,nlcd2006_reg,fun="mean")
+avg_nlcd <- as.data.frame(zonal(r_before,nlcd2006_reg,fun="mean"))
+avg_nlcd <- as.data.frame(avg_nlcd)
 
 avg_nlcd
 View(avg_nlcd)
@@ -274,11 +275,54 @@ plot()
 col_ordering <- band_refl_order + 1
 plot(avg_nlcd[9,col_ordering],type="l") #42 evergreen forest
 lines(avg_nlcd[6,col_ordering],type="l") #22 developed,High intensity
+class(avg_nlcd)
+
+plot(avg_nlcd$Red,avg_nlcd$NIR)
 
 #############
 
+
+
 #Feature space NIR1 and Red
 plot(subset(r_before,"Red"),subset(r_before,"NIR"))
+
+df_test <- as.data.frame(stack(r_before,nlcd2006_reg))
+
+View(df_test)
+
+
+#Forest:
+plot(df_test[df_test$nlcd_2006_RITA==42,c("Green")],
+     df_test[df_test$nlcd_2006_RITA==42,c("Red")],
+     col="green",cex=0.15)
+
+#Urban: dense
+points(df_test[df_test$nlcd_2006_RITA==22,c("Green")],
+       df_test[df_test$nlcd_2006_RITA==22,c("Red")],
+       col="brown",cex=0.15)
+
+#Water
+points(df_test[df_test$nlcd_2006_RITA==11,c("Green")],
+       df_test[df_test$nlcd_2006_RITA==11,c("Red")],
+       col="blue",cex=0.15)
+
+#### Feature space green and red
+
+#Forest:
+plot(df_test[df_test$nlcd_2006_RITA==42,c("Red")],
+     df_test[df_test$nlcd_2006_RITA==42,c("NIR")],
+     col="green",cex=0.15)
+
+#Urban: dense
+points(df_test[df_test$nlcd_2006_RITA==22,c("Red")],
+     df_test[df_test$nlcd_2006_RITA==22,c("NIR")],
+     col="brown",cex=0.15)
+
+#Water
+points(df_test[df_test$nlcd_2006_RITA==11,c("Red")],
+       df_test[df_test$nlcd_2006_RITA==11,c("NIR")],
+       col="blue",cex=0.15)
+
 
 #names(r_before) <- 
 #### Add by land cover here:
@@ -286,6 +330,10 @@ plot(subset(r_before,"Red"),subset(r_before,"NIR"))
 #Label all pixel with majority water in NIR-Red
 #Label all pixel with majority urban in NIR-Red
 
+## Show water and forest? on a plot
+
+#show expected change vector from forest to water
+## Show e
 
 ############## Generating indices:
 
@@ -309,6 +357,11 @@ plot(r_date1_NDVI,zlim=c(-1,1))
 r_date2_NDVI <- subset(r_after,"NIR") - subset(r_after,"Red")/(subset(r_after,"NIR") - subset(r_after,"Red"))
 plot(r_date2_NDVI,zlim=c(-1,1))
 
+#Modified NDWI MNDWI : Green-SWIR1/(NIR+SWIR1)
+#
+#MMNDWI : Green-Red/(NIR+Red)
+#LSWI (Land Surface Water (ndex)): LSWI: NIR -SWIR2/(NIR +SWIR2)
+
 plot(r_NDWI)
 tb_NDWI <- freq(r_NDWI)
 barplot(tb_NDWI[,2])
@@ -316,7 +369,7 @@ barplot(tb_NDWI[,2],xlim=c(-100,100))
 histogram(tb_NDWI[,2],xlim=c(-100,100))
 hist(tb_NDWI[,2])
 View(tb_NDWI)
-r_date2_NDWI <- r_after[,,2] - r_after[,,6] / r_after[,,2] - r_after[,,6]  
+r_date2_NDWI <- r_after[,a,] - r_after[,,6] / r_after[,,2] - r_after[,,6]  
 r_date2_NDWI <- subset(r_after,2) - subset(r_after,6) / (subset(r_after,2) - subset(r_after,6))  
 
 plot(r_date1_NDWI)
@@ -340,7 +393,7 @@ plot(r_date1_NDVI > 1000)
 #to vegetation liquid water content (Gao, 1996).
 
 
-
+MDWI
 #According to Gao (1996), NDWI is a good
 #indicator for vegetation liquid water content and is less
 #sensitive to atmospheric scattering effects than NDVI. In this
@@ -356,6 +409,89 @@ resample()
 # Other
 
 # Do relationship with flood zone using ROC?
+
+###############################################
+######## Let's carry out a PCA in T-mode #######
+
+#Correlate long term mean to PC!
+cor_mat_layerstats <- layerStats(r_before, 'pearson', na.rm=T)
+cor_matrix <- cor_mat_layerstats$`pearson correlation coefficient`
+class(cor_matrix)
+dim(cor_matrix)
+View(cor_matrix)
+image(cor_matrix)
+
+pca_mod <-principal(cor_matrix,nfactors=3,rotate="none")
+class(pca_mod$loadings)
+str(pca_mod$loadings)
+plot(pca_mod$loadings[,1][band_refl_order],type="b",
+     xlab="time steps",
+     ylab="PC loadings",
+     ylim=c(-1,1),
+     col="blue")
+lines(-1*(pca_mod$loadings[,2][band_refl_order]),type="b",col="red")
+lines(pca_mod$loadings[,3][band_refl_order],type="b",col="black")
+title("Loadings for the first three components using T-mode")
+
+##Make this a time series
+loadings_df <- as.data.frame(pca_mod$loadings[,1:3])
+pca_loadings_dz <- zoo(loadings_df,dates_val) #create zoo object from data.frame and date sequence object
+#?plot.zoo to find out about zoo time series plotting of indexes
+plot(pca_loadings_dz,
+     type="b",
+     plot.type="single",
+     col=c("blue","red","black"),
+     xlab="time steps",
+     ylab="PC loadings",
+     ylim=c(-1,1))
+title("Loadings for the first three components using T-mode")
+names_vals <- c("pc1","pc2","pc3")
+legend("topright",legend=names_vals,
+       pt.cex=0.8,cex=1.1,col=c("blue","red","black"),
+       lty=c(1,1), # set legend symbol as lines
+       pch=1, #add circle symbol to line
+       lwd=c(1,1),bty="n")
+
+## Add scree plot
+plot(pca_mod$values,main="Scree plot: Variance explained",type="b")
+
+### Generate scores from eigenvectors
+## Do it two different ways:
+
+#By converting data and working with matrix:
+df_NDVI_ts <- as(r_NDVI_ts,"SpatialPointsDataFrame")
+df_NDVI_ts <- as.data.frame(df_NDVI_ts) #convert to data.frame because predict works on data.frame
+names(df_NDVI_ts) <- c(paste0("pc_",seq(1,23,1)),"x","y")
+names(df_NDVI_ts)
+
+pca_all <- as.data.frame(predict(pca_mod,df_NDVI_ts[,1:23])) ## Apply model object on the data.frame
+#pca_all <-predict(pca_mod,df_NDVI_ts) ## Apply model object on the data.frame
+
+coordinates(pca_all) <- df_NDVI_ts[,c("x","y")] #Assign coordinates
+class(pca_all) #Check type of class
+
+raster_name <- paste0("pc1_NDVI_2005.tif") #output raster name for component 1
+r_pc1<-rasterize(pca_all,r_NDVI_ts,"PC1",fun=min,overwrite=TRUE,
+                 filename=raster_name)
+raster_name <- paste0("pc2_NDVI_2005.tif") #output raster name for component 2
+r_pc2<-rasterize(pca_all,r_NDVI_ts,"PC2",fun=min,overwrite=TRUE,
+                 filename=raster_name)
+
+### Using predict function: this is recommended for raster imagery!!
+# note the use of the 'index' argument
+r_pca <- predict(r_before, pca_mod, index=1:3,filename="pc_scores.tif",overwrite=T) # fast
+plot(-1*r_pca,y=2,zlim=c(-2,2))
+plot(r_pca,y=1,zlim=c(-2,2))
+plot(r_pca,y=3,zlim=c(-2,2))
+
+plot(subset(r_pca,1),subset(r_pca,2))
+plot(subset(r_pca,2),subset(r_pca,3))
+
+plot(stack(r_pc1,r_pc2))
+#layerStats(r_pc1,r_NDVI_mean )
+cor_pc <- layerStats(stack(r_pc1,r_NDVI_mean),'pearson', na.rm=T)
+cor_pc #PC1 correspond to the average mean by pixel as expected.
+plot(r_pc2)
 
 
 ####### PART II: Change analyses via image differencing and ratioing ##########
@@ -513,83 +649,6 @@ plot(pix_fire_poly1_dz[,1000:1010])
 acf(pix_fire_poly1_dz[,1000], type = "correlation") #burnt pixel
 acf(pix_fire_poly1_dz[,1007], type = "correlation") #Note the difference in the acf for unburnt pixel
 
-###############################################
-######## Let's carry out a PCA in T-mode #######
-
-#Correlate long term mean to PC!
-cor_mat_layerstats <- layerStats(r_NDVI_ts, 'pearson', na.rm=T)
-cor_matrix <- cor_mat_layerstats$`pearson correlation coefficient`
-class(cor_matrix)
-dim(cor_matrix)
-View(cor_matrix)
-image(cor_matrix)
-
-pca_mod <-principal(cor_matrix,nfactors=3,rotate="none")
-class(pca_mod$loadings)
-str(pca_mod$loadings)
-plot(pca_mod$loadings[,1],type="b",
-     xlab="time steps",
-     ylab="PC loadings",
-     ylim=c(-1,1),
-     col="blue")
-lines(pca_mod$loadings[,2],type="b",col="red")
-lines(pca_mod$loadings[,3],type="b",col="black")
-title("Loadings for the first three components using T-mode")
-
-##Make this a time series
-loadings_df <- as.data.frame(pca_mod$loadings[,1:3])
-pca_loadings_dz <- zoo(loadings_df,dates_val) #create zoo object from data.frame and date sequence object
-#?plot.zoo to find out about zoo time series plotting of indexes
-plot(pca_loadings_dz,
-     type="b",
-     plot.type="single",
-     col=c("blue","red","black"),
-     xlab="time steps",
-     ylab="PC loadings",
-     ylim=c(-1,1))
-title("Loadings for the first three components using T-mode")
-names_vals <- c("pc1","pc2","pc3")
-legend("topright",legend=names_vals,
-       pt.cex=0.8,cex=1.1,col=c("blue","red","black"),
-       lty=c(1,1), # set legend symbol as lines
-       pch=1, #add circle symbol to line
-       lwd=c(1,1),bty="n")
-
-## Add scree plot
-plot(pca_mod$values,main="Scree plot: Variance explained",type="b")
-
-### Generate scores from eigenvectors
-## Do it two different ways:
-
-#By converting data and working with matrix:
-df_NDVI_ts <- as(r_NDVI_ts,"SpatialPointsDataFrame")
-df_NDVI_ts <- as.data.frame(df_NDVI_ts) #convert to data.frame because predict works on data.frame
-names(df_NDVI_ts) <- c(paste0("pc_",seq(1,23,1)),"x","y")
-names(df_NDVI_ts)
-
-pca_all <- as.data.frame(predict(pca_mod,df_NDVI_ts[,1:23])) ## Apply model object on the data.frame
-#pca_all <-predict(pca_mod,df_NDVI_ts) ## Apply model object on the data.frame
-
-coordinates(pca_all) <- df_NDVI_ts[,c("x","y")] #Assign coordinates
-class(pca_all) #Check type of class
-
-raster_name <- paste0("pc1_NDVI_2005.tif") #output raster name for component 1
-r_pc1<-rasterize(pca_all,r_NDVI_ts,"PC1",fun=min,overwrite=TRUE,
-                  filename=raster_name)
-raster_name <- paste0("pc2_NDVI_2005.tif") #output raster name for component 2
-r_pc2<-rasterize(pca_all,r_NDVI_ts,"PC2",fun=min,overwrite=TRUE,
-                 filename=raster_name)
-
-### Using predict function: this is recommended for raster imagery!!
-# note the use of the 'index' argument
-r_pca <- predict(r_NDVI_ts, pca_mod, index=1:3,filename="pc_scores.tif",overwrite=T) # fast
-plot(r_pca)
-
-plot(stack(r_pc1,r_pc2))
-#layerStats(r_pc1,r_NDVI_mean )
-cor_pc <- layerStats(stack(r_pc1,r_NDVI_mean),'pearson', na.rm=T)
-cor_pc #PC1 correspond to the average mean by pixel as expected.
-plot(r_pc2)
 
 ## Use animate function
 #animate(r_NDVI_ts, pause=0.25, n=1)
