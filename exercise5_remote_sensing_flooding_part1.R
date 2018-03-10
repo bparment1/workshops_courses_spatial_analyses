@@ -235,16 +235,21 @@ df_after <- extract(r_after,test)
 plot(df_before[2,],type="l")
 lines(df_after[2,],col="red")
 
-
 ## Read in table info?
-### Need to reorder the bands:
-#500m Surface Reflectance Band 1 (620–670 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 2 (841–876 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 3 (459–479 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 4 (545–565 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 5 (1230–1250 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 6 (1628–1652 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
-#500m Surface Reflectance Band 7 (2105–2155 nm)	Reflectance	16-bit signed integer	-28672	-100–16000	0.0001
+
+df_modis_band_info <- data.frame("band_name"=NA,"band_number"=NA,"start_wlength"=NA,"end_wlength"=NA)
+df_modis_band_info[1,] <- c("Red", 1, 620,670)
+df_modis_band_info[2,] <- c("NIR", 2,841,876) 
+df_modis_band_info[3,] <- c("Blue",3,459,479)
+df_modis_band_info[4,] <- c("Green",4,545,565)
+df_modis_band_info[5,] <- c("SWIR1",5,1230,1250)
+df_modis_band_info[6,] <- c("SWIR2",6,1628,1652)
+df_modis_band_info[7,] <- c("SWIR3",7,2105,2155)
+
+#View(df_modis_band_info)
+write.table(df_modis_band_info,
+            file=paste0("df_modis_band_info",".txt"),
+            sep=",")
 
 #SWIR1 (1230–1250 nm), SWIR2 (1628–1652 nm) and SWIR3 (2105–2155 nm).
 band_refl_order <- c(3,4,1,2,5,6,7)
@@ -260,7 +265,6 @@ plot(df_after[1,band_refl_order],col="red")
 
 ###### Now do a extraction for nlcd data
 
-
 nlcd_2006_filename <- "nlcd_2006_RITA.tif"
 nlcd2006_reg <- raster(nlcd_2006_filename)
 
@@ -268,28 +272,27 @@ avg_nlcd <- as.data.frame(zonal(r_before,nlcd2006_reg,fun="mean"))
 avg_nlcd <- as.data.frame(avg_nlcd)
 
 avg_nlcd
-View(avg_nlcd)
+#View(avg_nlcd)
 names(avg_nlcd)
-plot()
 
 col_ordering <- band_refl_order + 1
-plot(avg_nlcd[9,col_ordering],type="l") #42 evergreen forest
-lines(avg_nlcd[6,col_ordering],type="l") #22 developed,High intensity
+plot(as.numeric(avg_nlcd[9,col_ordering]),type="l") #42 evergreen forest
+lines(as.numeric(avg_nlcd[6,col_ordering]),type="l") #22 developed,High intensity
 class(avg_nlcd)
 
 plot(avg_nlcd$Red,avg_nlcd$NIR)
 
 #############
 
-
-
 #Feature space NIR1 and Red
 plot(subset(r_before,"Red"),subset(r_before,"NIR"))
+plot(subset(r_before,"Green"),subset(r_before,"Red"))
+plot(subset(r_before,"SWIR1"),subset(r_before,"NIR"))
+plot(subset(r_before,"Red"),subset(r_before,"SWIR1"))
 
 df_test <- as.data.frame(stack(r_before,nlcd2006_reg))
 
 View(df_test)
-
 
 #Forest:
 plot(df_test[df_test$nlcd_2006_RITA==42,c("Green")],
@@ -306,7 +309,7 @@ points(df_test[df_test$nlcd_2006_RITA==11,c("Green")],
        df_test[df_test$nlcd_2006_RITA==11,c("Red")],
        col="blue",cex=0.15)
 
-#### Feature space green and red
+#### Feature space Red and Green
 
 #Forest:
 plot(df_test[df_test$nlcd_2006_RITA==42,c("Red")],
@@ -323,6 +326,93 @@ points(df_test[df_test$nlcd_2006_RITA==11,c("Red")],
        df_test[df_test$nlcd_2006_RITA==11,c("NIR")],
        col="blue",cex=0.15)
 
+#### Feature space Blue and Red
+
+#Water:
+plot(df_test[df_test$nlcd_2006_RITA==11,c("Blue")],
+       df_test[df_test$nlcd_2006_RITA==11,c("Red")],
+       col="blue",cex=0.15)
+
+#Forest:
+points(df_test[df_test$nlcd_2006_RITA==42,c("Blue")],
+     df_test[df_test$nlcd_2006_RITA==42,c("Red")],
+     col="green",cex=0.15)
+
+#Urban dense:
+points(df_test[df_test$nlcd_2006_RITA==22,c("Blue")],
+       df_test[df_test$nlcd_2006_RITA==22,c("Red")],
+       col="brown",cex=0.15)
+
+#### Stretch to 0-255 range:
+
+plotRGB(r_before,
+        r=1,
+        g=4,
+        b=3,
+        scale=0.6,
+        strech="hist")
+
+plotRGB(r_after,
+        r=1,
+        g=4,
+        b=3,
+        scale=0.6,
+        strech="hist")
+
+
+histogram(r_before)
+
+histogram(r_after)
+
+minValue(r_before)
+#[1] 0.0003000000 0.0000000000 0.0001000000 0.0073000001 0.0000000000 0.0013417750 0.0002549418
+maxValue(r_before)
+#[1] 0.5316203 0.5905742 0.4861007 0.5169186 0.5570464 0.5135773 0.4598759
+
+min_val <- minValue(r_before)
+max_val <- maxValue(r_before)
+
+r <- subset(r_before,1)
+r_test <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
+q_val <- quantile(r,probs=seq(0,1,0.01))
+
+
+r <- subset(r_before,1)
+r_red <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
+
+r <- subset(r_before,3)
+r_blue <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
+
+r_test <- (r-0)/(0.2-0)
+
+r_test <- (r-0)*(255-0)
+plot(r_test)
+
+plot(r_test)
+?quantile
+
+quantile(r, probs = c(0.25, 0.75), type=7,names = FALSE)
+
+plot(r_test)
+histogram(r_test)
+histogram(r)
+
+getData('SRTM', lon=5, lat=45)
+#<- st_centroid(reg_sf)
+
+r_test### Experiment with threshold:
+?colorRamps
+col_palette <- colorRampPalette(c("black","blue"))(255)
+#colorRampPalette(c("red", "white", "blue"))(255)
+plot(subset(r_before,"NIR") < 0.2)
+plot(subset(r_before,"Blue"),col=col_palette)
+
+plot(subset(r_before,"NIR"))
+plot(subset(r_after,"NIR"))
+
+### THis is suggesting flooding!!!
+plot(subset(r_before,"NIR") < 0.2)
+plot(subset(r_after,"NIR") < 0.2)
 
 #names(r_before) <- 
 #### Add by land cover here:
@@ -335,8 +425,16 @@ points(df_test[df_test$nlcd_2006_RITA==11,c("Red")],
 #show expected change vector from forest to water
 ## Show e
 
+### Make polygons in lake 
+
+
+plot(r_ref)
+
 ############## Generating indices:
 
+#compare indices with FEMA map? Use ROC.
+
+#
 
 ####
 # Generate flood index?
