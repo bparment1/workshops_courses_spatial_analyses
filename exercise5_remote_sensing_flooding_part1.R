@@ -6,12 +6,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/05/2018 
-#DATE MODIFIED: 03/07/2018
+#DATE MODIFIED: 03/12/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
 #
-#COMMIT: initial commit
+#COMMIT: generating indices
 #
 #################################################################################################
 
@@ -360,45 +360,6 @@ plotRGB(r_after,
         strech="hist")
 
 
-histogram(r_before)
-
-histogram(r_after)
-
-minValue(r_before)
-#[1] 0.0003000000 0.0000000000 0.0001000000 0.0073000001 0.0000000000 0.0013417750 0.0002549418
-maxValue(r_before)
-#[1] 0.5316203 0.5905742 0.4861007 0.5169186 0.5570464 0.5135773 0.4598759
-
-min_val <- minValue(r_before)
-max_val <- maxValue(r_before)
-
-r <- subset(r_before,1)
-r_test <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
-q_val <- quantile(r,probs=seq(0,1,0.01))
-
-
-r <- subset(r_before,1)
-r_red <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
-
-r <- subset(r_before,3)
-r_blue <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
-
-r_test <- (r-0)/(0.2-0)
-
-r_test <- (r-0)*(255-0)
-plot(r_test)
-
-plot(r_test)
-?quantile
-
-quantile(r, probs = c(0.25, 0.75), type=7,names = FALSE)
-
-plot(r_test)
-histogram(r_test)
-histogram(r)
-
-getData('SRTM', lon=5, lat=45)
-#<- st_centroid(reg_sf)
 
 r_test### Experiment with threshold:
 ?colorRamps
@@ -414,6 +375,9 @@ plot(subset(r_after,"NIR"))
 plot(subset(r_before,"NIR") < 0.2)
 plot(subset(r_after,"NIR") < 0.2)
 
+#Compare to actual flooding data
+
+
 #names(r_before) <- 
 #### Add by land cover here:
 #Label all pixel with majority vegetation in NIR-Red
@@ -428,8 +392,6 @@ plot(subset(r_after,"NIR") < 0.2)
 ### Make polygons in lake 
 
 
-plot(r_ref)
-
 ############## Generating indices:
 
 #compare indices with FEMA map? Use ROC.
@@ -438,49 +400,41 @@ plot(r_ref)
 
 ####
 # Generate flood index?
-#The NDWI (Gao, 1996) is a satellite-derived index from the NIR and Short Wave Infrared (SWIR) channels, defined as:
-#NDVI = NIR - VIS / (NIR +VIS)
 
-#MODIS has two bands in the SWIR region: band 5 (1230 to
-#                                                1250 nm) and band 6 (1.628 to 1.652 m) while band 2
-#represents the NIR region; while ABI has two bands in the
-#SWIR region, band 4 (1.3705 to 1.3855 m) and band 5 (1.58
-#                                                    to 1.64 m).
-#
-# NDWI = NIR - SWIR / NIR + SWIR
-#
+#1) NDVI = (NIR - Red)/(NIR+Red)
+#2) NDWI = (Green - NIR)/(Green + NIR)
+#3) MNDWI = Green - SWIR2 / Green + SWIR2
+#4) NDWI2 (LSWIB5) =  (NIR - SWIR1)/(NIR + SWIR1)
+#5) LSWI (LSWIB5) =  (NIR - SWIR2)/(NIR + SWIR2)
+#6) TCWI =  0.10839 * Red+ 0.0912 * NIR +0.5065 * Blue+ 0.404 * Green 
+#            - 0.241 * SWIR1- 0.4658 * SWIR2-
+#           0.5306 * SWIR3
+#7) TCBI = 0.3956 * Red + 0.4718 * NIR +0.3354 * Blue+ 0.3834 * Green
+#           + 0.3946 * SWIR1 + 0.3434 * SWIR2+ 0.2964 * SWIR3
+
 names(r_before)
-r_date1_NDVI <- subset(r_before,"NIR") - subset(r_before,"Red")/(subset(r_before,"NIR") - subset(r_before,"Red"))
+r_date1_NDVI <- (subset(r_before,"NIR") - subset(r_before,"Red")) / (subset(r_before,"NIR") + subset(r_before,"Red"))
+
+#r_date1_NDVI <- subset(r_before,"NIR") - subset(r_before,"Red")/(subset(r_before,"NIR") + subset(r_before,"Red"))
+
 plot(r_date1_NDVI,zlim=c(-1,1))
-r_date2_NDVI <- subset(r_after,"NIR") - subset(r_after,"Red")/(subset(r_after,"NIR") - subset(r_after,"Red"))
-plot(r_date2_NDVI,zlim=c(-1,1))
+plot(r_date1_NDVI,zlim=c(-1,1),col=matlab.like(255))
 
-#Modified NDWI MNDWI : Green-SWIR1/(NIR+SWIR1)
-#
-#MMNDWI : Green-Red/(NIR+Red)
-#LSWI (Land Surface Water (ndex)): LSWI: NIR -SWIR2/(NIR +SWIR2)
+r_date2_NDVI <- (subset(r_after,"NIR") - subset(r_after,"Red"))/ (subset(r_after,"NIR") + subset(r_after,"Red"))
 
-plot(r_NDWI)
-tb_NDWI <- freq(r_NDWI)
-barplot(tb_NDWI[,2])
-barplot(tb_NDWI[,2],xlim=c(-100,100))
-histogram(tb_NDWI[,2],xlim=c(-100,100))
-hist(tb_NDWI[,2])
-View(tb_NDWI)
-r_date2_NDWI <- r_after[,a,] - r_after[,,6] / r_after[,,2] - r_after[,,6]  
-r_date2_NDWI <- subset(r_after,2) - subset(r_after,6) / (subset(r_after,2) - subset(r_after,6))  
+plot(r_date1_NDVI,zlim=c(-1,1),col=matlab.like(255))
+plot(r_date2_NDVI,zlim=c(-1,1),col=matlab.like2(255))
 
-plot(r_date1_NDWI)
-plot(r_date2_NDWI)
+### THis is suggesting flooding!!!
+plot(r_date1_NDVI < -0.5)
+plot(r_date2_NDVI < -0.5)
+plot(r_date1_NDVI < -0.1)
+plot(r_date2_NDVI < -0.1)
 
-plot(r_date1_NDWI,zlim=c(-1,1))
-plot(r_date1_NDWI,zlim=c(-100,100))
+#2) NDWI = (Green - NIR)/(Green + NIR)
+#3) MNDWI = Green - SWIR2 / Green + SWIR2
 
-plot(r_date2_NDWI,zlim=c(-1,1))
-
-r_test <- r_date2_NDWI - r_date1_NDWI
-plot(r_test,zlim=c(-1,1))
-plot(r_date1_NDVI > 1000)
+#Modified NDWI MNDWI : Green - SWIR2/(Green + SWIR2)
 
 #According to Gao (1996), NDWI is a good
 #indicator for vegetation liquid water content and is less
@@ -490,20 +444,25 @@ plot(r_date1_NDVI > 1000)
 #types and contents (Li et al., 2011), while band 5 is sensitive
 #to vegetation liquid water content (Gao, 1996).
 
+names(r_before)
+r_date1_MNDWI <- (subset(r_before,"Green") - subset(r_before,"SWIR2")) / (subset(r_before,"Green") + subset(r_before,"SWIR2"))
+r_date2_MNDWI <- (subset(r_after,"Green") - subset(r_after,"SWIR2")) / (subset(r_after,"Green") + subset(r_after,"SWIR2"))
 
-MDWI
-#According to Gao (1996), NDWI is a good
-#indicator for vegetation liquid water content and is less
-#sensitive to atmospheric scattering effects than NDVI. In this
-#study, MODIS band 6 is used for the NDWI calculation,
-#because it is found that MODIS band 6 is sensitive to water
-#types and contents (Li et al., 2011), while band 5 is sensitive
-#to vegetation liquid water content (Gao, 1996).
+plot(r_date1_MNDWI,zlim=c(-1,1))
+plot(r_date1_MNDWI,zlim=c(-1,1),col=rev(matlab.like(255)))
+plot(r_date2_MNDWI,zlim=c(-1,1))
+plot(r_date2_MNDWI,zlim=c(-1,1),col=rev(matlab.like(255)))
 
-resample()
+### THis is suggesting flooding!!!
+plot(r_date1_MNDWI > 0.5)
+plot(r_date2_MNDWI > 0.5)
+plot(r_date1_MNDWI > 0.1)
+plot(r_date2_MNDWI > 0.1)
+
+r_test <- r_date2_MNDWI - r_date1_MNDWI
+plot(r_test)
 
 # NRT MODIS
-
 # Other
 
 # Do relationship with flood zone using ROC?
