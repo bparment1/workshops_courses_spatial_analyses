@@ -5,12 +5,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/20/2018
+#DATE MODIFIED: 03/21/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
 #
-#COMMIT: soft coarsening option using NLCD
+#COMMIT: generate input mod09 images
 #
 #################################################################################################
 
@@ -69,7 +69,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 
 file_format <- ".tif" #PARAM5
 NA_flag_val <- -9999 #PARAM7
-out_suffix <-"data_preprocessing_03202018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"data_preprocessing_03212018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 
