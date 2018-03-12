@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/08/2018
+#DATE MODIFIED: 03/12/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -141,7 +141,18 @@ r_2006_nlcd30m
 r_2011_nlcd30m
 dataType(r_2006_nlcd30m)
 dataType(r_2011_nlcd30m)
+legend_col <- r_2006_nlcd30m@legend
+class(legend_col)
 
+unique(legend_col@colortable)
+#[1] "#000000" "#00F900" "#476BA0" "#D1DDF9" "#DDC9C9" "#D89382"
+#[7] "#ED0000" "#AA0000" "#B2ADA3" "#F9F9F9" "#68AA63" "#1C6330"
+#[13] "#B5C98E" "#A58C30" "#CCBA7C" "#E2E2C1" "#C9C977" "#99C147"
+#[19] "#77AD93" "#DBD83D" "#AA7028" "#BAD8EA" "#B5D3E5" "#70A3BA"
+
+#Need to reclass values in NLCD and plot different classes
+
+plot()
 reg_sf_nlcd <- st_transform(reg_sf,projection(r_2006_nlcd30m))
 reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
 r_2006_nlcd30m_RITA <- crop(r_2006_nlcd30m,reg_sp_nlcd,"r_2006_nlcd30m.tif",overwrite=T)
@@ -231,5 +242,111 @@ plot(r_before)
 r_before <- projectRaster(r_before,rast_ref,method="bilinear")
 plot(r_before_1km)
 plot(r_before_1km,y=5)
+r_after <- projectRaster(r_after,rast_ref,method="bilinear")
+plot(r_after)
+plot(r_before)
+
+#####################
+## Creating a true color composite with streching
+
+histogram(r_before)
+
+histogram(r_after)
+
+minValue(r_before)
+#[1] 0.0003000000 0.0000000000 0.0001000000 0.0073000001 0.0000000000 0.0013417750 0.0002549418
+maxValue(r_before)
+#[1] 0.5316203 0.5905742 0.4861007 0.5169186 0.5570464 0.5135773 0.4598759
+
+min_val <- minValue(r_before)
+max_val <- maxValue(r_before)
+
+r <- subset(r_before,1)
+r_test <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
+q_val <- quantile(r,probs=seq(0,1,0.01))
+
+
+
+i <- 1
+
+scale_rast_fun <- function(i,r_stack,min_val=NULL,max_val=NULL){
+  #
+  #
+  
+  r <- subset(r_stack,i)
+  if(is.null(min_val)){
+    min_val <- minValue(r)
+  }
+  if(is.null(max_val)){
+    max_val <- maxValue(r)
+  }
+  r_scaled <- round(255*(r-min_val)/(max_val-min_val))
+  return(r_scaled)
+}
+
+r_test <- stretch(r_red,minq=0,maxq=100)
+histogram(r_test)
+histogram(r_red)
+plot(r_test)
+
+r_red <- scale_rast_fun(1,r_before)
+r_blue <- scale_rast_fun(3,r_before)
+r_green <- scale_rast_fun(4,r_before)
+histogram(r_red)
+plot(r_red)
+plot(r_blue)
+plot(r_green)
+
+r_rgb <- stack(r_red,r_blue,r_green)
+
+plotRGB(r_rgb,
+        r=1,
+        g=2,
+        b=3,
+        scale=255,
+        strech="lin")
+
+writeRaster(r_red,"r_red.rst")
+writeRaster(r_blue,"r_blue.rst")
+writeRaster(r_green,"r_green.rst")
+
+
+
+r_red <- scale_rast_fun(1,r_before,0,0.3)
+r_blue <- scale_rast_fun(3,r_before,0,0.3)
+r_green <- scale_rast_fun(4,r_before,0,0.3)
+
+r_rgb <- stack(r_red,r_blue,r_green)
+
+plotRGB(r_rgb,
+        r=1,
+        g=2,
+        b=3,
+        #scale=255,
+        strech="hist")
+
+r <- subset(r_before,3)
+
+r_blue <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
+
+r <- subset(r_before,4)
+r_blue <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
+
+r_test <- (r-0)/(0.2-0)
+
+r_test <- (r-0)*(255-0)
+plot(r_test)
+
+plot(r_test)
+?quantile
+
+quantile(r, probs = c(0.25, 0.75), type=7,names = FALSE)
+
+plot(r_test)
+histogram(r_test)
+histogram(r)
+
+getData('SRTM', lon=5, lat=45)
+#<- st_centroid(reg_sf)
 
 ################### End of Script #########################
