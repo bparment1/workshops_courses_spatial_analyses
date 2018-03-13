@@ -6,12 +6,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/05/2018 
-#DATE MODIFIED: 03/12/2018
+#DATE MODIFIED: 03/13/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
 #
-#COMMIT: generating indices
+#COMMIT: PCA loading space
 #
 #################################################################################################
 
@@ -42,6 +42,7 @@ library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf)
+library(plotrix) #various graphic functions e.g. draw.circle
 
 ###### Functions used in this script
 
@@ -113,32 +114,24 @@ script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/R_scrip
 in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/data/reflectance_RITA"
 in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/data/"
 out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/outputs"
-
-#infile_ecoreg <- "wwf_terr_ecos_Alaska_ECOREGIONS_ECOSYS_ALB83.shp" #WWF ecoregions 2001 for Alaska
 infile_reg_outline <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/new_strata_rita_10282017.shp"
-
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
-
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
 out_suffix <-"exercise5_03052018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
-
 #ARG4
 method_proj_val <- "bilinear" # "ngb"
 
 #ARG9
 #local raster name defining resolution, extent
 ref_rast_name <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
-#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/r_ref_Houston_RITA.tif"
-#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
 #ARG11
 date_param <- "2005.01.01;2005.12.31;8" #start date, end date, time_step
-#ARG12
 #ARG13
 #scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
 scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
@@ -172,13 +165,11 @@ if(create_out_dir_param==TRUE){
 
 lf_reflectance <- list.files(path=in_dir_reflectance, pattern="*.tif",full.names=T)
 r_refl_ts <- stack(lf_reflectance) #          #note this creates 46*7 bands
-
-plot(r_NDVI_ts)
 date_range <- unlist(strsplit(date_param,";")) #NDVI Alaska, year 2005 (this is a 16 days product)
-  
 df_dates <- as.data.frame(generate_dates_by_step(start_date=date_range[1],
                                                  end_date=date_range[2],
                                                  step_date=as.numeric(date_range[3])))
+
 #34: 2005265 this is Sept 22
 #35: 2005273 this is Sept 30
 
@@ -189,7 +180,6 @@ file.info(lf_reflectance[1])$size/(1024*1024) # this is in bytes, convert to mb
 dataType(r_refl_ts) #Examine the data type used in the storing of data, this is float 32 signed: FLT4S
 inMemory(r_refl_ts) #Is the data in memory? Raster package does not load in memory automatically.
 dim(r_refl_ts) #dimension of the raster object: rows, cols, layers/bands
-
 
 ##### PART I: DISPLAY AND EXPLORE DATA ##############
 
@@ -469,16 +459,27 @@ plot(r_test)
 r_date2_flood <- r_date2_MNDWI > 0.1
 plot(r_date2_flood)
 
-
 #reclass in zero/1!!!
 
 df <- data.frame(id=c(1,2), v=c(0,1))
-r_ref <- subs(r_ref, df)
+r_ref_test <- subs(r_ref, df)
+plot(r_ref_test)
+#plot(r_ref)
+ref_test_tb <- crosstab(r_date2_flood,r_ref_test)
 
+## Compute Jaccard Index:
 
-ref_test_tb <- crosstab(r_date2_flood,r_ref)
+ref_test_tb$Freq[5]/(sum(ref_test_tb[ref_test_tb$Var1==1,c("Freq")],na.rm = T)+ 
+                     sum(ref_test_tb[ref_test_tb$Var2==1,c("Freq")],na.rm = T))
 
-ref_test_tb
+r_date2_flood <- mask(r_date2_flood,r_ref)
+
+ref_test_tb <- crosstab(r_date2_flood,r_ref_test)
+
+## Compute Jaccard Index:
+
+ref_test_tb$Freq[5]/(sum(ref_test_tb[ref_test_tb$Var1==1,c("Freq")],na.rm = T)+ 
+                       sum(ref_test_tb[ref_test_tb$Var2==1,c("Freq")],na.rm = T))
 
 ###############################################
 ######## Let's carry out a PCA in T-mode #######
@@ -536,11 +537,66 @@ plot(r_pca,y=3,zlim=c(-2,2))
 plot(subset(r_pca,1),subset(r_pca,2))
 plot(subset(r_pca,2),subset(r_pca,3))
 
+#### Generate a plot for PCA with loadings and compare to Tassel Cap
+I 
+var_labels <- rownames(loadings_df)
+
+plot(loadings_df[,1],loadings_df[,2],
+     type="p",
+     pch = 20,
+     col ="blue",
+     xlab=names(loadings_df)[1],
+     ylab=names(loadings_df)[2],
+     ylim=c(-1,1),
+     xlim=c(-1,1),
+     axes = FALSE,
+     cex.lab = 1.2)
+axis(1, at=seq(-1,1,0.2),cex=1.2)
+axis(2, las=1,at=seq(-1,1,0.2),cex=1.2) # "1' for side=below, the axis is drawned  on the right at location 0 and 1
+
+box()    #This draws a box...
+
+title(paste0("Loadings for component ", names(loadings_df)[1]," and " ,names(loadings_df)[2] ))
+draw.circle(0,0,c(1.0,1),nv=200)#,border="purple",
+text(loadings_df[,1],loadings_df[,2],var_labels,pos=1,cex=1)            
+grid(2,2)
+
+##### plot feature space:
+
+df_raster_val <- as.data.frame(stack(r_after,r_pca,nlcd2006_reg))
+
+View(df_raster_val)
+
+#Forest:
+plot(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
+     df_test[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.2")],
+     col="green",cex=0.15)
+
+#Urban: dense
+points(df_test[df_test$nlcd_2006_RITA==22,c("Green")],
+       df_test[df_test$nlcd_2006_RITA==22,c("Red")],
+       col="brown",cex=0.15)
+
+#Water
+points(df_test[df_test$nlcd_2006_RITA==11,c("Green")],
+       df_test[df_test$nlcd_2006_RITA==11,c("Red")],
+       col="blue",cex=0.15)
+
+
+
+################### End of Script #########################
+
 #plot(stack(r_pc1,r_pc2))
 #layerStats(r_pc1,r_NDVI_mean )
 #cor_pc <- layerStats(stack(r_pc1,r_NDVI_mean),'pearson', na.rm=T)
 #cor_pc #PC1 correspond to the average mean by pixel as expected.
 #plot(r_pc2)
 
-
-################### End of Script #########################
+### Potential follow up questions:
+#1) compare wetness index from TCP in predicted flooded areas
+#2) Use ROC to compare?
+#3) Use NLCD and extract other reflectance curve.
+#4) Use NLCD and recombine values using the general legend
+#5) Use disaggregated values from NLCD %cover from 30m and correlate with the new indices...
+#6) Compare area before and after classified as water with thresholding (don't forget to mask)
+#
