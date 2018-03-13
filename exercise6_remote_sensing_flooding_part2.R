@@ -1,11 +1,11 @@
 ####################################    Flood Mapping Analyses   #######################################
 ############################  Analyze and map flooding from RITA hurricane  #######################################
-#This script performs analyses for the Exercise 5 of the Short Course using reflectance data derived from MODIS.
+#This script performs analyses for the Exercise 6 of the Short Course using reflectance data derived from MODIS.
 #The goal is to map flooding from RITA using various reflectance bands from Remote Sensing platforms.
 #Additional data is provided including FEMA flood region. 
 #
 #AUTHORS: Benoit Parmentier                                             
-#DATE CREATED: 03/05/2018 
+#DATE CREATED: 03/13/2018 
 #DATE MODIFIED: 03/13/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
@@ -111,9 +111,9 @@ script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/R_scrip
 
 #####  Parameters and argument set up ###########
 
-in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/data/reflectance_RITA"
-in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/data/"
-out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/outputs"
+#in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_6/data/reflectance_RITA"
+in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_6/data/"
+out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_6/outputs"
 infile_reg_outline <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/new_strata_rita_10282017.shp"
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
@@ -121,7 +121,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise5_03052018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise6_03132018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 #ARG4
@@ -130,17 +130,6 @@ method_proj_val <- "bilinear" # "ngb"
 #ARG9
 #local raster name defining resolution, extent
 ref_rast_name <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
-#ARG11
-date_param <- "2005.01.01;2005.12.31;8" #start date, end date, time_step
-#ARG13
-#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
-scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
-#ARGS14
-product_type = c("reflectance") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
-#ARG15
-multiband <- TRUE #This is only used for multiband products?
-#ARGS16: This can be removed in the future by stating LST_Day as a product type
-num_cores <- 4 #option for parallel processes
 
 ################# START SCRIPT ###############################
 
@@ -163,67 +152,9 @@ if(create_out_dir_param==TRUE){
 
 ## Second list.files and create raster images stack
 
-lf_reflectance <- list.files(path=in_dir_reflectance, pattern="*.tif",full.names=T)
-r_refl_ts <- stack(lf_reflectance) #          #note this creates 46*7 bands
-date_range <- unlist(strsplit(date_param,";")) #NDVI Alaska, year 2005 (this is a 16 days product)
-df_dates <- as.data.frame(generate_dates_by_step(start_date=date_range[1],
-                                                 end_date=date_range[2],
-                                                 step_date=as.numeric(date_range[3])))
-
-#34: 2005265 this is Sept 22
-#35: 2005273 this is Sept 30
-
-#generate dates for 16 days product
-#dates_val <- generate_dates_by_step(date_range[1],date_range[2],16)$dates #NDVI Katrina
-
-file.info(lf_reflectance[1])$size/(1024*1024) # this is in bytes, convert to mb
-dataType(r_refl_ts) #Examine the data type used in the storing of data, this is float 32 signed: FLT4S
-inMemory(r_refl_ts) #Is the data in memory? Raster package does not load in memory automatically.
-dim(r_refl_ts) #dimension of the raster object: rows, cols, layers/bands
-
-##### PART I: DISPLAY AND EXPLORE DATA ##############
-
-#lf_var <- list.files(path=in_dir_var,pattern="*.tif$",full.names=T)
-#r_var <- stack(lf_var) # create a raster stack, this is not directly stored in memory
-
-#dim(r_var) #dimension of the stack with 
-#plot(r_var)
-
-reg_sf <- st_read(infile_reg_outline)
-reg_sf <- st_transform(reg_sf,
-                       crs=CRS_reg)
-reg_sp <-as(reg_sf, "Spatial") 
-plot(reg_sf$geometry)
-
-#r_tmp <- subset(r_refl_ts,1)
-r_tmp <- brick(lf_reflectance[1])
-
-r_ref <- rasterize(reg_sp,
-                   r_before,
-                   field="OBJECTID_1",
-                   fun="first")
-
-r_before <- brick(lf_reflectance[34])
-r_after <- brick(lf_reflectance[35])
-
-r_before <- r_before*(1/0.0001)
-r_after <- r_after*(1/0.0001)
-
-###
-tb_before <- freq(r_before,merge=T)
-View(tb_before)
-plot(r_after,colNA="black")
-plot(r_before,colNA="black")
-
-test <- st_centroid(reg_sf)
-test
-
-df_before <- extract(r_before,test)
-df_after <- extract(r_after,test)
-
-### We need to rethink the ordering of band:
-plot(df_before[2,],type="l")
-lines(df_after[2,],col="red")
+plot(nlcd2006_reg_RITA==90)
+plot(nlcd2006_reg_RITA==95)
+plot(nlcd2006_reg_RITA==11)
 
 ## Read in table info?
 
@@ -255,10 +186,12 @@ plot(df_after[1,band_refl_order],col="red")
 
 ###### Now do a extraction for nlcd data
 
-nlcd_2006_filename <- "nlcd_2006_RITA.tif"
+nlcd_2006_filename <- file.path(in_dir_var,"nlcd_2006_RITA.tif")
 nlcd2006_reg <- raster(nlcd_2006_filename)
 
-avg_nlcd <- as.data.frame(zonal(r_before,nlcd2006_reg,fun="mean"))
+plot(nlcd2006_reg)
+
+avg_nlcd <- as.data.frame(zonal(r_after,nlcd2006_reg))
 avg_nlcd <- as.data.frame(avg_nlcd)
 
 avg_nlcd
@@ -316,142 +249,17 @@ points(df_test[df_test$nlcd_2006_RITA==11,c("Red")],
        df_test[df_test$nlcd_2006_RITA==11,c("NIR")],
        col="blue",cex=0.15)
 
-#### Feature space Blue and Red
-
-#Water:
-plot(df_test[df_test$nlcd_2006_RITA==11,c("Blue")],
-       df_test[df_test$nlcd_2006_RITA==11,c("Red")],
-       col="blue",cex=0.15)
-
-#Forest:
-points(df_test[df_test$nlcd_2006_RITA==42,c("Blue")],
-     df_test[df_test$nlcd_2006_RITA==42,c("Red")],
-     col="green",cex=0.15)
-
-#Urban dense:
-points(df_test[df_test$nlcd_2006_RITA==22,c("Blue")],
-       df_test[df_test$nlcd_2006_RITA==22,c("Red")],
-       col="brown",cex=0.15)
-
-#### Stretch to 0-255 range:
-
-plotRGB(r_before,
-        r=1,
-        g=4,
-        b=3,
-        scale=0.6,
-        strech="hist")
-
-plotRGB(r_after,
-        r=1,
-        g=4,
-        b=3,
-        scale=0.6,
-        strech="hist")
-
-r_test### Experiment with threshold:
-?colorRamps
-col_palette <- colorRampPalette(c("black","blue"))(255)
-#colorRampPalette(c("red", "white", "blue"))(255)
-plot(subset(r_before,"NIR") < 0.2)
-plot(subset(r_before,"Blue"),col=col_palette)
-
-plot(subset(r_before,"NIR"))
-plot(subset(r_after,"NIR"))
-
-### THis is suggesting flooding!!!
-plot(subset(r_before,"NIR") < 0.2)
-plot(subset(r_after,"NIR") < 0.2)
-
-#Compare to actual flooding data
-
-
-#names(r_before) <- 
-#### Add by land cover here:
-#Label all pixel with majority vegetation in NIR-Red
-#Label all pixel with majority water in NIR-Red
-#Label all pixel with majority urban in NIR-Red
-
-## Show water and forest? on a plot
-
-#show expected change vector from forest to water
-## Show e
-
-### Make polygons in lake 
-
-
-############## Generating indices:
-
-#compare indices with FEMA map? Use ROC.
-
-#
-
-####
-# Generate flood index?
-
-#1) NDVI = (NIR - Red)/(NIR+Red)
-#2) NDWI = (Green - NIR)/(Green + NIR)
-#3) MNDWI = Green - SWIR2 / Green + SWIR2
-#4) NDWI2 (LSWIB5) =  (NIR - SWIR1)/(NIR + SWIR1)
-#5) LSWI (LSWIB5) =  (NIR - SWIR2)/(NIR + SWIR2)
-#6) TCWI =  0.10839 * Red+ 0.0912 * NIR +0.5065 * Blue+ 0.404 * Green 
-#            - 0.241 * SWIR1- 0.4658 * SWIR2-
-#           0.5306 * SWIR3
-#7) TCBI = 0.3956 * Red + 0.4718 * NIR +0.3354 * Blue+ 0.3834 * Green
-#           + 0.3946 * SWIR1 + 0.3434 * SWIR2+ 0.2964 * SWIR3
-
-names(r_before)
-r_date1_NDVI <- (subset(r_before,"NIR") - subset(r_before,"Red")) / (subset(r_before,"NIR") + subset(r_before,"Red"))
-
-#r_date1_NDVI <- subset(r_before,"NIR") - subset(r_before,"Red")/(subset(r_before,"NIR") + subset(r_before,"Red"))
-
-plot(r_date1_NDVI,zlim=c(-1,1))
-plot(r_date1_NDVI,zlim=c(-1,1),col=matlab.like(255))
-
-r_date2_NDVI <- (subset(r_after,"NIR") - subset(r_after,"Red"))/ (subset(r_after,"NIR") + subset(r_after,"Red"))
-
-plot(r_date1_NDVI,zlim=c(-1,1),col=matlab.like(255))
-plot(r_date2_NDVI,zlim=c(-1,1),col=matlab.like2(255))
-
-### THis is suggesting flooding!!!
-plot(r_date1_NDVI < -0.5)
-plot(r_date2_NDVI < -0.5)
-plot(r_date1_NDVI < -0.1)
-plot(r_date2_NDVI < -0.1)
-
-#2) NDWI = (Green - NIR)/(Green + NIR)
-#3) MNDWI = Green - SWIR2 / Green + SWIR2
-
-#Modified NDWI MNDWI : Green - SWIR2/(Green + SWIR2)
-
-#According to Gao (1996), NDWI is a good
-#indicator for vegetation liquid water content and is less
-#sensitive to atmospheric scattering effects than NDVI. In this
-#study, MODIS band 6 is used for the NDWI calculation,
-#because it is found that MODIS band 6 is sensitive to water
-#types and contents (Li et al., 2011), while band 5 is sensitive
-#to vegetation liquid water content (Gao, 1996).
-
-names(r_before)
-r_date1_MNDWI <- (subset(r_before,"Green") - subset(r_before,"SWIR2")) / (subset(r_before,"Green") + subset(r_before,"SWIR2"))
-r_date2_MNDWI <- (subset(r_after,"Green") - subset(r_after,"SWIR2")) / (subset(r_after,"Green") + subset(r_after,"SWIR2"))
-
-plot(r_date1_MNDWI,zlim=c(-1,1))
-plot(r_date1_MNDWI,zlim=c(-1,1),col=rev(matlab.like(255)))
-plot(r_date2_MNDWI,zlim=c(-1,1))
-plot(r_date2_MNDWI,zlim=c(-1,1),col=rev(matlab.like(255)))
-
-### THis is suggesting flooding!!!
-plot(r_date1_MNDWI > 0.5)
-plot(r_date2_MNDWI > 0.5)
-plot(r_date1_MNDWI > 0.1)
-plot(r_date2_MNDWI > 0.1)
-
-r_test <- r_date2_MNDWI - r_date1_MNDWI
-plot(r_test)
-
 # NRT MODIS
 # Other
+
+##### plot feature space:
+
+df_raster_val <- as.data.frame(stack(r_after,r_pca,nlcd2006_reg))
+
+### Now do a unsupervised
+## do a supervised
+## training and testing... 
+
 
 # Do relationship with flood zone using ROC?
 ### Generate a map of flooding with MNDWI and compare to FEMA map:
@@ -560,46 +368,6 @@ title(paste0("Loadings for component ", names(loadings_df)[1]," and " ,names(loa
 draw.circle(0,0,c(1.0,1),nv=200)#,border="purple",
 text(loadings_df[,1],loadings_df[,2],var_labels,pos=1,cex=1)            
 grid(2,2)
-
-##### plot feature space:
-
-df_raster_val <- as.data.frame(stack(r_after,r_pca,nlcd2006_reg))
-
-View(df_raster_val)
-
-#Water
-plot(df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.1")],
-       df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.2")],
-       col="blue",cex=0.15)
-
-#Urban: dense
-points(df_raster_val[df_raster_val$nlcd_2006_RITA==22,c("pc_scores.1")],
-       df_raster_val[df_raster_val$nlcd_2006_RITA==22,c("pc_scores.2")],
-       col="brown",cex=0.15)
-
-#Forest:
-points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
-     df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.2")],
-     col="green",cex=0.15)
-
-### Note the negative values are related to Forest on PC2
-
-#Water
-plot(df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.1")],
-     df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.2")],
-     col="blue",cex=0.15,
-     ylim=c(-2,2),
-     xlim=c(-2,2))
-
-#Urban: dense
-points(df_raster_val[df_raster_val$nlcd_2006_RITA==22,c("pc_scores.1")],
-       df_raster_val[df_raster_val$nlcd_2006_RITA==22,c("pc_scores.2")],
-       col="brown",cex=0.15)
-
-#Forest:
-points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
-       df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.2")],
-       col="green",cex=0.15)
 
 
 ################### End of Script #########################
