@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/12/2018
+#DATE MODIFIED: 03/13/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -113,7 +113,6 @@ if(create_out_dir_param==TRUE){
 lf_reflectance <- list.files(path=in_dir_reflectance, pattern="*.tif",full.names=T)
 r_refl_ts <- stack(lf_reflectance) #          #note this creates 46*7 bands
 
-plot(r_NDVI_ts)
 date_range <- unlist(strsplit(date_param,";")) #NDVI Alaska, year 2005 (this is a 16 days product)
   
 df_dates <- as.data.frame(generate_dates_by_step(start_date=date_range[1],
@@ -152,7 +151,6 @@ unique(legend_col@colortable)
 
 #Need to reclass values in NLCD and plot different classes
 
-plot()
 reg_sf_nlcd <- st_transform(reg_sf,projection(r_2006_nlcd30m))
 reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
 r_2006_nlcd30m_RITA <- crop(r_2006_nlcd30m,reg_sp_nlcd,"r_2006_nlcd30m.tif",overwrite=T)
@@ -229,6 +227,9 @@ r_after <- brick(lf_reflectance[35])
 
 r_before <- r_before*(1/0.0001)
 r_after <- r_after*(1/0.0001)
+
+projection(r_before) <- CRS_reg
+projection(r_after) <- CRS_reg
 
 #SWIR1 (1230–1250 nm), SWIR2 (1628–1652 nm) and SWIR3 (2105–2155 nm).
 band_refl_order <- c(3,4,1,2,5,6,7)
