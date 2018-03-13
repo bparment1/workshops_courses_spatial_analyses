@@ -538,7 +538,7 @@ plot(subset(r_pca,1),subset(r_pca,2))
 plot(subset(r_pca,2),subset(r_pca,3))
 
 #### Generate a plot for PCA with loadings and compare to Tassel Cap
-I 
+
 var_labels <- rownames(loadings_df)
 
 plot(loadings_df[,1],loadings_df[,2],
@@ -567,21 +567,39 @@ df_raster_val <- as.data.frame(stack(r_after,r_pca,nlcd2006_reg))
 
 View(df_raster_val)
 
-#Forest:
-plot(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
-     df_test[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.2")],
-     col="green",cex=0.15)
-
-#Urban: dense
-points(df_test[df_test$nlcd_2006_RITA==22,c("Green")],
-       df_test[df_test$nlcd_2006_RITA==22,c("Red")],
-       col="brown",cex=0.15)
-
 #Water
-points(df_test[df_test$nlcd_2006_RITA==11,c("Green")],
-       df_test[df_test$nlcd_2006_RITA==11,c("Red")],
+plot(df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.1")],
+       df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.2")],
        col="blue",cex=0.15)
 
+#Urban: dense
+points(df_raster_val[df_raster_val$nlcd_2006_RITA==22,c("pc_scores.1")],
+       df_raster_val[df_raster_val$nlcd_2006_RITA==22,c("pc_scores.2")],
+       col="brown",cex=0.15)
+
+#Forest:
+points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
+     df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.2")],
+     col="green",cex=0.15)
+
+### Note the negative values are related to Forest on PC2
+
+#Water
+plot(df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.1")],
+     df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.2")],
+     col="blue",cex=0.15,
+     ylim=c(-2,2),
+     xlim=c(-2,2))
+
+#Urban: dense
+points(df_raster_val[df_raster_val$nlcd_2006_RITA==22,c("pc_scores.1")],
+       df_raster_val[df_raster_val$nlcd_2006_RITA==22,c("pc_scores.2")],
+       col="brown",cex=0.15)
+
+#Forest:
+points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
+       df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.2")],
+       col="green",cex=0.15)
 
 
 ################### End of Script #########################
