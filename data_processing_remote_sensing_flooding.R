@@ -15,7 +15,7 @@
 #################################################################################################
 
 ###Loading R library and packages                                                      
-
+#library(gstat) #spatial interpolation and kriging methods
 library(sp) # spatial/geographfic objects and functions
 library(rgdal) #GDAL/OGR binding for R with functionalities
 library(spdep) #spatial analyses operations, functions etc.
@@ -37,7 +37,6 @@ library(foreign) # import datasets from SAS, spss, stata and other sources
 library(gdata) #read xls, dbf etc., not recently updated but useful
 library(classInt) #methods to generate class limits
 library(plyr) #data wrangling: various operations for splitting, combining data
-library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf)
@@ -54,7 +53,11 @@ in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/
 in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/"
 out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/"
 
-infile_reg_outline <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
+#Source:https://cohgis-mycity.opendata.arcgis.com/datasets/houston-city-limit
+infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit.shp"
+infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
+infilename_2006_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img"
+infilename_2011_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img"
 
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
@@ -86,7 +89,6 @@ num_cores <- 4 #option for parallel processes
 ################# START SCRIPT ###############################
 
 ### PART I: READ AND PREPARE DATA FOR ANALYSES #######
-
 
 ## First create an output directory
 
@@ -131,7 +133,7 @@ dim(r_refl_ts) #dimension of the raster object: rows, cols, layers/bands
 #dim(r_var) #dimension of the stack with 
 #plot(r_var)
 
-reg_sf <- st_read(infile_reg_outline)
+reg_sf <- st_read(infile_reg_outline_RITA)
 reg_sf <- st_transform(reg_sf,
                        crs=CRS_reg)
 reg_sp <- as(reg_sf, "Spatial") 
@@ -195,13 +197,13 @@ writeRaster(r_before,
 
 ### Now second date:
 
-raster_name_tmp <- lf_reflectance[34]
-raster_name_tmp <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
+raster_name_tmp <- lf_reflectance[35]
+raster_name_tmp <- "mosaiced_MOD09A1_A2005273__006_reflectance_masked_RITA_reg_1km.tif"
 bylayer_val <- FALSE
 out_suffix_str <- NULL
-data_type_str <- dataType(r_before)
+data_type_str <- dataType(r_after)
 
-writeRaster(r_before,
+writeRaster(r_after,
             filename=file.path(out_dir,raster_name_tmp),
             bylayer=bylayer_val,
             suffix=suffix_str,
@@ -214,7 +216,6 @@ writeRaster(r_before,
 ## Creating a true color composite with streching
 
 histogram(r_before)
-
 histogram(r_after)
 
 minValue(r_before)
@@ -228,7 +229,6 @@ max_val <- maxValue(r_before)
 r <- subset(r_before,1)
 r_test <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
 q_val <- quantile(r,probs=seq(0,1,0.01))
-
 
 
 i <- 1
@@ -248,39 +248,53 @@ scale_rast_fun <- function(i,r_stack,min_val=NULL,max_val=NULL){
   return(r_scaled)
 }
 
+r_red <- scale_rast_fun(1,r_before)
+r_blue <- scale_rast_fun(3,r_before)
+r_green <- scale_rast_fun(4,r_before)
+r_nir <- scale_rast_fun(2,r_before)
+
 r_test <- stretch(r_red,minq=0,maxq=100)
 histogram(r_test)
 histogram(r_red)
 plot(r_test)
 
-r_red <- scale_rast_fun(1,r_before)
-r_blue <- scale_rast_fun(3,r_before)
-r_green <- scale_rast_fun(4,r_before)
 histogram(r_red)
 plot(r_red)
 plot(r_blue)
 plot(r_green)
 
-r_rgb <- stack(r_red,r_blue,r_green)
+r_rgb <- stack(r_red,r_green,r_blue,r_nir)
 
 plotRGB(r_rgb,
         r=1,
         g=2,
         b=3,
         scale=255,
-        strech="lin")
+        strech="hist")
+
+### False color composite:
+
+plotRGB(r_rgb,
+        r=4,
+        g=1,
+        b=2,
+        #scale=255,
+        strech="hist")
+
+#R = XS3 (NIR band)
+#G = XS2 (red band)
+#B = XS1 (green band)
 
 writeRaster(r_red,"r_red.rst")
 writeRaster(r_blue,"r_blue.rst")
 writeRaster(r_green,"r_green.rst")
 
-
-
 r_red <- scale_rast_fun(1,r_before,0,0.3)
 r_blue <- scale_rast_fun(3,r_before,0,0.3)
 r_green <- scale_rast_fun(4,r_before,0,0.3)
+r_nir <- scale_rast_fun(2,r_before,0,0.3)
 
-r_rgb <- stack(r_red,r_blue,r_green)
+r_rgb <- stack(r_red,r_green,r_blue,r_nir)
 
 plotRGB(r_rgb,
         r=1,
@@ -288,6 +302,18 @@ plotRGB(r_rgb,
         b=3,
         #scale=255,
         strech="hist")
+### False color composite:
+
+plotRGB(r_rgb,
+        r=4,
+        g=1,
+        b=2,
+        #scale=255,
+        strech="hist")
+
+#R = XS3 (NIR band)
+#G = XS2 (red band)
+#B = XS1 (green band)
 
 r <- subset(r_before,3)
 
@@ -310,18 +336,16 @@ plot(r_test)
 histogram(r_test)
 histogram(r)
 
-getData('SRTM', lon=5, lat=45)
-#<- st_centroid(reg_sf)
-
 ######################## PART II: PROCESSING NLCD ##############
 
-#r_2006_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img")
-#r_2011_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img")
+infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit.shp"
+infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
 
-r_2006_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img")
-r_2011_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img")
+###### Need to process for two areas of study!!!
 
-#r_nlcd_2006_30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006.tif")
+r_2006_nlcd30m <- raster(infilename_2006_nlcd30m)
+r_2011_nlcd30m <- raster(infilename_2011_nlcd30m)
+
 r_2006_nlcd30m
 r_2011_nlcd30m
 dataType(r_2006_nlcd30m)
@@ -333,7 +357,9 @@ lc_nlcd_legend <- r_2006_nlcd30m@data@attributes[[1]]
 class(lc_nlcd_legend) #this is a data.frame
 View(lc_nlcd_legend)
 names(lc_nlcd_legend)
-write.table(lc_nlcd_legend,file=,sep=",")
+
+lc_nlcd_legend_filename <- "nlcd_legend.txt"
+write.table(lc_nlcd_legend,file=lc_nlcd_legend_filename,sep=",")
 #lc_types <- r_2006_nlcd30m@data@attributes[[1]]$Land.Cover.Class
 #unique(legend_col@colortable)
 #[1] "#000000" "#00F900" "#476BA0" "#D1DDF9" "#DDC9C9" "#D89382"
@@ -343,10 +369,26 @@ write.table(lc_nlcd_legend,file=,sep=",")
 
 #Need to reclass values in NLCD and plot different classes
 
-reg_sf_nlcd <- st_transform(reg_sf,projection(r_2006_nlcd30m))
-reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
-r_2006_nlcd30m_RITA <- crop(r_2006_nlcd30m,reg_sp_nlcd,"r_2006_nlcd30m.tif",overwrite=T)
-r_2011_nlcd30m_RITA <- crop(r_2011_nlcd30m,reg_sp_nlcd,"r_2011_nlcd30m.tif",overwrite=T)
+########### Let's crop to match the area of interests: Houston and RITA  ####
+
+#infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit.shp"
+#infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
+
+reg_sf_RITA <- st_read(infile_reg_outline_RITA)
+reg_sf_RITA <- st_transform(reg_sf_RITA,
+                       crs=CRS_reg)
+reg_sp_RITA <- as(reg_sf_RITA, "Spatial") 
+plot(reg_sf_RITA$geometry)
+
+#this is at 926m
+rast_ref <- raster(ref_rast_name)
+projection(rast_ref) <- CRS_reg
+#r_tmp <- subset(r_refl_ts,1)
+
+reg_sf_nlcd_RITA <- st_transform(reg_sf_RITA,projection(r_2006_nlcd30m))
+reg_sp_nlcd_RITA <- as(reg_sf_nlcd_RITA,"Spatial")
+r_2006_nlcd30m_RITA <- crop(r_2006_nlcd30m,reg_sp_nlcd_RITA,"r_2006_nlcd30m.tif",overwrite=T)
+r_2011_nlcd30m_RITA <- crop(r_2011_nlcd30m,reg_sp_nlcd_RITA,"r_2011_nlcd30m.tif",overwrite=T)
 
 plot(r_2006_nlcd30m_RITA)
 plot(r_2011_nlcd30m_RITA)
@@ -391,6 +433,12 @@ nlcd2006_reg
 writeRaster(nlcd2006_reg,filename = "nlcd_2006_RITA.tif")
 rast_agg31_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif")
 
+########### Part III: Additional data ##############################
+
+### Might get elevation and Census??
+
+#getData('SRTM', lon=5, lat=45)
+#<- st_centroid(reg_sf)
 
 
-################### End of Script #########################
+################################## End of Script #########################################
