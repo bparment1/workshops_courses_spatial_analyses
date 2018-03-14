@@ -405,7 +405,7 @@ cat_names <- c("nlcd2006_RITA","nlcd2011_RITA")
 rast_ref_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
 
 ### Get to 1km (or ~926m):
-debug(aggregate_raster_fun)
+#debug(aggregate_raster_fun)
 
 agg_obj_1km <- aggregate_raster_fun(l_rast,
                                     cat_names=cat_names,
@@ -413,25 +413,27 @@ agg_obj_1km <- aggregate_raster_fun(l_rast,
                                     agg_fact=NULL, #if null will look for the ref image to determine
                                     agg_fun=mean,
                                     file_format=file_format,
-                                    rast_ref=rast_ref_1km,
+                                    rast_ref=rast_ref,
                                     num_cores=num_cores,
                                     out_suffix=out_suffix, 
                                     out_dir=out_dir)
 
-agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif
-agg_31_r_nlcd2011_RITA_nlcd2011_RITA_exercise5_03052018.tif
+#names(obj_agg) <- c("cat_names","l_rast_cat","l_rast_continuous")
+agg_obj_1km$l_rast_cat
 
-rast_ref
+rast_agg31_nlcd2006_aea_RITA <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_data_preprocessing_03142018.tif")
+rast_agg31_nlcd2011_aea_RITA <- raster("agg_31_r_nlcd2011_RITA_nlcd2011_RITA_data_preprocessing_03142018.tif")
 
-rast_agg31_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif")
-rast_ref <- raster(rast_ref_filename)
-projection(rast_ref) <- CRS_reg
-nlcd2006_reg <- projectRaster(rast_agg31_nlcd2006,rast_ref,metho="ngb")
-plot(nlcd2006_reg)
-nlcd2006_reg
+nlcd2006_reg_RITA <- projectRaster(rast_agg31_nlcd2006_aea_RITA,rast_ref,metho="ngb")
+plot(nlcd2006_reg_RITA)
+nlcd2011_reg_RITA <- projectRaster(rast_agg31_nlcd2011_aea_RITA,rast_ref,metho="ngb")
+plot(nlcd2011_reg_RITA)
 
-writeRaster(nlcd2006_reg,filename = "nlcd_2006_RITA.tif")
-rast_agg31_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif")
+writeRaster(nlcd2006_reg_RITA,filename = "nlcd_2006_RITA.tif",overwrite=T)
+writeRaster(nlcd2011_reg_RITA,filename = "nlcd_2011_RITA.tif",overwrite=T)
+
+
+
 
 ########### Part III: Additional data ##############################
 
