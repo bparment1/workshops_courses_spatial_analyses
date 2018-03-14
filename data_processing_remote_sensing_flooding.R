@@ -71,7 +71,7 @@ method_proj_val <- "bilinear" # "ngb"
 
 #ARG9
 #local raster name defining resolution, extent
-ref_rast_name <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
+ref_rast_name <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/r_ref_Houston_RITA.tif"
 #ARG11
 date_param <- "2005.01.01;2005.12.31;8" #start date, end date, time_step
 #ARG13
@@ -134,12 +134,12 @@ dim(r_refl_ts) #dimension of the raster object: rows, cols, layers/bands
 reg_sf <- st_read(infile_reg_outline)
 reg_sf <- st_transform(reg_sf,
                        crs=CRS_reg)
-reg_sp <-as(reg_sf, "Spatial") 
+reg_sp <- as(reg_sf, "Spatial") 
 plot(reg_sf$geometry)
 
 #this is at 926m
-rast_ref_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
-
+rast_ref <- raster(ref_rast_name)
+projection(rast_ref) <- CRS_reg
 #r_tmp <- subset(r_refl_ts,1)
 r_tmp <- brick(lf_reflectance[1])
 
@@ -147,6 +147,8 @@ r_ref <- rasterize(reg_sp,
                    r_tmp,
                    field="OBJECTID_1",
                    fun="first")
+res(r_ref) 
+#[1] 463.3127 463.3127
 
 r_before <- brick(lf_reflectance[34])
 r_after <- brick(lf_reflectance[35])
@@ -166,12 +168,47 @@ names(r_after) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 #resample()
 plot(r_before)
 
+######## Let's reproject and match to the resolution ofr 926m, the NDVI data
 r_before <- projectRaster(r_before,rast_ref,method="bilinear")
-plot(r_before_1km)
-plot(r_before_1km,y=5)
 r_after <- projectRaster(r_after,rast_ref,method="bilinear")
 plot(r_after)
 plot(r_before)
+res(r_before)
+res(r_after)
+
+#### now write out data at 926m
+
+raster_name_tmp <- lf_reflectance[34]
+raster_name_tmp <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
+bylayer_val <- FALSE
+out_suffix_str <- NULL
+data_type_str <- dataType(r_before)
+
+writeRaster(r_before,
+            filename=file.path(out_dir,raster_name_tmp),
+            bylayer=bylayer_val,
+            suffix=suffix_str,
+            overwrite=TRUE,
+            NAflag=NA_flag_val,
+            datatype=data_type_str,
+            options=c("COMPRESS=LZW"))
+
+### Now second date:
+
+raster_name_tmp <- lf_reflectance[34]
+raster_name_tmp <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
+bylayer_val <- FALSE
+out_suffix_str <- NULL
+data_type_str <- dataType(r_before)
+
+writeRaster(r_before,
+            filename=file.path(out_dir,raster_name_tmp),
+            bylayer=bylayer_val,
+            suffix=suffix_str,
+            overwrite=TRUE,
+            NAflag=NA_flag_val,
+            datatype=data_type_str,
+            options=c("COMPRESS=LZW"))
 
 #####################
 ## Creating a true color composite with streching
