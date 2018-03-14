@@ -6,12 +6,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/13/2018 
-#DATE MODIFIED: 03/13/2018
+#DATE MODIFIED: 03/14/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
 #
-#COMMIT: PCA loading space
+#COMMIT: setting up input data
 #
 #################################################################################################
 
@@ -64,43 +64,6 @@ load_obj <- function(f){
   env <- new.env()
   nm <- load(f, env)[1]
   env[[nm]]
-}
-
-generate_dates_by_step <-function(start_date,end_date,step_date){
-  #library(xts) declare out of this function
-  #library(zoo)
-  #library(lubridate)
-  
-  st <- as.Date(start_date,format="%Y.%m.%d")
-  en <- as.Date(end_date,format="%Y.%m.%d")
-  #year_list <-seq(format(st,"%Y"),format(en,"%Y")) #extract year
-  year_list <- seq(as.numeric(strftime(st,"%Y")),as.numeric(strftime(en,"%Y"))) #extract year
-  
-  ll_list <- vector("list",length=length(year_list))
-  for (i in 1:length(year_list)){
-    if(i==1){
-      first_date <-st
-    }else{
-      first_date<-paste(year_list[[i]],"-01","-01",sep="")
-    }
-    if(i==length(year_list)){
-      last_date <-en
-    }else{
-      last_date<-paste(year_list[[i]],"-12","-31",sep="")
-    }
-    #ll <- seq.Date(st, en, by=step)
-    ll <- seq.Date(as.Date(first_date), as.Date(last_date), by=step_date)
-    ll_list[[i]]<-as.character(ll)
-    #paste(yday(ll,)
-  }
-  
-  #
-  dates_modis <-as.Date(unlist((ll_list))) 
-  
-  dates_DOY_modis <- as.character(paste(year(dates_modis),sprintf("%03d", yday(dates_modis)),sep=""))
-  dates_obj <- list(dates_modis,dates_DOY_modis)
-  names(dates_obj) <- c("dates","doy")  
-  return(dates_obj)
 }
 
 #function_preprocessing_and_analyses <- "fire_alaska_analyses_preprocessing_functions_03102017.R" #PARAM 1
