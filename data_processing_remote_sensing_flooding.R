@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/13/2018
+#DATE MODIFIED: 03/14/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -50,21 +50,19 @@ source(file.path(script_path,data_processing_functions)) #source all functions u
 
 #####  Parameters and argument set up ###########
 
-in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/data/reflectance_RITA"
-in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/data/"
-out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/outputs"
+in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/reflectance_RITA"
+in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/"
+out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/"
 
-#infile_ecoreg <- "wwf_terr_ecos_Alaska_ECOREGIONS_ECOSYS_ALB83.shp" #WWF ecoregions 2001 for Alaska
-infile_reg_outline <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/new_strata_rita_10282017.shp"
+infile_reg_outline <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
 
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
 
 file_format <- ".tif" #PARAM5
-NA_value <- -9999 #PARAM6
-NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise5_03052018" #output suffix for the files and ouptu folder #PARAM 8
+NA_flag_val <- -9999 #PARAM7
+out_suffix <-"data_preprocessing_03142018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 
@@ -74,13 +72,9 @@ method_proj_val <- "bilinear" # "ngb"
 #ARG9
 #local raster name defining resolution, extent
 ref_rast_name <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
-#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/revised_area_Rita/r_ref_Houston_RITA.tif"
-#ref_rast_name <- "/home/bparmentier/Google Drive/Space_beats_time/Data/data_Harvey_NDVI/rita_outline_reg/Study_Area_Rita_New.shp"
 #ARG11
 date_param <- "2005.01.01;2005.12.31;8" #start date, end date, time_step
-#ARG12
 #ARG13
-#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
 scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #ARGS14
 product_type = c("reflectance") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
@@ -129,78 +123,7 @@ dataType(r_refl_ts) #Examine the data type used in the storing of data, this is 
 inMemory(r_refl_ts) #Is the data in memory? Raster package does not load in memory automatically.
 dim(r_refl_ts) #dimension of the raster object: rows, cols, layers/bands
 
-
-######################## PART I: PROCESS NLCD ##############
-
-r_2006_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img")
-r_2011_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img")
-
-#r_nlcd_2006_30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006.tif")
-r_2006_nlcd30m
-r_2011_nlcd30m
-dataType(r_2006_nlcd30m)
-dataType(r_2011_nlcd30m)
-legend_col <- r_2006_nlcd30m@legend
-class(legend_col)
-
-unique(legend_col@colortable)
-#[1] "#000000" "#00F900" "#476BA0" "#D1DDF9" "#DDC9C9" "#D89382"
-#[7] "#ED0000" "#AA0000" "#B2ADA3" "#F9F9F9" "#68AA63" "#1C6330"
-#[13] "#B5C98E" "#A58C30" "#CCBA7C" "#E2E2C1" "#C9C977" "#99C147"
-#[19] "#77AD93" "#DBD83D" "#AA7028" "#BAD8EA" "#B5D3E5" "#70A3BA"
-
-#Need to reclass values in NLCD and plot different classes
-
-reg_sf_nlcd <- st_transform(reg_sf,projection(r_2006_nlcd30m))
-reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
-r_2006_nlcd30m_RITA <- crop(r_2006_nlcd30m,reg_sp_nlcd,"r_2006_nlcd30m.tif",overwrite=T)
-r_2011_nlcd30m_RITA <- crop(r_2011_nlcd30m,reg_sp_nlcd,"r_2011_nlcd30m.tif",overwrite=T)
-
-plot(r_2006_nlcd30m_RITA)
-plot(r_2011_nlcd30m_RITA)
-
-#freq(r_nlcd30m_RITA)
-
-## input files to aggregate
-l_rast <- list(r_2006_nlcd30m_RITA,r_2011_nlcd30m_RITA)
-#cat_names <- NULL
-names(l_rast) <- c("nlcd2006_RITA","nlcd2011_RITA")
-cat_names <- c("nlcd2006_RITA","nlcd2011_RITA")
-
-#this is at 926m
-rast_ref_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
-
-### Get to 1km (or ~926m):
-debug(aggregate_raster_fun)
-
-agg_obj_1km <- aggregate_raster_fun(l_rast,
-                                    cat_names=cat_names,
-                                    agg_method_cat="majority",
-                                    agg_fact=NULL, #if null will look for the ref image to determine
-                                    agg_fun=mean,
-                                    file_format=file_format,
-                                    rast_ref=rast_ref_1km,
-                                    num_cores=num_cores,
-                                    out_suffix=out_suffix, 
-                                    out_dir=out_dir)
-
-agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif
-agg_31_r_nlcd2011_RITA_nlcd2011_RITA_exercise5_03052018.tif
-
-rast_ref
-
-rast_agg31_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif")
-rast_ref <- raster(rast_ref_filename)
-projection(rast_ref) <- CRS_reg
-nlcd2006_reg <- projectRaster(rast_agg31_nlcd2006,rast_ref,metho="ngb")
-plot(nlcd2006_reg)
-nlcd2006_reg
-
-writeRaster(nlcd2006_reg,filename = "nlcd_2006_RITA.tif")
-rast_agg31_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif")
-
-
-################## PART II: MODIS REFLECTANCE ##############
+################## PART II: PROCESSING MODIS REFLECTANCE ##############
 
 #lf_var <- list.files(path=in_dir_var,pattern="*.tif$",full.names=T)
 #r_var <- stack(lf_var) # create a raster stack, this is not directly stored in memory
@@ -213,6 +136,9 @@ reg_sf <- st_transform(reg_sf,
                        crs=CRS_reg)
 reg_sp <-as(reg_sf, "Spatial") 
 plot(reg_sf$geometry)
+
+#this is at 926m
+rast_ref_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
 
 #r_tmp <- subset(r_refl_ts,1)
 r_tmp <- brick(lf_reflectance[1])
@@ -349,5 +275,85 @@ histogram(r)
 
 getData('SRTM', lon=5, lat=45)
 #<- st_centroid(reg_sf)
+
+######################## PART II: PROCESSING NLCD ##############
+
+#r_2006_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img")
+#r_2011_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img")
+
+r_2006_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img")
+r_2011_nlcd30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img")
+
+#r_nlcd_2006_30m <- raster("/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006.tif")
+r_2006_nlcd30m
+r_2011_nlcd30m
+dataType(r_2006_nlcd30m)
+dataType(r_2011_nlcd30m)
+legend_col <- r_2006_nlcd30m@legend
+class(legend_col)
+
+lc_nlcd_legend <- r_2006_nlcd30m@data@attributes[[1]]
+class(lc_nlcd_legend) #this is a data.frame
+View(lc_nlcd_legend)
+names(lc_nlcd_legend)
+write.table(lc_nlcd_legend,file=,sep=",")
+#lc_types <- r_2006_nlcd30m@data@attributes[[1]]$Land.Cover.Class
+#unique(legend_col@colortable)
+#[1] "#000000" "#00F900" "#476BA0" "#D1DDF9" "#DDC9C9" "#D89382"
+#[7] "#ED0000" "#AA0000" "#B2ADA3" "#F9F9F9" "#68AA63" "#1C6330"
+#[13] "#B5C98E" "#A58C30" "#CCBA7C" "#E2E2C1" "#C9C977" "#99C147"
+#[19] "#77AD93" "#DBD83D" "#AA7028" "#BAD8EA" "#B5D3E5" "#70A3BA"
+
+#Need to reclass values in NLCD and plot different classes
+
+reg_sf_nlcd <- st_transform(reg_sf,projection(r_2006_nlcd30m))
+reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
+r_2006_nlcd30m_RITA <- crop(r_2006_nlcd30m,reg_sp_nlcd,"r_2006_nlcd30m.tif",overwrite=T)
+r_2011_nlcd30m_RITA <- crop(r_2011_nlcd30m,reg_sp_nlcd,"r_2011_nlcd30m.tif",overwrite=T)
+
+plot(r_2006_nlcd30m_RITA)
+plot(r_2011_nlcd30m_RITA)
+
+#freq(r_nlcd30m_RITA)
+
+## input files to aggregate
+l_rast <- list(r_2006_nlcd30m_RITA,r_2011_nlcd30m_RITA)
+#cat_names <- NULL
+names(l_rast) <- c("nlcd2006_RITA","nlcd2011_RITA")
+cat_names <- c("nlcd2006_RITA","nlcd2011_RITA")
+
+#this is at 926m
+rast_ref_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
+
+### Get to 1km (or ~926m):
+debug(aggregate_raster_fun)
+
+agg_obj_1km <- aggregate_raster_fun(l_rast,
+                                    cat_names=cat_names,
+                                    agg_method_cat="majority",
+                                    agg_fact=NULL, #if null will look for the ref image to determine
+                                    agg_fun=mean,
+                                    file_format=file_format,
+                                    rast_ref=rast_ref_1km,
+                                    num_cores=num_cores,
+                                    out_suffix=out_suffix, 
+                                    out_dir=out_dir)
+
+agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif
+agg_31_r_nlcd2011_RITA_nlcd2011_RITA_exercise5_03052018.tif
+
+rast_ref
+
+rast_agg31_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif")
+rast_ref <- raster(rast_ref_filename)
+projection(rast_ref) <- CRS_reg
+nlcd2006_reg <- projectRaster(rast_agg31_nlcd2006,rast_ref,metho="ngb")
+plot(nlcd2006_reg)
+nlcd2006_reg
+
+writeRaster(nlcd2006_reg,filename = "nlcd_2006_RITA.tif")
+rast_agg31_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_exercise5_03052018.tif")
+
+
 
 ################### End of Script #########################
