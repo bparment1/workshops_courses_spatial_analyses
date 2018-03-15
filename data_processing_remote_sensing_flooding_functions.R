@@ -122,7 +122,7 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
   #
   # Authors: Benoit Parmentier
   # Created: 03/02/2017
-  # Modified: 03/08/2018
+  # Modified: 03/15/2018
   # To Do: 
   # - Add option to disaggregate
   #
@@ -197,12 +197,12 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
     
     ## Use loop because we already have a num_cores
     l_rast_cat <- vector("list",length=length(selected_cat_layers))
-    for(i in 1:length(selected_cat_layers)){
+    for(j in 1:length(selected_cat_layers)){
       
       #debug(generate_soft_cat_aggregated_raster_fun)
       #out_suffix_str <- out_suffix #may change this to included "majority" in the name
       out_suffix_str <- paste(cat_names[i],"_",out_suffix,sep="")
-      raster_name_cat <- l_rast[selected_cat_layers][[i]]
+      raster_name_cat <- l_rast[selected_cat_layers][[j]]
       
       lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name_cat,
                                                              reg_ref_rast=rast_ref,
@@ -246,13 +246,14 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
         #fix this to add other otpions e.g. aggregating down
       }
       #output aggregated categorical layer:
-      raster_name <- paste0("agg_",agg_fact_val,"_","r_",cat_names[i],"_",out_suffix_str,file_format)
+      raster_name <- paste0("agg_",agg_fact_val,"_","r_",cat_names[j],"_",out_suffix_str,file_format)
       
       writeRaster(rast_zonal,
                   filename=file.path(out_dir,raster_name),
                   overwrite=TRUE)  
       
-      l_rast_cat[[i]] <- rast_zonal 
+      #l_rast_cat[[i]] <- rast_zonal 
+      l_rast_cat[[j]] <- raster_name 
       
     }
     
@@ -426,16 +427,16 @@ generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_
   #r_var_s <- mclapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
   
   #debug(aggregate_raster)
-  #lf_agg <- aggregate_raster(lf_layerized_bool[1],
-  #                           #r_in=raster(lf_layerized_bool[1]),
-  #                           agg_fact=agg_fact,
-  #                           reg_ref_rast=reg_ref_rast,
-  #                           #agg_fun="mean",
-  #                           agg_fun=agg_fun,
-  #                           out_suffix=NULL,
-  #                           file_format=file_format,
-  #                           out_dir=out_dir,
-  #                           out_rast_name = NULL)
+  lf_agg <- aggregate_raster(lf_layerized_bool[1],
+                             #r_in=raster(lf_layerized_bool[1]),
+                             agg_fact=agg_fact,
+                             reg_ref_rast=reg_ref_rast,
+                             #agg_fun="mean",
+                             agg_fun=agg_fun,
+                             out_suffix=NULL,
+                             file_format=file_format,
+                             out_dir=out_dir,
+                             out_rast_name = NULL)
 
   lf_agg <- mclapply(lf_layerized_bool,
                      FUN=aggregate_raster,
@@ -478,7 +479,7 @@ aggregate_raster <- function(r_in, agg_fact, reg_ref_rast=NULL,agg_fun="mean",ou
   #
   # Authors: Benoit Parmentier
   # Created: 10/15/2015
-  # Modified: 03/08/2017
+  # Modified: 03/15/2017
   # To Do: 
   # - Add option to disaggregate
   #
@@ -489,11 +490,14 @@ aggregate_raster <- function(r_in, agg_fact, reg_ref_rast=NULL,agg_fun="mean",ou
     r_in <- raster(r_in)
   }
 
-  ##If file is provided rather than RasterLayer
-  if(class(reg_ref_rast)!="RasterLayer"){
-    reg_ref_rast <- raster(reg_ref_rast)
+  if(!is.null(reg_ref_rast)){
+    ##If file is provided rather than RasterLayer
+    if(class(reg_ref_rast)!="RasterLayer"){
+      reg_ref_rast <- raster(reg_ref_rast)
+    }
   }
   
+  ### Compute aggregation factor if no ref image...
   if(is.null(agg_fact)){
     res_ref <- res(reg_ref_rast)[1] #assumes square cells, and decimal degrees from WGS84 for now...
     res_in <- res(r_in)[1] #input resolution, assumes decimal degrees
