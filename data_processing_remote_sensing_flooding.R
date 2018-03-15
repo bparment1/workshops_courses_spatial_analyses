@@ -43,8 +43,9 @@ library(sf)
 
 ###### Functions used in this script
 
-data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03082018b.R" #PARAM 1
-script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/R_scripts"
+data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03152018.R" #PARAM 1
+script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/R_scripts"
+
 source(file.path(script_path,data_processing_functions)) #source all functions used in this script 1.
 
 #####  Parameters and argument set up ###########
@@ -422,13 +423,16 @@ write.table(lc_nlcd_legend,file=lc_nlcd_legend_filename,sep=",")
 
 
 list_reg_outline <- list(infile_reg_outline_RITA,infile_reg_outline_Houston_city_limits)
-list_ref_filename <- 
+#list_ref_filename <- 
 #Make a function later:
 #inputs:
 #ref
 #this is at 926m
 rast_ref_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
-list_out_suffix <- c("RITA","Houston")
+list_out_suffix <- list("RITA","Houston")
+list_ref_rast_name <- list(rast_ref_filename,NULL)
+list_agg_fact_val <- list("NULL",3) 
+#names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 
 i<-2
 for(i in 1:length(list_reg_outline)){
@@ -437,6 +441,8 @@ for(i in 1:length(list_reg_outline)){
   
   infile_reg_outline <- list_reg_outline[[i]]
   out_suffix_str <- list_out_suffix[[i]]
+  ref_rast_name <- list_ref_rast_name[[i]]
+  agg_fact_val <- list_agg_fact_val[[i]] #3 for Houston
   
   reg_sf <- st_read(infile_reg_outline)
   reg_sf <- st_transform(reg_sf,
@@ -450,12 +456,21 @@ for(i in 1:length(list_reg_outline)){
     projection(rast_ref) <- CRS_reg
     #r_tmp <- subset(r_refl_ts,1)
     
+  }else{
+    rast_ref <- NULL
   }
   
   reg_sf_nlcd <- st_transform(reg_sf,projection(r_2006_nlcd30m))
   reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
-  r_2006_nlcd30m <- crop(r_2006_nlcd30m,reg_sp_nlcd,"r_2006_nlcd30m.tif",overwrite=T)
-  r_2011_nlcd30m <- crop(r_2011_nlcd30m,reg_sp_nlcd,"r_2011_nlcd30m.tif",overwrite=T)
+  #out_suffix_str
+  r_2006_nlcd30m <- crop(r_2006_nlcd30m,
+                         reg_sp_nlcd,
+                         paste0("r_2006_nlcd30m_",out_suffix_str,file_format),
+                         overwrite=T)
+  r_2011_nlcd30m <- crop(r_2011_nlcd30m,
+                         reg_sp_nlcd,
+                         paste0("r_2011_nlcd30m_",out_suffix_str,file_format),
+                         overwrite=T)
   
   plot(r_2006_nlcd30m,main="2006")
   plot(r_2011_nlcd30m,main="2011")
@@ -470,10 +485,10 @@ for(i in 1:length(list_reg_outline)){
   
   ### Get to 1km (or ~926m):
   #debug(aggregate_raster_fun)
-  agg_fact_val <- agg_fact_val[[i]] #3 for Houston
   #agg_fact_val <- 3
-  rast_ref <- NULL
-  agg_obj_1km <- aggregate_raster_fun(l_rast[[1]],
+  #rast_ref <- NULL
+  
+  agg_obj <- aggregate_raster_fun(l_rast,
                                       cat_names=cat_names,
                                       agg_method_cat="majority",
                                       agg_fact=agg_fact_val, #if null will look for the ref image to determine
@@ -481,22 +496,31 @@ for(i in 1:length(list_reg_outline)){
                                       file_format=file_format,
                                       rast_ref=rast_ref,
                                       num_cores=num_cores,
-                                      out_suffix=out_suffix, 
+                                      out_suffix=out_suffix_str, 
                                       out_dir=out_dir)
-  
+  #agg_obj <- agg_obj_1km
   #names(obj_agg) <- c("cat_names","l_rast_cat","l_rast_continuous")
-  agg_obj_1km$l_rast_cat
+  agg_obj$l_rast_cat
   
-  rast_agg31_nlcd2006_aea_RITA <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_data_preprocessing_03142018.tif")
-  rast_agg31_nlcd2011_aea_RITA <- raster("agg_31_r_nlcd2011_RITA_nlcd2011_RITA_data_preprocessing_03142018.tif")
+  #rast_agg_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_data_preprocessing_03142018.tif")
+  #rast_agg_nlcd2011_aea_RITA <- raster("agg_31_r_nlcd2011_RITA_nlcd2011_RITA_data_preprocessing_03142018.tif")
   
-  nlcd2006_reg_RITA <- projectRaster(rast_agg31_nlcd2006_aea_RITA,rast_ref,metho="ngb")
-  plot(nlcd2006_reg_RITA)
-  nlcd2011_reg_RITA <- projectRaster(rast_agg31_nlcd2011_aea_RITA,rast_ref,metho="ngb")
-  plot(nlcd2011_reg_RITA)
+  if(!is.null(rast_ref)){
+    nlcd2006_agg_reg <- projectRaster(agg_obj$l_rast_cat[[1]],
+                                      rast_ref,
+                                      method ="ngb")
+    
+    plot(nlcd2006_agg_reg)
+    nlcd2011_reg_RITA <- projectRaster(agg_obj$l_rast_cat[[1]],
+                                       rast_ref,
+                                       method="ngb")
+    plot(nlcd2011_agg_reg)
+    
+  }
   
-  writeRaster(nlcd2006_reg_RITA,filename = "nlcd_2006_RITA.tif",overwrite=T)
-  writeRaster(nlcd2011_reg_RITA,filename = "nlcd_2011_RITA.tif",overwrite=T)
+  #out_filename <- filename(agg_obj$l_rast_cat[[1]])
+  #writeRaster(nlcd2006_reg_RITA,filename = "nlcd_2006_RITA.tif",overwrite=T)
+  #writeRaster(nlcd2011_reg_RITA,filename = "nlcd_2011_RITA.tif",overwrite=T)
   
 }
 
