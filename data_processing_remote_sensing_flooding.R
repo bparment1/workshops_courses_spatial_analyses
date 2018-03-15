@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/14/2018
+#DATE MODIFIED: 03/15/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -54,7 +54,7 @@ in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/"
 out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/"
 
 #Source:https://cohgis-mycity.opendata.arcgis.com/datasets/houston-city-limit
-infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit.shp"
+infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit/Houston_City_Limit.shp"
 infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
 infilename_2006_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img"
 infilename_2011_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img"
@@ -65,7 +65,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 
 file_format <- ".tif" #PARAM5
 NA_flag_val <- -9999 #PARAM7
-out_suffix <-"data_preprocessing_03142018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"data_preprocessing_03152018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 
@@ -336,6 +336,49 @@ plot(r_test)
 histogram(r_test)
 histogram(r)
 
+
+###### For Houston area:
+#mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_02132018.tif
+#mosaiced_MOD09A1_A2005273__006_reflectance_masked_RITA_02132018.tif
+
+mosaic_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/mosaic_output/mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_02132018.tif"
+r_mosaiced <- brick(mosaic_filename)
+
+plot(r_mosaiced)
+#crop()
+
+#ref_rast_tmp <-raster(list_var_mosaiced[[1]]) 
+method_proj_val <- "bilinear" 
+#method_proj_val <- "ngb" 
+
+ref_rast_prj <-projectRaster(from=r_mosaiced,
+                             res=res(r_mosaiced), #set resolution to the same as input
+                             crs=CRS_reg,
+                             method=method_proj_val)
+
+##This is the mosaiced and reproject tiles matching:
+ref_rast_prj_name_generated <- paste("ref_mosaiced_input_rast_",out_suffix,file_format,sep="")
+writeRaster( ref_rast_prj,file.path(out_dir,ref_rast_prj_name_generated))
+
+#to define a local reference system and reproject later!!
+#Assign new projection system here in the argument CRS_reg (!it is used later)
+
+infile_reg_outline <- infile_reg_outline_Houston_city_limits
+reg_sf <- st_read(infile_reg_outline)
+reg_sf <- st_transform(reg_sf,crs=CRS_reg)
+reg_sp <-as(reg_sf, "Spatial") 
+
+ref_rast <- crop(ref_rast_prj,reg_sp)  
+ref_rast_name_generated <- paste("ref_rast_generated_Houston_",out_suffix,file_format,sep="")
+writeRaster(ref_rast,file.path(out_dir,ref_rast_name_generated))
+
+### This is only for 2005!!!
+plot(ref_rast)
+names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
+
+#mosaic_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/mosaic_output/mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_02132018.tif"
+#r_mosaiced <- brick(mosaic_filename)
+
 ######################## PART II: PROCESSING NLCD ##############
 
 infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit.shp"
@@ -374,63 +417,88 @@ write.table(lc_nlcd_legend,file=lc_nlcd_legend_filename,sep=",")
 #infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit.shp"
 #infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
 
-reg_sf_RITA <- st_read(infile_reg_outline_RITA)
-reg_sf_RITA <- st_transform(reg_sf_RITA,
-                       crs=CRS_reg)
-reg_sp_RITA <- as(reg_sf_RITA, "Spatial") 
-plot(reg_sf_RITA$geometry)
+### Now generate NLCD for each region:
 
-#this is at 926m
-rast_ref <- raster(ref_rast_name)
-projection(rast_ref) <- CRS_reg
-#r_tmp <- subset(r_refl_ts,1)
 
-reg_sf_nlcd_RITA <- st_transform(reg_sf_RITA,projection(r_2006_nlcd30m))
-reg_sp_nlcd_RITA <- as(reg_sf_nlcd_RITA,"Spatial")
-r_2006_nlcd30m_RITA <- crop(r_2006_nlcd30m,reg_sp_nlcd_RITA,"r_2006_nlcd30m.tif",overwrite=T)
-r_2011_nlcd30m_RITA <- crop(r_2011_nlcd30m,reg_sp_nlcd_RITA,"r_2011_nlcd30m.tif",overwrite=T)
 
-plot(r_2006_nlcd30m_RITA)
-plot(r_2011_nlcd30m_RITA)
-
-#freq(r_nlcd30m_RITA)
-
-## input files to aggregate
-l_rast <- list(r_2006_nlcd30m_RITA,r_2011_nlcd30m_RITA)
-#cat_names <- NULL
-names(l_rast) <- c("nlcd2006_RITA","nlcd2011_RITA")
-cat_names <- c("nlcd2006_RITA","nlcd2011_RITA")
-
+list_reg_outline <- list(infile_reg_outline_RITA,infile_reg_outline_Houston_city_limits)
+list_ref_filename <- 
+#Make a function later:
+#inputs:
+#ref
 #this is at 926m
 rast_ref_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
+list_out_suffix <- c("RITA","Houston")
 
-### Get to 1km (or ~926m):
-#debug(aggregate_raster_fun)
-
-agg_obj_1km <- aggregate_raster_fun(l_rast,
-                                    cat_names=cat_names,
-                                    agg_method_cat="majority",
-                                    agg_fact=NULL, #if null will look for the ref image to determine
-                                    agg_fun=mean,
-                                    file_format=file_format,
-                                    rast_ref=rast_ref,
-                                    num_cores=num_cores,
-                                    out_suffix=out_suffix, 
-                                    out_dir=out_dir)
-
-#names(obj_agg) <- c("cat_names","l_rast_cat","l_rast_continuous")
-agg_obj_1km$l_rast_cat
-
-rast_agg31_nlcd2006_aea_RITA <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_data_preprocessing_03142018.tif")
-rast_agg31_nlcd2011_aea_RITA <- raster("agg_31_r_nlcd2011_RITA_nlcd2011_RITA_data_preprocessing_03142018.tif")
-
-nlcd2006_reg_RITA <- projectRaster(rast_agg31_nlcd2006_aea_RITA,rast_ref,metho="ngb")
-plot(nlcd2006_reg_RITA)
-nlcd2011_reg_RITA <- projectRaster(rast_agg31_nlcd2011_aea_RITA,rast_ref,metho="ngb")
-plot(nlcd2011_reg_RITA)
-
-writeRaster(nlcd2006_reg_RITA,filename = "nlcd_2006_RITA.tif",overwrite=T)
-writeRaster(nlcd2011_reg_RITA,filename = "nlcd_2011_RITA.tif",overwrite=T)
+i<-2
+for(i in 1:length(list_reg_outline)){
+  #
+  #
+  
+  infile_reg_outline <- list_reg_outline[[i]]
+  out_suffix_str <- list_out_suffix[[i]]
+  
+  reg_sf <- st_read(infile_reg_outline)
+  reg_sf <- st_transform(reg_sf,
+                              crs=CRS_reg)
+  reg_sp <- as(reg_sf, "Spatial") 
+  plot(reg_sf$geometry)
+  
+  #this is at 926m
+  if(!is.null(ref_rast_name)){
+    rast_ref <- raster(ref_rast_name)
+    projection(rast_ref) <- CRS_reg
+    #r_tmp <- subset(r_refl_ts,1)
+    
+  }
+  
+  reg_sf_nlcd <- st_transform(reg_sf,projection(r_2006_nlcd30m))
+  reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
+  r_2006_nlcd30m <- crop(r_2006_nlcd30m,reg_sp_nlcd,"r_2006_nlcd30m.tif",overwrite=T)
+  r_2011_nlcd30m <- crop(r_2011_nlcd30m,reg_sp_nlcd,"r_2011_nlcd30m.tif",overwrite=T)
+  
+  plot(r_2006_nlcd30m,main="2006")
+  plot(r_2011_nlcd30m,main="2011")
+  
+  #freq(r_nlcd30m_RITA)
+  
+  ## input files to aggregate
+  l_rast <- list(r_2006_nlcd30m,r_2011_nlcd30m)
+  #cat_names <- NULL
+  names(l_rast) <- c("nlcd2006","nlcd2011")
+  cat_names <- c("nlcd2006","nlcd2011")
+  
+  ### Get to 1km (or ~926m):
+  #debug(aggregate_raster_fun)
+  agg_fact_val <- agg_fact_val[[i]] #3 for Houston
+  #agg_fact_val <- 3
+  rast_ref <- NULL
+  agg_obj_1km <- aggregate_raster_fun(l_rast[[1]],
+                                      cat_names=cat_names,
+                                      agg_method_cat="majority",
+                                      agg_fact=agg_fact_val, #if null will look for the ref image to determine
+                                      agg_fun=mean,
+                                      file_format=file_format,
+                                      rast_ref=rast_ref,
+                                      num_cores=num_cores,
+                                      out_suffix=out_suffix, 
+                                      out_dir=out_dir)
+  
+  #names(obj_agg) <- c("cat_names","l_rast_cat","l_rast_continuous")
+  agg_obj_1km$l_rast_cat
+  
+  rast_agg31_nlcd2006_aea_RITA <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_data_preprocessing_03142018.tif")
+  rast_agg31_nlcd2011_aea_RITA <- raster("agg_31_r_nlcd2011_RITA_nlcd2011_RITA_data_preprocessing_03142018.tif")
+  
+  nlcd2006_reg_RITA <- projectRaster(rast_agg31_nlcd2006_aea_RITA,rast_ref,metho="ngb")
+  plot(nlcd2006_reg_RITA)
+  nlcd2011_reg_RITA <- projectRaster(rast_agg31_nlcd2011_aea_RITA,rast_ref,metho="ngb")
+  plot(nlcd2011_reg_RITA)
+  
+  writeRaster(nlcd2006_reg_RITA,filename = "nlcd_2006_RITA.tif",overwrite=T)
+  writeRaster(nlcd2011_reg_RITA,filename = "nlcd_2011_RITA.tif",overwrite=T)
+  
+}
 
 
 
