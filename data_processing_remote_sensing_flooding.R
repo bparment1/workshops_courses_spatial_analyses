@@ -532,7 +532,7 @@ for(i in 1:length(list_reg_outline)){
 
 ########### Part III: Additional data ##############################
 
-### Might get elevation and Census??
+### Get srtm elevation data
 
 #getData('SRTM', lon=5, lat=45)
 #<- st_centroid(reg_sf)
@@ -550,7 +550,7 @@ infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_s
 srtm_list <- list.files(path=in_dir_var,pattern="*.tif",full.names=T)
 l_srtm <- lapply(srtm_list,function(x){raster(x)})
 
-r_m <- mosaic(l_srtm[[2]],l_srtm[[3]],l_srtm[[4]],fun=mean)
+r_m <- mosaic(l_srtm[[2]],l_srtm[[3]],l_srtm[[4]],l_srtm[[5]],fun=mean)
 
 reg_sf <- st_read(infile_reg_outline_Houston_city_limits)
 reg_sf <- st_transform(reg_sf,
@@ -561,7 +561,16 @@ plot(r_m)
 plot(reg_sf$geometry,add=T)
 plot(reg_sp,add=T)
 
+r_srtm <- crop(r_m,reg_sp)
+plot(r_srtm)
+plot(reg_sp,add=T)
 
-l_srtm[[1]]
+srtm_out_rastername <- "srtm_Houston_area_90m.tif"
+writeRaster(r_srtm,filename = file.path(out_dir,srtm_out_rastername))
+
+### Disaggregate at 30m??
+
+####### Get roads data
+
 
 ################################## End of Script #########################################
