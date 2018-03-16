@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/13/2018 
-#DATE MODIFIED: 03/14/2018
+#DATE MODIFIED: 03/15/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -68,23 +68,24 @@ load_obj <- function(f){
 
 #function_preprocessing_and_analyses <- "fire_alaska_analyses_preprocessing_functions_03102017.R" #PARAM 1
 #function_analyses <- "exercise2_fire_alaska_analyses_functions_03232017.R" #PARAM 1
-script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/R_scripts"
+script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/R_scripts"
 #source(file.path(script_path,function_preprocessing_and_analyses)) #source all functions used in this script 1.
 #source(file.path(script_path,function_analyses)) #source all functions used in this script 1.
 
 #####  Parameters and argument set up ###########
 
 #in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_6/data/reflectance_RITA"
-in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_6/data/"
-out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_6/outputs"
-infile_reg_outline <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/new_strata_rita_10282017.shp"
+in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_6/data/"
+out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop//Exercise_6/outputs"
+infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_6/data/revised_area_Rita/new_strata_rita_10282017.shp"
+
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise6_03132018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise6_03162018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 #ARG4
@@ -115,9 +116,18 @@ if(create_out_dir_param==TRUE){
 
 ## Second list.files and create raster images stack
 
+infile_land_cover_date1 <- "nlcd_2006_RITA.tif"
+#infile_land_cover_date2 <- "nlcd_2011_RITA.tif"
+
+nlcd2006_reg_RITA <- raster(file.path(in_dir_var,infile_land_cover_date1)) 
+
 plot(nlcd2006_reg_RITA==90)
 plot(nlcd2006_reg_RITA==95)
 plot(nlcd2006_reg_RITA==11)
+
+lc_legend_df <- read.table("nlcd_legend.txt",sep=",")
+lc_legend_df
+View(lc_legend_df)
 
 ## Read in table info?
 
@@ -149,7 +159,7 @@ plot(df_after[1,band_refl_order],col="red")
 
 ###### Now do a extraction for nlcd data
 
-nlcd_2006_filename <- file.path(in_dir_var,"nlcd_2006_RITA.tif")
+nlcd_2006_ filename <- file.path(in_dir_var,"nlcd_2006_RITA.tif")
 nlcd2006_reg <- raster(nlcd_2006_filename)
 
 plot(nlcd2006_reg)
