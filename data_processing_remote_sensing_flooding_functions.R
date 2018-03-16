@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/07/2018
+#DATE MODIFIED: 03/16/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -122,10 +122,10 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
   #
   # Authors: Benoit Parmentier
   # Created: 03/02/2017
-  # Modified: 03/15/2018
+  # Modified: 03/16/2018
   # To Do: 
   # - Add option to disaggregate
-  #
+  # - add additional options to do aggregation
   ################################
   
   
@@ -184,24 +184,13 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
   #if(!is.null(cat_names)==TRUE){
   if(sum(selected_cat_layers)>0){
       
-    
-    #l_rast_original
-    #r_r_srtm_Katrina_rec2_NDVI_Katrina_03162017.rst"
-    #r <- raster(paste0("r_",zonal_colnames,"_",out_suffix,file_format,sep=""))
-    
-    #selected_cat_layers <- names(l_rast)==cat_names
-    #raster_name <- (paste0("r_",cat_names,"_",out_suffix,file_format,sep="")) #can be a list of names
-    #out_suffix_str <- paste0("agg_zonal","_",out_suffix)
-    #debug(generate_soft_cat_aggregated_raster_fun)
-    #l_rast[selected_cat_layers]
-    
     ## Use loop because we already have a num_cores
     l_rast_cat <- vector("list",length=length(selected_cat_layers))
     for(j in 1:length(selected_cat_layers)){
       
       #debug(generate_soft_cat_aggregated_raster_fun)
       #out_suffix_str <- out_suffix #may change this to included "majority" in the name
-      out_suffix_str <- paste(cat_names[i],"_",out_suffix,sep="")
+      out_suffix_str <- paste(cat_names[j],"_",out_suffix,sep="")
       raster_name_cat <- l_rast[selected_cat_layers][[j]]
       
       lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name_cat,
@@ -219,9 +208,7 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
       }
       
       reclass_val <- unique(raster_name_cat) #unique zonal values to reassign
-      #reclass_val <- c(0,1,2) # value for the elevation reclassified
-      
-      #debug(reclass_in_majority)
+
       r_stack <- stack(lf_agg_soft)
       
       if(agg_method_cat=="majority"){
@@ -233,8 +220,9 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
         rast_zonal <- r_reclass_obj$r_rec
       }
       
-      #Other method here
+      #Other methods should bee added here here
       
+      ### Compute agg factor
       if(is.null(agg_fact)){
         if(is.character(rast_ref)){
           rast_ref <- raster(rast_ref)
@@ -245,9 +233,11 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
         
         #fix this to add other otpions e.g. aggregating down
       }
-      #output aggregated categorical layer:
-      raster_name <- paste0("agg_",agg_fact_val,"_","r_",cat_names[j],"_",out_suffix_str,file_format)
       
+      #output aggregated categorical layer:
+      raster_name <- paste0("agg_",agg_fact_val,"_","r_",out_suffix_str,file_format)
+      
+      #### Need to add multiband support
       writeRaster(rast_zonal,
                   filename=file.path(out_dir,raster_name),
                   overwrite=TRUE)  
