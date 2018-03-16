@@ -43,7 +43,7 @@ library(sf)
 
 ###### Functions used in this script
 
-data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03152018.R" #PARAM 1
+data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03162018.R" #PARAM 1
 script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/R_scripts"
 
 source(file.path(script_path,data_processing_functions)) #source all functions used in this script 1.
@@ -59,6 +59,7 @@ infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_s
 #                                           /nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit
 infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
 infilename_2006_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img"
+infilename_2001_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2001_landcover_2011_edition_2014_10_10/nlcd_2001_landcover_2011_edition_2014_10_10.img"
 infilename_2011_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img"
 
 #region coordinate reference system
@@ -67,7 +68,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 
 file_format <- ".tif" #PARAM5
 NA_flag_val <- -9999 #PARAM7
-out_suffix <-"data_preprocessing_03162018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"data_preprocessing_03172018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 
@@ -383,17 +384,20 @@ names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 
 ######################## PART II: PROCESSING NLCD ##############
 
-infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit.shp"
-infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
+#infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit.shp"
+#infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
 
 ###### Need to process for two areas of study!!!
 
+r_2001_nlcd30m <- raster(infilename_2001_nlcd30m)
 r_2006_nlcd30m <- raster(infilename_2006_nlcd30m)
 r_2011_nlcd30m <- raster(infilename_2011_nlcd30m)
 
 r_2006_nlcd30m
+r_2001_nlcd30m
+
 r_2011_nlcd30m
-dataType(r_2006_nlcd30m)
+dataType(r_2001_nlcd30m)
 dataType(r_2011_nlcd30m)
 legend_col <- r_2006_nlcd30m@legend
 class(legend_col)
@@ -462,28 +466,28 @@ for(i in 1:length(list_reg_outline)){
     rast_ref <- NULL
   }
   
-  reg_sf_nlcd <- st_transform(reg_sf,projection(r_2006_nlcd30m))
+  reg_sf_nlcd <- st_transform(reg_sf,projection(r_2001_nlcd30m))
   reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
   #out_suffix_str
-  r_2006_nlcd30m_reg <- crop(r_2006_nlcd30m,
+  r_2001_nlcd30m_reg <- crop(r_2001_nlcd30m,
                          reg_sp_nlcd,
-                         paste0("r_2006_nlcd30m_",out_suffix_str,file_format),
+                         paste0("r_2001_nlcd30m_",out_suffix_str,file_format),
                          overwrite=T)
   r_2011_nlcd30m_reg <- crop(r_2011_nlcd30m,
                          reg_sp_nlcd,
                          filename=paste0("r_2011_nlcd30m_",out_suffix_str,file_format),
                          overwrite=T)
   
-  plot(r_2006_nlcd30m_reg,main="2006")
+  plot(r_2001_nlcd30m_reg,main="2006")
   plot(r_2011_nlcd30m_reg,main="2011")
   
   #freq(r_nlcd30m_RITA)
   
   ## input files to aggregate
-  l_rast <- list(r_2006_nlcd30m,r_2011_nlcd30m)
+  l_rast <- list(r_2001_nlcd30m,r_2011_nlcd30m)
   #cat_names <- NULL
-  names(l_rast) <- c("nlcd2006","nlcd2011")
-  cat_names <- c("nlcd2006","nlcd2011")
+  names(l_rast) <- c("nlcd2001","nlcd2011")
+  cat_names <- c("nlcd2001","nlcd2011")
   
   ### Get to 1km (or ~926m):
   #debug(aggregate_raster_fun)
