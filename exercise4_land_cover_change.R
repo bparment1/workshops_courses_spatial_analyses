@@ -114,19 +114,52 @@ if(create_out_dir_param==TRUE){
 
 ## Second list.files and create raster images stack
 
-plot(nlcd2006_reg_RITA==90)
-plot(nlcd2006_reg_RITA==95)
-plot(nlcd2006_reg_RITA==11)
+# agg_3_r_nlcd2006_Houston.tif
+# agg_3_r_nlcd2011_Houston.tif
+# nlcd_legend.txt
+# r_2006_nlcd30m_Houston.tif.aux.xml
+# r_2006_nlcd30m_Houston.tif
+# r_2011_nlcd30m_Houston.tif.aux.xml
+# r_2011_nlcd30m_Houston.tif
 
-## Read in table info?
+infile_land_cover_date1 <- "r_2006_nlcd30m_Houston.tif"
+infile_land_cover_date2 <- "r_2011_nlcd30m_Houston.tif"
+ 
+r_lc_date1 <- raster(infile_land_cover_date1) 
+r_lc_date2 <- raster(infile_land_cover_date2) 
 
-nlcd_2006_filename <- file.path(in_dir_var,"nlcd_2006_RITA.tif")
-nlcd2006_reg <- raster(nlcd_2006_filename)
+lc_legend_df <- read.table("nlcd_legend.txt",sep=",")
+lc_legend_df
+View(lc_legend_df)
+plot(r_lc_date1==90)
+plot(r_lc_date2==95)
+plot(r_lc_date1==11)
 
-plot(nlcd2006_reg)
+plot(r_lc_date1)
 
+freq_tb_date1 <- freq(r_lc_date1)
+freq_tb_date2 <- freq(r_lc_date2)
 
+View(freq_tb_date1)
+View(freq_tb_date2)
 
+freq_tb_date1 <- merge(freq_tb_date1,lc_legend_df,by.x="value",by.y="ID")
+freq_tb_date2 <- merge(freq_tb_date2,lc_legend_df,by.x="value",by.y="ID")
+
+freq_tb_date1$date <- 2006
+freq_tb_date2$date <- 2011
+
+### No category disappeared:
+freq_tb_date1$value==freq_tb_date2$value
+
+lc_df <- data.frame(ID=freq_tb_date1$value,
+           lc2006=freq_tb_date1$COUNT,
+           lc2011=freq_tb_date2$COUNT,
+           name=freq_tb_date1$NLCD.2006.Land.Cover.Class)
+
+lc_df$diff <- lc_df$lc2011 - lc_df$lc2006 
+
+View(lc_df)
 
 ################### End of Script #########################
 
