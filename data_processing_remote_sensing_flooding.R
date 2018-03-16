@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/15/2018
+#DATE MODIFIED: 03/16/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -56,6 +56,7 @@ out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/"
 
 #Source:https://cohgis-mycity.opendata.arcgis.com/datasets/houston-city-limit
 infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit/Houston_City_Limit.shp"
+#                                           /nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit
 infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/new_strata_rita_10282017.shp"
 infilename_2006_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img"
 infilename_2011_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img"
@@ -66,7 +67,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 
 file_format <- ".tif" #PARAM5
 NA_flag_val <- -9999 #PARAM7
-out_suffix <-"data_preprocessing_03152018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"data_preprocessing_03162018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 
@@ -435,6 +436,7 @@ list_agg_fact_val <- list("NULL",3)
 #names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 
 i<-2
+
 for(i in 1:length(list_reg_outline)){
   #
   #
@@ -463,17 +465,17 @@ for(i in 1:length(list_reg_outline)){
   reg_sf_nlcd <- st_transform(reg_sf,projection(r_2006_nlcd30m))
   reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
   #out_suffix_str
-  r_2006_nlcd30m <- crop(r_2006_nlcd30m,
+  r_2006_nlcd30m_reg <- crop(r_2006_nlcd30m,
                          reg_sp_nlcd,
                          paste0("r_2006_nlcd30m_",out_suffix_str,file_format),
                          overwrite=T)
-  r_2011_nlcd30m <- crop(r_2011_nlcd30m,
+  r_2011_nlcd30m_reg <- crop(r_2011_nlcd30m,
                          reg_sp_nlcd,
-                         paste0("r_2011_nlcd30m_",out_suffix_str,file_format),
+                         filename=paste0("r_2011_nlcd30m_",out_suffix_str,file_format),
                          overwrite=T)
   
-  plot(r_2006_nlcd30m,main="2006")
-  plot(r_2011_nlcd30m,main="2011")
+  plot(r_2006_nlcd30m_reg,main="2006")
+  plot(r_2011_nlcd30m_reg,main="2011")
   
   #freq(r_nlcd30m_RITA)
   
@@ -498,10 +500,8 @@ for(i in 1:length(list_reg_outline)){
                                       num_cores=num_cores,
                                       out_suffix=out_suffix_str, 
                                       out_dir=out_dir)
-  #agg_obj <- agg_obj_1km
-  #names(obj_agg) <- c("cat_names","l_rast_cat","l_rast_continuous")
   agg_obj$l_rast_cat
-  
+  names(agg_obj)
   #rast_agg_nlcd2006_aea <- raster("agg_31_r_nlcd2006_RITA_nlcd2006_RITA_data_preprocessing_03142018.tif")
   #rast_agg_nlcd2011_aea_RITA <- raster("agg_31_r_nlcd2011_RITA_nlcd2011_RITA_data_preprocessing_03142018.tif")
   
