@@ -83,7 +83,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise4_03152018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise4_03162018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 #ARG4
@@ -121,19 +121,21 @@ if(create_out_dir_param==TRUE){
 # r_2006_nlcd30m_Houston.tif
 # r_2011_nlcd30m_Houston.tif.aux.xml
 # r_2011_nlcd30m_Houston.tif
-
-infile_land_cover_date1 <- "r_2006_nlcd30m_Houston.tif"
-infile_land_cover_date2 <- "r_2011_nlcd30m_Houston.tif"
+infile_land_cover_date1 <- file.path(in_dir_var,"r_2001_nlcd30m_Houston.tif")
+#infile_land_cover_date1 <- "r_2006_nlcd30m_Houston.tif"
+infile_land_cover_date2 <- file.path(in_dir_var,"r_2011_nlcd30m_Houston.tif")
  
 r_lc_date1 <- raster(infile_land_cover_date1) 
 r_lc_date2 <- raster(infile_land_cover_date2) 
 
-lc_legend_df <- read.table("nlcd_legend.txt",sep=",")
+lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),sep=",")
 lc_legend_df
 View(lc_legend_df)
 plot(r_lc_date1==90)
 plot(r_lc_date2==95)
 plot(r_lc_date1==11)
+plot(r_lc_date1)
+plot(r_lc_date2)
 
 plot(r_lc_date1)
 
@@ -146,20 +148,28 @@ View(freq_tb_date2)
 freq_tb_date1 <- merge(freq_tb_date1,lc_legend_df,by.x="value",by.y="ID")
 freq_tb_date2 <- merge(freq_tb_date2,lc_legend_df,by.x="value",by.y="ID")
 
-freq_tb_date1$date <- 2006
+freq_tb_date1$date <- 2001
 freq_tb_date2$date <- 2011
 
 ### No category disappeared:
 freq_tb_date1$value==freq_tb_date2$value
+#lc_df <- data.frame(ID=freq_tb_date1$value,
+#                    lc2006=freq_tb_date1$COUNT,#count is wrong!!!! that is from 2006
+#                    lc2011=freq_tb_date2$COUNT)
 
 lc_df <- data.frame(ID=freq_tb_date1$value,
-           lc2006=freq_tb_date1$COUNT,
-           lc2011=freq_tb_date2$COUNT,
+           lc2001=freq_tb_date1$count,
+           lc2011=freq_tb_date2$count,
            name=freq_tb_date1$NLCD.2006.Land.Cover.Class)
 
-lc_df$diff <- lc_df$lc2011 - lc_df$lc2006 
+lc_df$diff <- lc_df$lc2011 - lc_df$lc2001 
 
 View(lc_df)
+#positive means increase, negative a decrease
+
+xtab_df <- crosstab(r_lc_date1,r_lc_date2)
+dim(xtab_df)
+View(xtab_df)
 
 ################### End of Script #########################
 
