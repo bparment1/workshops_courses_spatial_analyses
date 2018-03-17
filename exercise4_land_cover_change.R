@@ -171,5 +171,63 @@ xtab_df <- crosstab(r_lc_date1,r_lc_date2)
 dim(xtab_df)
 View(xtab_df)
 
-################### End of Script #########################
+### This removes the zero transitions:
+xtab_df_long <- crosstab(r_lc_date1,r_lc_date2,long=T)
+View(xtab_df_long)
 
+### What is the largest land transition?
+
+xtab_df_long[which.max(xtab_df_long$Freq),]
+#23:Developed, Medium Intensity
+
+lc_transitions_df <- xtab_df_long[order(xtab_df_long$Freq,decreasing=T),]
+View(lc_transitions_df)
+#let's remove all the persisence classes:
+
+#?crosstab
+
+persistence_cat <- lc_transitions_df$r_2001_nlcd30m_Houston==lc_transitions_df$r_2011_nlcd30m_Houston
+
+sum(persistence_cat)
+
+lc_change_df <- lc_transitions_df[!persistence_cat,]
+dim(lc_change_df)
+dim(lc_transitions_df)
+
+#View(lc_change_df)
+# Hay pasture: 81
+#Cultivated Crops: 82
+
+#21: Developed, Open Space
+#22: Developed, Low Intensity
+#23: Developed, Medium Intensity
+#24: Developed, High Intensity
+
+#highest transition: 21 to 23
+#second hightest: 81-23
+
+# Too much information: let's aggregate and summize the info:
+
+unique(lc_legend_df$ID)
+
+df_reclasss <- lc_legend_df$ID
+
+lc_df$ID
+View(lc_df)
+
+#as.character(lc_df$ID)[1]
+
+infile_name_nlcd_legend <- list.files(path=in_dir_var,pattern="*.xlsx",full.names=T)
+
+nlcd_legend_df <- read_xlsx(infile_name_nlcd_legend)
+View(nlcd_legend_df)
+names(nlcd_legend_df)
+
+class(lc_df$ID)
+nlcd_legend_df$id_l2
+class()
+nlcd_legend_df <- subset(nlcd_legend_df,id_l2%in%lc_df$ID ) 
+#test <- subset(nlcd_legend_df,nlcd_legend_df$id_l2==lc_df$ID ) 
+
+#View(test)
+#dim(test)
