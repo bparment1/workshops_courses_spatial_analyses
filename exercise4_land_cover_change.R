@@ -225,9 +225,98 @@ names(nlcd_legend_df)
 
 class(lc_df$ID)
 nlcd_legend_df$id_l2
-class()
 nlcd_legend_df <- subset(nlcd_legend_df,id_l2%in%lc_df$ID ) 
-#test <- subset(nlcd_legend_df,nlcd_legend_df$id_l2==lc_df$ID ) 
+dim(nlcd_legend_df)
 
-#View(test)
-#dim(test)
+rec_df <- nlcd_legend_df[,c(2,1)]
+class(rec_df$id_l1)
+class(rec_df$id_l2)
+
+#?reclassify
+#r_date1_rec <- subs(r_lc_date1,nlcd_legend_df[,1:2],by="id_l1","id_l2")
+r_date1_rec <- subs(r_lc_date1,rec_df,by="id_l2","id_l1")
+r_date2_rec <- subs(r_lc_date2,rec_df,by="id_l2","id_l1")
+
+plot(r_date1_rec)
+
+rec_xtab_df <- crosstab(r_date1_rec,r_date2_rec,long=T)
+names(rec_xtab_df) <- c("2001","2011","freq")
+View(rec_xtab_df)
+
+### plot urban growth and urban loss?
+
+### reclassify:  
+
+# change to urban from 2001 to 2011
+# compute rate of growth for a year and project in 2022
+# show in plot:
+
+## y= 1 if change to urban over 2001-2011
+### Suitability:
+#var1: distance to existing urban in 2001
+#var2: distance to road in 2001
+#var3: elevation, low slope
+#var4: landcover before
+
+#Suitable land cover:
+#-meadow is cheap: easier than forest
+#-forest ok
+#-urban: NA (already urban cannot transition)
+#
+
+## could also do a logistic
+
+ncell(r_date1_rec)
+
+### Make this a function:
+
+label_legend_df <- data.frame(ID=nlcd_legend_df$id_l1,name=nlcd_legend_df$name_l1)
+
+debug(compute_land_change_diff)
+r_stack <- stack(r_date1_rec,r_date2_rec)
+
+lc_df <- freq(r_stack,merge=T)
+names(lc_df) <- c("value","date1","date2")
+lc_df$diff <- lc_df$date2 - lc_df$date1
+
+View(lc_df)
+barplot(lc_df$diff)
+
+test_df <- merge(lc_df,label_legend_df,by.x="value",by.y="ID",all.y=F)
+test_df <- test_df[!duplicated(test_df),]
+
+View(test_df)
+
+test_df <- compute_land_change_diff(r_date1_rec,r_date1_rec)
+
+compute_land_change_diff <- function(r_date1,r_date2,legend_df=NULL){
+  
+  freq_tb_date1 <- as.data.frame(freq(r_date1))
+  freq_tb_date2 <- freq(r_date2)
+  class(freq_tb_date1)
+  View(freq_tb_date1)
+   ### No category disappeared:
+  if(freq_tb_date1$value==freq_tb_date2$value){
+    lc_df <- data.frame(ID=freq_tb_date1$value,
+                        date1=freq_tb_date1$count,
+                        date2=freq_tb_date2$count)
+  }else{
+    #use merge
+    lc_df <- merge(freq_tb_date1,freq_tab_date2, by="value")
+  }
+
+  #lc_df$diff <- lc_df$lc2011 - lc_df$lc2001 
+  lc_df$diff <- lc_df$date2 - lc_df$date1 
+  
+  if(!is.null(legend_df)){
+    lc_df <- merge(lc_df,legend_df,by.x="value",by.y="ID")
+  }
+
+  return(lc_df)
+}
+
+## Plot the changes here by land cover classes
+
+
+
+####################### End of script #####################################
