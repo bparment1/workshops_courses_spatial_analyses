@@ -295,6 +295,7 @@ View(change_tb)
 #var3: elevation, low slope
 #var4: landcover before
 #var5: conservation areas
+
 #Suitable land cover:
 #-meadow is cheap: easier than forest
 #-forest ok
@@ -316,42 +317,57 @@ if(gdal_installed==TRUE){
   ## Roads
   srcfile <- cat_bool_fname 
   
-  dstfile_distance <- file.path(out_dir,paste("roads_distance_",out_suffix,file_format,sep=""))
+  dstfile_developped <- file.path(out_dir,paste("developped_distance_",out_suffix,file_format,sep=""))
   n_values <- "1"
   
   ### Note that gdal_proximity doesn't like when path is too long
-  cmd_roads_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_distance),"-values",n_values,sep=" ")
+  cmd_developped_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_developped),"-values",n_values,sep=" ")
   #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
   
   ### Prepare command for FLMA
   
-  srcfile <- r_flma_clay_bool_fname 
-  dstfile_flma <- file.path(out_dir,paste("r_flma_clay_bool_distance_",out_suffix,file_format,sep=""))
-  n_values <- "1"
+  #srcfile <- r_flma_clay_bool_fname 
+  #dstfile_flma <- file.path(out_dir,paste("r_flma_clay_bool_distance_",out_suffix,file_format,sep=""))
+  #n_values <- "1"
   
   ### Note that gdal_proximity doesn't like when path is too long
-  cmd_flma_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_flma),"-values",n_values,sep=" ")
+  #cmd_flma_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_flma),"-values",n_values,sep=" ")
   #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
   
   sys_os <- as.list(Sys.info())$sysname
   
   if(sys_os=="Windows"){
-    shell(cmd_roads_str)
-    shell(cmd_flma_str)
+    shell(cmd_developped_str)
+    #shell(cmd_flma_str)
   }else{
-    system(cmd_roads_str)
-    system(cmd_flma_str)
+    system(cmd_developped_str)
+    #system(cmd_flma_str)
   }
-  r_flma_distance <- raster(dstfile_flma)
-  r_roads_distance <- raster(dstfile_roads)
+  #r_flma_distance <- raster(dstfile_flma)
+  #r_roads_distance <- raster(dstfile_roads)
+  r_developped_distance <- raster(dstfile_developped)
   
 }else{
-  r_roads_distance <- raster(file.path(in_dir,paste("roads_bool_distance_",file_format,sep="")))
-  r_flma_distance <- raster(file.path(in_dir_var,paste("r_flma_clay_bool_distance",file_format,sep="")))
+  r_developped_distance <- raster(file.path(in_dir,paste("roads_bool_distance_",file_format,sep="")))
+  #r_flma_distance <- raster(file.path(in_dir_var,paste("r_flma_clay_bool_distance",file_format,sep="")))
 }
 
+plot(r_developepd_distance)
 #Now rescale the distance...
-min_val <- cellStats(r_roads_distance,min) 
-max_val <- cellStats(r_roads_distance,max)
+#min_val <- cellStats(r_roads_distance,min) 
+#max_val <- cellStats(r_roads_distance,max)
+
+min_val <- cellStats(r_developped_distance,min) 
+max_val <- cellStats(r_developped_distance,max)
+
+### reclass Land cover
+#?mask
+r_mask <- r_date1_rec==2
+
+NAvalue(r_date1_rec_masked)
+r_date1_rec_masked <- mask(r_date1_rec,r_mask,maskvalue=1)
+#r_date1_rec[r_date1_rec==2] <- NA
+
+plot(r_date1_rec_masked)
 
 ####################### End of script #####################################
