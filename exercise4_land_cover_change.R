@@ -245,26 +245,6 @@ View(rec_xtab_df)
 
 ### plot urban growth and urban loss?
 
-### reclassify:  
-
-# change to urban from 2001 to 2011
-# compute rate of growth for a year and project in 2022
-# show in plot:
-
-## y= 1 if change to urban over 2001-2011
-### Suitability:
-#var1: distance to existing urban in 2001
-#var2: distance to road in 2001
-#var3: elevation, low slope
-#var4: landcover before
-
-#Suitable land cover:
-#-meadow is cheap: easier than forest
-#-forest ok
-#-urban: NA (already urban cannot transition)
-#
-
-## could also do a logistic
 
 ncell(r_date1_rec)
 
@@ -279,44 +259,99 @@ lc_df <- freq(r_stack,merge=T)
 names(lc_df) <- c("value","date1","date2")
 lc_df$diff <- lc_df$date2 - lc_df$date1
 
-View(lc_df)
-barplot(lc_df$diff)
-
 test_df <- merge(lc_df,label_legend_df,by.x="value",by.y="ID",all.y=F)
-test_df <- test_df[!duplicated(test_df),]
+lc_df <- test_df[!duplicated(test_df),]
 
-View(test_df)
+View(lc_df)
+barplot(lc_df$diff,names.arg=lc_df$name,las=2)
+total_val  <- sum(lc_df$date1)
+lc_df$perc_change <- 100*lc_df$diff/total_val 
+barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
 
-test_df <- compute_land_change_diff(r_date1_rec,r_date1_rec)
-
-compute_land_change_diff <- function(r_date1,r_date2,legend_df=NULL){
-  
-  freq_tb_date1 <- as.data.frame(freq(r_date1))
-  freq_tb_date2 <- freq(r_date2)
-  class(freq_tb_date1)
-  View(freq_tb_date1)
-   ### No category disappeared:
-  if(freq_tb_date1$value==freq_tb_date2$value){
-    lc_df <- data.frame(ID=freq_tb_date1$value,
-                        date1=freq_tb_date1$count,
-                        date2=freq_tb_date2$count)
-  }else{
-    #use merge
-    lc_df <- merge(freq_tb_date1,freq_tab_date2, by="value")
-  }
-
-  #lc_df$diff <- lc_df$lc2011 - lc_df$lc2001 
-  lc_df$diff <- lc_df$date2 - lc_df$date1 
-  
-  if(!is.null(legend_df)){
-    lc_df <- merge(lc_df,legend_df,by.x="value",by.y="ID")
-  }
-
-  return(lc_df)
-}
 
 ## Plot the changes here by land cover classes
 
+### reclassify:  
 
+#devopped
+r_cat2<- r_date2_rec==2
+r_not_cat2 <- r_date1_rec!=2
+
+r_change <- r_cat2 * r_not_cat2
+plot(r_change)
+change_tb <- freq(r_change) #this is about 500,000 pixels!!!
+
+View(change_tb)
+
+
+# change to urban from 2001 to 2011
+# compute rate of growth for a year and project in 2022
+# show in plot:
+
+## y= 1 if change to urban over 2001-2011
+### Suitability:
+#var1: distance to existing urban in 2001
+#var2: distance to road in 2001
+#var3: elevation, low slope
+#var4: landcover before
+#var5: conservation areas
+#Suitable land cover:
+#-meadow is cheap: easier than forest
+#-forest ok
+#-urban: NA (already urban cannot transition)
+#
+
+## could also do a logistic
+
+r_cat2<- r_date1_rec==2
+plot(r_cat2)
+
+writeRaster(r_cat2,filename = "developped_2001.tif")
+### distance to existing in 2001
+
+cat_bool_fname <- "developped_2001.tif" 
+
+if(gdal_installed==TRUE){
+  
+  ## Roads
+  srcfile <- cat_bool_fname 
+  
+  dstfile_distance <- file.path(out_dir,paste("roads_distance_",out_suffix,file_format,sep=""))
+  n_values <- "1"
+  
+  ### Note that gdal_proximity doesn't like when path is too long
+  cmd_roads_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_distance),"-values",n_values,sep=" ")
+  #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
+  
+  ### Prepare command for FLMA
+  
+  srcfile <- r_flma_clay_bool_fname 
+  dstfile_flma <- file.path(out_dir,paste("r_flma_clay_bool_distance_",out_suffix,file_format,sep=""))
+  n_values <- "1"
+  
+  ### Note that gdal_proximity doesn't like when path is too long
+  cmd_flma_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_flma),"-values",n_values,sep=" ")
+  #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
+  
+  sys_os <- as.list(Sys.info())$sysname
+  
+  if(sys_os=="Windows"){
+    shell(cmd_roads_str)
+    shell(cmd_flma_str)
+  }else{
+    system(cmd_roads_str)
+    system(cmd_flma_str)
+  }
+  r_flma_distance <- raster(dstfile_flma)
+  r_roads_distance <- raster(dstfile_roads)
+  
+}else{
+  r_roads_distance <- raster(file.path(in_dir,paste("roads_bool_distance_",file_format,sep="")))
+  r_flma_distance <- raster(file.path(in_dir_var,paste("r_flma_clay_bool_distance",file_format,sep="")))
+}
+
+#Now rescale the distance...
+min_val <- cellStats(r_roads_distance,min) 
+max_val <- cellStats(r_roads_distance,max)
 
 ####################### End of script #####################################
