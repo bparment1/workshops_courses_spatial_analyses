@@ -6,12 +6,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 03/16/2018
+#DATE MODIFIED: 03/20/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
 #
-#COMMIT: initial commit exercise 4
+#COMMIT: adding elevevation and roads
 #
 #################################################################################################
 
@@ -38,7 +38,7 @@ library(foreign) # import datasets from SAS, spss, stata and other sources
 library(gdata) #read xls, dbf etc., not recently updated but useful
 library(classInt) #methods to generate class limits
 library(plyr) #data wrangling: various operations for splitting, combining data
-library(gstat) #spatial interpolation and kriging methods
+#library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf)
@@ -83,7 +83,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise4_03162018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise4_03202018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 #ARG4
@@ -92,6 +92,9 @@ method_proj_val <- "bilinear" # "ngb"
 #ARG9
 #local raster name defining resolution, extent
 ref_rast_name <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/data/r_ref_Houston_RITA.tif"
+
+elevation_fname <- "srtm_Houston_area_90m.tif"
+roads_fname <- "r_roads_Harris.tif"
 
 ################# START SCRIPT ###############################
 
@@ -136,8 +139,6 @@ plot(r_lc_date2==95)
 plot(r_lc_date1==11)
 plot(r_lc_date1)
 plot(r_lc_date2)
-
-plot(r_lc_date1)
 
 freq_tb_date1 <- freq(r_lc_date1)
 freq_tb_date2 <- freq(r_lc_date2)
@@ -229,10 +230,7 @@ nlcd_legend_df <- subset(nlcd_legend_df,id_l2%in%lc_df$ID )
 dim(nlcd_legend_df)
 
 rec_df <- nlcd_legend_df[,c(2,1)]
-class(rec_df$id_l1)
-class(rec_df$id_l2)
 
-#?reclassify
 #r_date1_rec <- subs(r_lc_date1,nlcd_legend_df[,1:2],by="id_l1","id_l2")
 r_date1_rec <- subs(r_lc_date1,rec_df,by="id_l2","id_l1")
 r_date2_rec <- subs(r_lc_date2,rec_df,by="id_l2","id_l1")
@@ -241,28 +239,23 @@ plot(r_date1_rec)
 
 rec_xtab_df <- crosstab(r_date1_rec,r_date2_rec,long=T)
 names(rec_xtab_df) <- c("2001","2011","freq")
-View(rec_xtab_df)
+#View(rec_xtab_df)
 
 ### plot urban growth and urban loss?
-
 
 ncell(r_date1_rec)
 
 ### Make this a function:
 
 label_legend_df <- data.frame(ID=nlcd_legend_df$id_l1,name=nlcd_legend_df$name_l1)
-
-debug(compute_land_change_diff)
 r_stack <- stack(r_date1_rec,r_date2_rec)
 
 lc_df <- freq(r_stack,merge=T)
 names(lc_df) <- c("value","date1","date2")
 lc_df$diff <- lc_df$date2 - lc_df$date1
 
-test_df <- merge(lc_df,label_legend_df,by.x="value",by.y="ID",all.y=F)
-lc_df <- test_df[!duplicated(test_df),]
-
-View(lc_df)
+lc_df <- merge(lc_df,label_legend_df,by.x="value",by.y="ID",all.y=F)
+lc_df <- lc_df[!duplicated(test_df),]
 barplot(lc_df$diff,names.arg=lc_df$name,las=2)
 total_val  <- sum(lc_df$date1)
 lc_df$perc_change <- 100*lc_df$diff/total_val 
@@ -280,9 +273,6 @@ r_not_cat2 <- r_date1_rec!=2
 r_change <- r_cat2 * r_not_cat2
 plot(r_change)
 change_tb <- freq(r_change) #this is about 500,000 pixels!!!
-
-View(change_tb)
-
 
 # change to urban from 2001 to 2011
 # compute rate of growth for a year and project in 2022
@@ -310,11 +300,16 @@ plot(r_cat2)
 writeRaster(r_cat2,filename = "developped_2001.tif")
 ### distance to existing in 2001
 
-cat_bool_fname <- "developped_2001.tif" 
+r_roads <- raster(file.path(in_dir_var,roads_fname))
+#<- "r_roads_Harris.tif"
+plot(r_roads)
+r_roads_bool <- r_roads >0
+roads_bool_fname <- "roads_bool.tif" 
+writeRaster(r_roads_bool,filename = roads_bool_fname,overwrite=T)
 
 if(gdal_installed==TRUE){
   
-  ## Roads
+  ## Distance from developped land
   srcfile <- cat_bool_fname 
   
   dstfile_developped <- file.path(out_dir,paste("developped_distance_",out_suffix,file_format,sep=""))
@@ -324,32 +319,33 @@ if(gdal_installed==TRUE){
   cmd_developped_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_developped),"-values",n_values,sep=" ")
   #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
   
-  ### Prepare command for FLMA
+  ### Distance from roads
   
-  #srcfile <- r_flma_clay_bool_fname 
-  #dstfile_flma <- file.path(out_dir,paste("r_flma_clay_bool_distance_",out_suffix,file_format,sep=""))
-  #n_values <- "1"
+  srcfile <- r_roads_bool_fname 
+  dstfile_roads <- file.path(out_dir,paste("r_roads_bool_distance_",out_suffix,file_format,sep=""))
+  n_values <- "1"
   
   ### Note that gdal_proximity doesn't like when path is too long
-  #cmd_flma_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_flma),"-values",n_values,sep=" ")
+  cmd_roads_str <- paste("gdal_proximity.py",basename(srcfile),
+                         basename(dstfile_roads),
+                         "-values",n_values,sep=" ")
   #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
   
   sys_os <- as.list(Sys.info())$sysname
   
   if(sys_os=="Windows"){
     shell(cmd_developped_str)
-    #shell(cmd_flma_str)
+    shell(cmd_roads_str)
   }else{
     system(cmd_developped_str)
-    #system(cmd_flma_str)
+    system(cmd_roads_str)
   }
-  #r_flma_distance <- raster(dstfile_flma)
-  #r_roads_distance <- raster(dstfile_roads)
+  r_roads_distance <- raster(dstfile_roads)
   r_developped_distance <- raster(dstfile_developped)
   
 }else{
-  r_developped_distance <- raster(file.path(in_dir,paste("roads_bool_distance_",file_format,sep="")))
-  #r_flma_distance <- raster(file.path(in_dir_var,paste("r_flma_clay_bool_distance",file_format,sep="")))
+  r_developped_distance <- raster(file.path(in_dir,paste("developped_distance_",file_format,sep="")))
+  r_roads_distance <- raster(file.path(in_dir_var,paste("roads_bool_distance",file_format,sep="")))
 }
 
 plot(r_developepd_distance)
@@ -360,6 +356,15 @@ plot(r_developepd_distance)
 min_val <- cellStats(r_developped_distance,min) 
 max_val <- cellStats(r_developped_distance,max)
 
+
+############ Now deal with elevation
+
+r_elevation <- raster(file.path(in_dir_var,elevation_fname))
+#<- "srtm_Houston_area_90m.tif"
+r_elevation_30m <- disaggregate(r_elevation,fact=3)
+projection(r_elevation_30m)
+#projectRaster
+
 ### reclass Land cover
 #?mask
 r_mask <- r_date1_rec==2
@@ -369,5 +374,9 @@ r_date1_rec_masked <- mask(r_date1_rec,r_mask,maskvalue=1)
 #r_date1_rec[r_date1_rec==2] <- NA
 
 plot(r_date1_rec_masked)
+
+
+###### The logistic regression comes here:
+
 
 ####################### End of script #####################################
