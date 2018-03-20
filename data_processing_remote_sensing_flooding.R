@@ -426,8 +426,6 @@ write.table(lc_nlcd_legend,file=lc_nlcd_legend_filename,sep=",")
 
 ### Now generate NLCD for each region:
 
-
-
 list_reg_outline <- list(infile_reg_outline_RITA,infile_reg_outline_Houston_city_limits)
 #list_ref_filename <- 
 #Make a function later:
@@ -571,6 +569,52 @@ writeRaster(r_srtm,filename = file.path(out_dir,srtm_out_rastername))
 ### Disaggregate at 30m??
 
 ####### Get roads data
+test<- roads("Texas",county="Harris County",year=2011)
+roads2<- roads("Texas",county="Harris County",year=2011)
 
+list_roads_Houston <- mclapply(list_counties,
+                               FUN=function(x){roads("Texas",county=x,year=2011)},
+         mc.preschedule = F,mc.cores = 4)
+list_counties <- c("Harris County","Fort Bend County","Montgomery County","Brazoria County",
+"Galveston County","Liberty County","Waller County","Chambers County","Austin County")
+
+class(list_roads_Houston[[1]])
+projection(list_roads_Houston[[1]])
+
+plot(reg_sf$geometry)
+plot(list_roads_Houston[[1]],add=T)
+#Harris County – 4,092,459
+#Fort Bend County – 585,375
+#Montgomery County – 455,746
+#Brazoria County – 313,166
+#Galveston County – 291,309
+#Liberty County – 75,643
+#Waller County – 43,205
+#Chambers County – 35,096
+#Austin County – 28,417
+
+r_2001_nlcd30m_reg
+
+plot(r_2001_nlcd30m_reg)
+plot(reg_sf$geometry,add=T)
+
+### Neeed to make this a function!!
+
+road_reg_sample <- spTransform(list_roads_Houston[[1]],projection(r_2001_nlcd30m_reg))
+#?rasterize
+
+road_reg_sample@data$STATEFP <- as.numeric(road_reg_sample@data$STATEFP)
+
+r_roads_sample <- rasterize(x=road_reg_sample, 
+          y=r_2001_nlcd30m_reg, 
+          field="STATEFP", fun='count', background=NA,
+          mask=FALSE, update=FALSE, updateValue='all', filename="",
+          getCover=FALSE, silent=TRUE)
+
+roads_rastername <- "r_roads_Harris.tif"
+writeRaster(r_roads_sample,filename=roads_rastername)
+
+names(road_reg_sample)
+View(road_reg_sample@data)
 
 ################################## End of Script #########################################
