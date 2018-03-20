@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/16/2018
+#DATE MODIFIED: 03/20/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -40,6 +40,7 @@ library(plyr) #data wrangling: various operations for splitting, combining data
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf)
+library(tigris)
 
 ###### Functions used in this script
 
@@ -68,7 +69,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 
 file_format <- ".tif" #PARAM5
 NA_flag_val <- -9999 #PARAM7
-out_suffix <-"data_preprocessing_03172018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"data_preprocessing_03202018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 
@@ -529,14 +530,38 @@ for(i in 1:length(list_reg_outline)){
 }
 
 
-
-
 ########### Part III: Additional data ##############################
 
 ### Might get elevation and Census??
 
 #getData('SRTM', lon=5, lat=45)
 #<- st_centroid(reg_sf)
+#library(tigris)
 
+#reg_sf
+#bbx_reg <- (st_bbox(reg_sf))
+#str(st_bbox(reg_sf))
+#srtm <- getData('SRTM', lon=16, lat=48)
+#srtm <- getData('SRTM', lon=bbx_reg[1], lat=bbx_reg[2],path=out_dir)
+
+#Source:https://cohgis-mycity.opendata.arcgis.com/datasets/houston-city-limit
+infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit/Houston_City_Limit.shp"
+
+srtm_list <- list.files(path=in_dir_var,pattern="*.tif",full.names=T)
+l_srtm <- lapply(srtm_list,function(x){raster(x)})
+
+r_m <- mosaic(l_srtm[[2]],l_srtm[[3]],l_srtm[[4]],fun=mean)
+
+reg_sf <- st_read(infile_reg_outline_Houston_city_limits)
+reg_sf <- st_transform(reg_sf,
+                       crs=projection(r_m))
+reg_sp <- as(reg_sf, "Spatial") 
+
+plot(r_m)
+plot(reg_sf$geometry,add=T)
+plot(reg_sp,add=T)
+
+
+l_srtm[[1]]
 
 ################################## End of Script #########################################
