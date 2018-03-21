@@ -261,7 +261,7 @@ total_val  <- sum(lc_df$date1)
 lc_df$perc_change <- 100*lc_df$diff/total_val 
 barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
 
-
+View(lc_df)
 ## Plot the changes here by land cover classes
 
 ### reclassify:  
@@ -357,16 +357,18 @@ max_val <- cellStats(r_roads_distance,max)
 #Linear rescaling:
 #y = ax + b with b=0
 #with 9 being new max and 0 being new min
-a = (9 - 0) /(max_val - min_val)
+a = (1 - 0) /(max_val - min_val)
+a=1
 r_roads_dist <- r_roads_distance * a
+plot(r_roads_dist)
 
 #Get distance from managed land
 #b. Which parts of Clay County contain proximity-to-managed-lands characteristics that would make them more favorable to be used as conservation lands?
 
-min_val <- cellStats(r_developped_distance,min) 
-max_val <- cellStats(r_developped_distance,max)
+#min_val <- cellStats(r_developped_distance,min) 
+#max_val <- cellStats(r_developped_distance,max)
 
-a = (9 - 0) /(max_val - min_val) #linear rescaling factor
+a = (1 - 0) /(max_val - min_val) #linear rescaling factor
 r_developped_dist <- r_developped_distance * a
 
 ############ Now deal with elevation
@@ -397,12 +399,13 @@ r_developped_dist
 r_change
 
 ### let's split training and testing??
-
-#r_mask <- r_date1_rec!=2
+#removing water and developped in 2001
+r_mask <- (r_date1_rec!=2)*(r_date1_rec!=1)
+plot(r_mask)
 
 plot(r_change)
 r_variables <- stack(r_change,r_date1_rec_masked,r_elevation_reg,r_roads_dist,r_developped_dist)
-r_variables <- mask(r_variables,mask=r_not_cat2,maskvalue=0)
+r_variables <- mask(r_variables,mask=r_mask,maskvalue=0)
 #plot(r_not_cat2)
 names(r_variables) <- c("change","land_cover","elevation","roads_dist","developped_dist")
 
@@ -412,18 +415,26 @@ variables_df <- na.omit(as.data.frame(r_variables))
 #variables_df <- na.omit(variable_df)
 dim(variables_df)
 
+variables_df$land_cover <- as.factor(variables_df$land_cover)
+variables_df$change <- as.factor(variables_df$change)
+
 names(variables_df)
 #names(variables_df) <- c("change","land_cover","elevation","roads_dist","developped_dist")
 
 mod <- glm(change ~ land_cover + elevation + roads_dist + developped_dist, 
-           data=variables_df , family=binomial)
+           data=variables_df , family=binomial())
 mod
-p <- predict(r_variables, mod, type="response")
-plot(p)
+r_p <- predict(r_variables, mod, type="response")
+plot(r_p)
 
-histogram(p)
+histogram(r_p)
 histogram(p,xlim=c(0,1),breaks=10)
 
 #### Do AUC to check how good it is?
+plot(r_change)
+
+plot(r_date1_rec_masked)
+tb_freq <- freq(r_date1_rec_masked)
+View(tb_freq)
 
 ####################### End of script #####################################
