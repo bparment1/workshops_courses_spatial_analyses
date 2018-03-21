@@ -43,6 +43,7 @@ library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf)
 library(plotrix) #various graphic functions e.g. draw.circle
+library(nnet)
 
 ###### Functions used in this script
 
@@ -99,6 +100,10 @@ infile_RITA_reflectance_date2 <- "mosaiced_MOD09A1_A2005273__006_reflectance_mas
 
 nlcd_2006_filename <- "nlcd_2006_RITA.tif"
 #infile_land_cover_date2 <- "nlcd_2011_RITA.tif"
+
+infilename_class1 <- "class1.shp" #
+infilename_class2 <- "class2.shp" #
+infilename_class3 <- "class3.shp" #
 
 ################# START SCRIPT ###############################
 
@@ -158,16 +163,54 @@ writeRaster(r_date1_NDVI,"ndvi_date1.rst")
 NAvalue(r_date1_NDVI) <- 9999
 writeRaster(r_date2_NDVI,"ndvi_date2.rst")
 NAvalue(r_date2_NDVI) <- 9999
+plot(r_date2_MNDWI)
 
-training_data <- st_read("training1.shp")
+#training_data_sf <- st_read("training1.shp")
+class1_data_sf <- st_read("class1.shp")
+class2_data_sf <- st_read("class2.shp")
+class3_data_sf <- st_read("class3.shp")
+
+class1_data_sf$class_ID <- 1
+class2_data_sf$class_ID <- 2
+class3_data_sf$class_ID <- 3
+
+list_class_sf <- list(class1_data_sf,class2_data_sf,class3_data_sf)
+list_class_sp <- lapply(list_class_sf,function(x){as(x,"Spatial")})
 
 r_stack <- stack(r_date2,r_date2_NDVI,r_date2_MNDWI)
-extract()
+names(r_stack) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3","NDVI","MNDWI")
+#lapply()
+list_pixels_df<- lapply(list_class_sp,function(x){extract(r_stack,x,df=T)})
+
+## Note that both step above can be combined but for ease of understanding we kept them separate.
+#pix_df <- extract(r_stack,training_data_sf,df=T)
+pixels_df <- do.call("rbind",list_pixels_df)
+
+View(list_pixels_df[[1]])
+
+View(pixels_df)
+pix_df <- as.data.frame(pix_df)
+names(pix_df)
+names(pix_df) <- c("poly_ID","Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3","NDVI","MNDWI")
+dim(pix_df)
+
+### Need to add other extract for other land cover!!
+
+#1) vegetation,
+#2) Flooded vegetation
+
+#so the classification will have three classes!!!
+
+
+## Maybe also do a unsupervised?
+
 #############
 
 #Water
-points(df_test[df_test$nlcd_2006_RITA==11,c("Green")],
-       df_test[df_test$nlcd_2006_RITA==11,c("Red")],
+plot(GREEN~NIR,subset(pixels_df,class_ID==1))
+
+points(pixels_df[pixels_df$class_ID==1,c("Green")],
+       pixels_df[pixels_df$class==11,c("NIR")],
        col="blue",cex=0.15)
 
 #### Feature space Red and Green
@@ -192,14 +235,13 @@ points(df_test[df_test$nlcd_2006_RITA==11,c("Red")],
 
 ##### plot feature space:
 
-df_raster_val <- as.data.frame(stack(r_after,r_pca,nlcd2006_reg))
-
 ### Now do a unsupervised
 ## do a supervised
-## training and testing... 
+## Split training and testing... 
 
+## Do ROC here!!!
+## Do neural net, cart, random forest,
 
-
-
+#nnet()
 ################### End of Script #########################
 
