@@ -6,12 +6,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 03/20/2018
+#DATE MODIFIED: 03/21/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
 #
-#COMMIT: adding elevevation and roads
+#COMMIT: more processing of elevevation and roads
 #
 #################################################################################################
 
@@ -41,7 +41,7 @@ library(plyr) #data wrangling: various operations for splitting, combining data
 #library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
-library(sf)
+library(sf) #spatial objects and functionalities
 library(plotrix) #various graphic functions e.g. draw.circle
 
 ###### Functions used in this script
@@ -267,7 +267,7 @@ barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
 ### reclassify:  
 
 #devopped
-r_cat2<- r_date2_rec==2
+r_cat2 <- r_date2_rec==2
 r_not_cat2 <- r_date1_rec!=2
 
 r_change <- r_cat2 * r_not_cat2
@@ -284,7 +284,8 @@ change_tb <- freq(r_change) #this is about 500,000 pixels!!!
 #var2: distance to road in 2001
 #var3: elevation, low slope
 #var4: landcover before
-#var5: conservation areas
+
+#Not available yer: var5: conservation areas
 
 #Suitable land cover:
 #-meadow is cheap: easier than forest
@@ -317,20 +318,18 @@ if(gdal_installed==TRUE){
   
   ### Note that gdal_proximity doesn't like when path is too long
   cmd_developped_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_developped),"-values",n_values,sep=" ")
-  #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
-  
+
   ### Distance from roads
   
-  srcfile <- r_roads_bool_fname 
-  dstfile_roads <- file.path(out_dir,paste("r_roads_bool_distance_",out_suffix,file_format,sep=""))
+  srcfile <- roads_bool_fname 
+  dstfile_roads <- file.path(out_dir,paste("roads_bool_distance_",out_suffix,file_format,sep=""))
   n_values <- "1"
   
   ### Note that gdal_proximity doesn't like when path is too long
   cmd_roads_str <- paste("gdal_proximity.py",basename(srcfile),
                          basename(dstfile_roads),
                          "-values",n_values,sep=" ")
-  #cmd_str <- paste("gdal_proximity.py", srcfile, dstfile,sep=" ")
-  
+
   sys_os <- as.list(Sys.info())$sysname
   
   if(sys_os=="Windows"){
@@ -348,14 +347,27 @@ if(gdal_installed==TRUE){
   r_roads_distance <- raster(file.path(in_dir_var,paste("roads_bool_distance",file_format,sep="")))
 }
 
-plot(r_developepd_distance)
+plot(r_developped_distance)
+plot(r_roads_distance)
+
 #Now rescale the distance...
-#min_val <- cellStats(r_roads_distance,min) 
-#max_val <- cellStats(r_roads_distance,max)
+min_val <- cellStats(r_roads_distance,min) 
+max_val <- cellStats(r_roads_distance,max)
+
+#Linear rescaling:
+#y = ax + b with b=0
+#with 9 being new max and 0 being new min
+a = (9 - 0) /(max_val - min_val)
+r_roads_dist <- r_roads_distance * a
+
+#Get distance from managed land
+#b. Which parts of Clay County contain proximity-to-managed-lands characteristics that would make them more favorable to be used as conservation lands?
 
 min_val <- cellStats(r_developped_distance,min) 
 max_val <- cellStats(r_developped_distance,max)
 
+a = (9 - 0) /(max_val - min_val) #linear rescaling factor
+r_developped_dist <- r_developped_distance * a
 
 ############ Now deal with elevation
 
@@ -363,7 +375,7 @@ r_elevation <- raster(file.path(in_dir_var,elevation_fname))
 #<- "srtm_Houston_area_90m.tif"
 r_elevation_30m <- disaggregate(r_elevation,fact=3)
 projection(r_elevation_30m)
-#projectRaster
+r_elevation_reg <- projectRaster(r_elevation_30m,r_date1_rec)
 
 ### reclass Land cover
 #?mask
@@ -375,8 +387,43 @@ r_date1_rec_masked <- mask(r_date1_rec,r_mask,maskvalue=1)
 
 plot(r_date1_rec_masked)
 
-
 ###### The logistic regression comes here:
 
+r_elevation_reg
+r_date1_rec_masked
+r_roads_dist
+r_developped_dist
+
+r_change
+
+### let's split training and testing??
+
+#r_mask <- r_date1_rec!=2
+
+plot(r_change)
+r_variables <- stack(r_change,r_date1_rec_masked,r_elevation_reg,r_roads_dist,r_developped_dist)
+r_variables <- mask(r_variables,mask=r_not_cat2,maskvalue=0)
+#plot(r_not_cat2)
+names(r_variables) <- c("change","land_cover","elevation","roads_dist","developped_dist")
+
+### May be useful to have x and y locations
+
+variables_df <- na.omit(as.data.frame(r_variables))
+#variables_df <- na.omit(variable_df)
+dim(variables_df)
+
+names(variables_df)
+#names(variables_df) <- c("change","land_cover","elevation","roads_dist","developped_dist")
+
+mod <- glm(change ~ land_cover + elevation + roads_dist + developped_dist, 
+           data=variables_df , family=binomial)
+mod
+p <- predict(r_variables, mod, type="response")
+plot(p)
+
+histogram(p)
+histogram(p,xlim=c(0,1),breaks=10)
+
+#### Do AUC to check how good it is?
 
 ####################### End of script #####################################
