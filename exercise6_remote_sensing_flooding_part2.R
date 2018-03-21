@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/13/2018 
-#DATE MODIFIED: 03/15/2018
+#DATE MODIFIED: 03/21/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -85,7 +85,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise6_03162018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise6_03212018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 #ARG4
@@ -94,11 +94,15 @@ method_proj_val <- "bilinear" # "ngb"
 #ARG9
 #local raster name defining resolution, extent
 ref_rast_name <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
+infile_RITA_reflectance_date1 <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
+infile_RITA_reflectance_date2 <- "mosaiced_MOD09A1_A2005273__006_reflectance_masked_RITA_reg_1km.tif"
+
+nlcd_2006_filename <- "nlcd_2006_RITA.tif"
+#infile_land_cover_date2 <- "nlcd_2011_RITA.tif"
 
 ################# START SCRIPT ###############################
 
 ### PART I: READ AND PREPARE DATA FOR ANALYSES #######
-
 
 ## First create an output directory
 
@@ -114,91 +118,45 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
+###
 ## Second list.files and create raster images stack
 
-infile_land_cover_date1 <- "nlcd_2006_RITA.tif"
-#infile_land_cover_date2 <- "nlcd_2011_RITA.tif"
-
-nlcd2006_reg_RITA <- raster(file.path(in_dir_var,infile_land_cover_date1)) 
+nlcd2006_reg_RITA <- raster(file.path(in_dir_var,nlcd_2006_filename)) 
+#11: open water
+#90:Woody Wetlands
+#95:Emergent Herbaceuous Wetlands
 
 plot(nlcd2006_reg_RITA==90)
 plot(nlcd2006_reg_RITA==95)
 plot(nlcd2006_reg_RITA==11)
 
-lc_legend_df <- read.table("nlcd_legend.txt",sep=",")
+lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),sep=",")
 lc_legend_df
 View(lc_legend_df)
 
-## Read in table info?
+###### Read in modis 09
 
-df_modis_band_info <- data.frame("band_name"=NA,"band_number"=NA,"start_wlength"=NA,"end_wlength"=NA)
-df_modis_band_info[1,] <- c("Red", 1, 620,670)
-df_modis_band_info[2,] <- c("NIR", 2,841,876) 
-df_modis_band_info[3,] <- c("Blue",3,459,479)
-df_modis_band_info[4,] <- c("Green",4,545,565)
-df_modis_band_info[5,] <- c("SWIR1",5,1230,1250)
-df_modis_band_info[6,] <- c("SWIR2",6,1628,1652)
-df_modis_band_info[7,] <- c("SWIR3",7,2105,2155)
-
-#View(df_modis_band_info)
-write.table(df_modis_band_info,
-            file=paste0("df_modis_band_info",".txt"),
-            sep=",")
+r_date1 <- brick(file.path(in_dir_var,infile_RITA_reflectance_date1))
+r_date2 <- brick(file.path(in_dir_var,infile_RITA_reflectance_date2))
 
 #SWIR1 (1230–1250 nm), SWIR2 (1628–1652 nm) and SWIR3 (2105–2155 nm).
 band_refl_order <- c(3,4,1,2,5,6,7)
 
-names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
-names(r_after) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
+names(r_date1) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
+names(r_date2) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 
-plot(df_before[2,band_refl_order],type="l")
-lines(df_after[2,band_refl_order],col="red")
-plot(df_before[1,band_refl_order],type="l")
-lines(df_after[1,band_refl_order],col="red")
-plot(df_after[1,band_refl_order],col="red")
+r_date2_MNDWI <- (subset(r_date2,"Green") - subset(r_date2,"SWIR2")) / (subset(r_date2,"Green") + subset(r_date2,"SWIR2"))
+plot(r_date2_MNDWI)
+r_date1_MNDWI <- (subset(r_date1,"Green") - subset(r_date1,"SWIR2")) / (subset(r_date1,"Green") + subset(r_date1,"SWIR2"))
+plot(r_date1_MNDWI)
 
-###### Now do a extraction for nlcd data
 
-nlcd_2006_ filename <- file.path(in_dir_var,"nlcd_2006_RITA.tif")
-nlcd2006_reg <- raster(nlcd_2006_filename)
-
-plot(nlcd2006_reg)
-
-avg_nlcd <- as.data.frame(zonal(r_after,nlcd2006_reg))
-avg_nlcd <- as.data.frame(avg_nlcd)
-
-avg_nlcd
-#View(avg_nlcd)
-names(avg_nlcd)
-
-col_ordering <- band_refl_order + 1
-plot(as.numeric(avg_nlcd[9,col_ordering]),type="l") #42 evergreen forest
-lines(as.numeric(avg_nlcd[6,col_ordering]),type="l") #22 developed,High intensity
-class(avg_nlcd)
-
-plot(avg_nlcd$Red,avg_nlcd$NIR)
+r_date2_NDVI <- (subset(r_date2,"Green") - subset(r_date2,"SWIR2")) / (subset(r_date2,"Green") + subset(r_date2,"SWIR2"))
+plot(r_date2_MNDWI)
+r_date1_MNDWI <- (subset(r_date1,"Green") - subset(r_date1,"SWIR2")) / (subset(r_date1,"Green") + subset(r_date1,"SWIR2"))
+plot(r_date1_MNDWI)
 
 #############
-
-#Feature space NIR1 and Red
-plot(subset(r_before,"Red"),subset(r_before,"NIR"))
-plot(subset(r_before,"Green"),subset(r_before,"Red"))
-plot(subset(r_before,"SWIR1"),subset(r_before,"NIR"))
-plot(subset(r_before,"Red"),subset(r_before,"SWIR1"))
-
-df_test <- as.data.frame(stack(r_before,nlcd2006_reg))
-
-View(df_test)
-
-#Forest:
-plot(df_test[df_test$nlcd_2006_RITA==42,c("Green")],
-     df_test[df_test$nlcd_2006_RITA==42,c("Red")],
-     col="green",cex=0.15)
-
-#Urban: dense
-points(df_test[df_test$nlcd_2006_RITA==22,c("Green")],
-       df_test[df_test$nlcd_2006_RITA==22,c("Red")],
-       col="brown",cex=0.15)
 
 #Water
 points(df_test[df_test$nlcd_2006_RITA==11,c("Green")],
@@ -234,128 +192,7 @@ df_raster_val <- as.data.frame(stack(r_after,r_pca,nlcd2006_reg))
 ## training and testing... 
 
 
-# Do relationship with flood zone using ROC?
-### Generate a map of flooding with MNDWI and compare to FEMA map:
-
-r_date2_flood <- r_date2_MNDWI > 0.1
-plot(r_date2_flood)
-
-#reclass in zero/1!!!
-
-df <- data.frame(id=c(1,2), v=c(0,1))
-r_ref_test <- subs(r_ref, df)
-plot(r_ref_test)
-#plot(r_ref)
-ref_test_tb <- crosstab(r_date2_flood,r_ref_test)
-
-## Compute Jaccard Index:
-
-ref_test_tb$Freq[5]/(sum(ref_test_tb[ref_test_tb$Var1==1,c("Freq")],na.rm = T)+ 
-                     sum(ref_test_tb[ref_test_tb$Var2==1,c("Freq")],na.rm = T))
-
-r_date2_flood <- mask(r_date2_flood,r_ref)
-
-ref_test_tb <- crosstab(r_date2_flood,r_ref_test)
-
-## Compute Jaccard Index:
-
-ref_test_tb$Freq[5]/(sum(ref_test_tb[ref_test_tb$Var1==1,c("Freq")],na.rm = T)+ 
-                       sum(ref_test_tb[ref_test_tb$Var2==1,c("Freq")],na.rm = T))
-
-###############################################
-######## Let's carry out a PCA in T-mode #######
-
-#Correlate long term mean to PC!
-cor_mat_layerstats <- layerStats(r_after, 'pearson', na.rm=T)
-cor_matrix <- cor_mat_layerstats$`pearson correlation coefficient`
-class(cor_matrix)
-dim(cor_matrix)
-View(cor_matrix)
-image(cor_matrix)
-
-pca_mod <-principal(cor_matrix,nfactors=7,rotate="none")
-class(pca_mod$loadings)
-str(pca_mod$loadings)
-plot(pca_mod$loadings[,1][band_refl_order],type="b",
-     xlab="time steps",
-     ylab="PC loadings",
-     ylim=c(-1,1),
-     col="blue")
-lines(-1*(pca_mod$loadings[,2][band_refl_order]),type="b",col="red")
-lines(pca_mod$loadings[,3][band_refl_order],type="b",col="black")
-title("Loadings for the first three components using T-mode")
-
-##Make this a time series
-loadings_df <- as.data.frame(pca_mod$loadings[,1:7])
-#pca_loadings_dz <- zoo(loadings_df,dates_val) #create zoo object from data.frame and date sequence object
-#?plot.zoo to find out about zoo time series plotting of indexes
-#plot(loadings_df ~ 1:7,
-#     #type="b",
-#     col=c("blue","red","black","orange","green","purple","brown"),
-#     #xlab="time steps",
-#     #ylab="PC loadings",
-#     #ylim=c(-1,1))
-title("Loadings for the first three components using T-mode")
-names_vals <- c("pc1","pc2","pc3")
-legend("topright",legend=names_vals,
-       pt.cex=0.8,cex=1.1,col=c("blue","red","black"),
-       lty=c(1,1), # set legend symbol as lines
-       pch=1, #add circle symbol to line
-       lwd=c(1,1),bty="n")
-
-## Add scree plot
-plot(pca_mod$values,main="Scree plot: Variance explained",type="b")
-
-### Generate scores from eigenvectors
-## Do it two different ways:
-### Using predict function: this is recommended for raster imagery!!
-# note the use of the 'index' argument
-r_pca <- predict(r_before, pca_mod, index=1:7,filename="pc_scores.tif",overwrite=T) # fast
-plot(-1*r_pca,y=2,zlim=c(-2,2))
-plot(r_pca,y=1,zlim=c(-2,2))
-plot(r_pca,y=3,zlim=c(-2,2))
-
-plot(subset(r_pca,1),subset(r_pca,2))
-plot(subset(r_pca,2),subset(r_pca,3))
-
-#### Generate a plot for PCA with loadings and compare to Tassel Cap
-
-var_labels <- rownames(loadings_df)
-
-plot(loadings_df[,1],loadings_df[,2],
-     type="p",
-     pch = 20,
-     col ="blue",
-     xlab=names(loadings_df)[1],
-     ylab=names(loadings_df)[2],
-     ylim=c(-1,1),
-     xlim=c(-1,1),
-     axes = FALSE,
-     cex.lab = 1.2)
-axis(1, at=seq(-1,1,0.2),cex=1.2)
-axis(2, las=1,at=seq(-1,1,0.2),cex=1.2) # "1' for side=below, the axis is drawned  on the right at location 0 and 1
-
-box()    #This draws a box...
-
-title(paste0("Loadings for component ", names(loadings_df)[1]," and " ,names(loadings_df)[2] ))
-draw.circle(0,0,c(1.0,1),nv=200)#,border="purple",
-text(loadings_df[,1],loadings_df[,2],var_labels,pos=1,cex=1)            
-grid(2,2)
 
 
 ################### End of Script #########################
 
-#plot(stack(r_pc1,r_pc2))
-#layerStats(r_pc1,r_NDVI_mean )
-#cor_pc <- layerStats(stack(r_pc1,r_NDVI_mean),'pearson', na.rm=T)
-#cor_pc #PC1 correspond to the average mean by pixel as expected.
-#plot(r_pc2)
-
-### Potential follow up questions:
-#1) compare wetness index from TCP in predicted flooded areas
-#2) Use ROC to compare?
-#3) Use NLCD and extract other reflectance curve.
-#4) Use NLCD and recombine values using the general legend
-#5) Use disaggregated values from NLCD %cover from 30m and correlate with the new indices...
-#6) Compare area before and after classified as water with thresholding (don't forget to mask)
-#
