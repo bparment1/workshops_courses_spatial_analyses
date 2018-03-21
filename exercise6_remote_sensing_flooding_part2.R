@@ -150,12 +150,19 @@ plot(r_date2_MNDWI)
 r_date1_MNDWI <- (subset(r_date1,"Green") - subset(r_date1,"SWIR2")) / (subset(r_date1,"Green") + subset(r_date1,"SWIR2"))
 plot(r_date1_MNDWI)
 
+r_date2_NDVI <- (subset(r_date2,"NIR") - subset(r_date2,"Red")) / (subset(r_date2,"NIR") + subset(r_date2,"Red"))
+plot(r_date2_NDVI)
+r_date1_NDVI <- (subset(r_date1,"NIR") - subset(r_date1,"Red")) / (subset(r_date1,"NIR") + subset(r_date1,"Red"))
+plot(r_date1_NDVI)
+writeRaster(r_date1_NDVI,"ndvi_date1.rst")
+NAvalue(r_date1_NDVI) <- 9999
+writeRaster(r_date2_NDVI,"ndvi_date2.rst")
+NAvalue(r_date2_NDVI) <- 9999
 
-r_date2_NDVI <- (subset(r_date2,"Green") - subset(r_date2,"SWIR2")) / (subset(r_date2,"Green") + subset(r_date2,"SWIR2"))
-plot(r_date2_MNDWI)
-r_date1_MNDWI <- (subset(r_date1,"Green") - subset(r_date1,"SWIR2")) / (subset(r_date1,"Green") + subset(r_date1,"SWIR2"))
-plot(r_date1_MNDWI)
+training_data <- st_read("training1.shp")
 
+r_stack <- stack(r_date2,r_date2_NDVI,r_date2_MNDWI)
+extract()
 #############
 
 #Water
