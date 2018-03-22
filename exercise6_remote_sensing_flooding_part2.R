@@ -170,23 +170,42 @@ class1_data_sf <- st_read("class1.shp")
 class2_data_sf <- st_read("class2.shp")
 class3_data_sf <- st_read("class3.shp")
 
-class1_data_sf$class_ID <- 1
-class2_data_sf$class_ID <- 2
-class3_data_sf$class_ID <- 3
-
 list_class_sf <- list(class1_data_sf,class2_data_sf,class3_data_sf)
 list_class_sp <- lapply(list_class_sf,function(x){as(x,"Spatial")})
 
-r_stack <- stack(r_date2,r_date2_NDVI,r_date2_MNDWI)
-names(r_stack) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3","NDVI","MNDWI")
+r_x <- init(r_date2,"x") #raster with coordinates x
+r_y <- init(r_date2,"x") #raster with coordiates y
+
+r_stack <- stack(r_x,r_y,r_date2,r_date2_NDVI,r_date2_MNDWI)
+names(r_stack) <- c("x","y","Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3","NDVI","MNDWI")
+
 #lapply()
-list_pixels_df<- lapply(list_class_sp,function(x){extract(r_stack,x,df=T)})
+#list_pixels_df_test1 <- lapply(list_class_sp,function(x){extract(r_stack,x,df=T)})
+#list_pixels_df_test2 <- lapply(list_class_sp,function(x){extract(r_stack,x,sp=T,df=T)})
+#list_pixels_df <- lapply(1:length(list_class_sp),function(i){pix_df <- extract(r_stack,list_class_sp[[i]],df=T);pix_df$class_ID <- i})
+list_pixels_df <- lapply(list_class_sp,function(x){extract(r_stack,x,df=T)})
+list_class_pixels_df <- lapply(1:length(list_pixels_df),function(i){list_pixels_df[[i]]$class_ID <- i})
+
+list_class_pixels_df <- list_pixels_df
+list_class_pixels_df[[1]]$class_ID <- 1
+list_class_pixels_df[[2]]$class_ID <- 2
+list_class_pixels_df[[3]]$class_ID <- 3
+
+list_tmp <- list_pixels_df
+list_tmp[[1]]$class_id <- 1
+View(list_tmp[[1]])
+View(list_pixels_df[[1]])
+View(list_class_pixels_df[[1]])
+
+#list_pixels_df <- list_pixels_df_test2
+#class1_data_sp$class_ID <- 1
+#class2_data_sp$class_ID <- 2
+#class3_data_sp$class_ID <- 3
 
 ## Note that both step above can be combined but for ease of understanding we kept them separate.
 #pix_df <- extract(r_stack,training_data_sf,df=T)
 pixels_df <- do.call("rbind",list_pixels_df)
-
-View(list_pixels_df[[1]])
+pixels_df <- do.call("rbind",list_class_pixels_df)
 
 View(pixels_df)
 pix_df <- as.data.frame(pix_df)
@@ -194,10 +213,13 @@ names(pix_df)
 names(pix_df) <- c("poly_ID","Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3","NDVI","MNDWI")
 dim(pix_df)
 
+#Show average MNDWI and NDVI for each class
+
 ### Need to add other extract for other land cover!!
 
-#1) vegetation,
+#1) vegetation abd other
 #2) Flooded vegetation
+#3) Flooded area, or water (lake etc)
 
 #so the classification will have three classes!!!
 
@@ -207,41 +229,68 @@ dim(pix_df)
 #############
 
 #Water
-plot(GREEN~NIR,subset(pixels_df,class_ID==1))
+x_range <- range(pixels_df$Green,na.rm=T)
+y_range <- range(pixels_df$NIR,na.rm=T)
 
-points(pixels_df[pixels_df$class_ID==1,c("Green")],
-       pixels_df[pixels_df$class==11,c("NIR")],
-       col="blue",cex=0.15)
+#plot(Green~NIR,xlim=x_range,ylim=y_range,col="blue",subset(pixels_df,class_ID==1))
+plot(Green~NIR,xlim=c(0,1),ylim=c(0,1),col="blue",subset(pixels_df,class_ID==1))
+points(Green~NIR,col="green",subset(pixels_df,class_ID==2))
+points(Green~NIR,col="red",subset(pixels_df,class_ID==3))
 
-#### Feature space Red and Green
-
-#Forest:
-plot(df_test[df_test$nlcd_2006_RITA==42,c("Red")],
-     df_test[df_test$nlcd_2006_RITA==42,c("NIR")],
-     col="green",cex=0.15)
-
-#Urban: dense
-points(df_test[df_test$nlcd_2006_RITA==22,c("Red")],
-     df_test[df_test$nlcd_2006_RITA==22,c("NIR")],
-     col="brown",cex=0.15)
-
-#Water
-points(df_test[df_test$nlcd_2006_RITA==11,c("Red")],
-       df_test[df_test$nlcd_2006_RITA==11,c("NIR")],
-       col="blue",cex=0.15)
+plot(Green~NIR,xlim=c(0,0.5),ylim=c(0,0.2),cex=0.2,col="blue",subset(pixels_df,class_ID==1))
+points(Green~NIR,col="green",cex=0.2,subset(pixels_df,class_ID==2))
+points(Green~NIR,col="red",cex=0.2,subset(pixels_df,class_ID==3))
 
 # NRT MODIS
 # Other
 
+library(rpart)
+# grow tree 
+fit <- rpart(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
+             method="class", 
+             data=pixels_df)
+plot(fit)
+text(fit,cex=0.8)
+
+# Much cleaner way is to plot the trained classification tree
+plot(model.class, uniform=TRUE, main="Classification Tree")
+text(model.class, cex=.8)
+
+
 ##### plot feature space:
+pixels_df <- na.omit(pixels_df)
+dim(pixels_df)
+selected_var <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")#,"NDVI","MNDWI")
+nrow(pixels_df)
+
+test <- nnet(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
+             x=subset(pixels_df,select=selected_var),
+             y=subset(pixels_df,select=c("class_ID")),weights = rep( 1,1520),
+             size=7)
+
+test <- nnet(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
+             x=subset(pixels_df,select=selected_var),
+             y=subset(pixels_df,select=c("class_ID")))
+
+?nnet
+
+             #right_side_formula <- paste(explanatory_variables,collapse = " + ")
+#model_formula_str <- paste0(y_var," ~ ",right_side_formula)
+             
+names(pixels_df)
+neuralnet
+pixels_df
+##let's keep 30% of data for testing for each class
+
 
 ### Now do a unsupervised
 ## do a supervised
 ## Split training and testing... 
 
 ## Do ROC here!!!
-## Do neural net, cart, random forest,
+## Do neural net, cart, random forest,svm
 
 #nnet()
+
 ################### End of Script #########################
 
