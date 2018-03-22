@@ -241,8 +241,13 @@ plot(Green~NIR,xlim=c(0,0.5),ylim=c(0,0.2),cex=0.2,col="blue",subset(pixels_df,c
 points(Green~NIR,col="green",cex=0.2,subset(pixels_df,class_ID==2))
 points(Green~NIR,col="red",cex=0.2,subset(pixels_df,class_ID==3))
 
+histogram(r_date2)
+histogram(pix_df)
+
 # NRT MODIS
 # Other
+
+############### Using Classification and Regression Tree model (CART) #########
 
 library(rpart)
 # grow tree 
@@ -255,7 +260,32 @@ text(fit,cex=0.8)
 # Much cleaner way is to plot the trained classification tree
 plot(model.class, uniform=TRUE, main="Classification Tree")
 text(model.class, cex=.8)
+plot(fit, uniform=TRUE, 
+     main="Classification Tree for Kyphosis")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+#https://www.statmethods.net/advstats/cart.html
 
+# prune the tree 
+pfit<- prune(fit, cp=   fit$cptable[which.min(fit$cptable[,"xerror"]),"CP"])
+
+# plot the pruned tree 
+plot(pfit, uniform=TRUE, 
+     main="Pruned Classification Tree for Kyphosis")
+text(pfit, use.n=TRUE, all=TRUE, cex=.8)
+
+r_predicted <- predict(r_stack,fit)
+plot(r_predicted)
+test <- unique(r_predicted)
+
+test
+
+# Now predict the subset data based on the model; prediction for entire area takes longer time
+r_predicted <- predict(r_stack, fit, type='class', progress = 'text')
+
+plot(r_predicted)
+
+
+############### Using Neural Network #########
 
 ##### plot feature space:
 pixels_df <- na.omit(pixels_df)
@@ -291,6 +321,13 @@ pixels_df
 ## Do neural net, cart, random forest,svm
 
 #nnet()
+
+############### Using KNN or SVM #########
+
+
+
+############# Compare methods with ROC #######
+
 
 ################### End of Script #########################
 
