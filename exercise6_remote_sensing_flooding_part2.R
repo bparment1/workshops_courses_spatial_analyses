@@ -324,7 +324,26 @@ pixels_df
 
 ############### Using KNN or SVM #########
 
+library(e1071)
 
+svm_model <- svm(Species~ ., data=trainset, method="C-classification", kernel="linear")
+
+svm_model <- svm(Species~ ., data=trainset, method="C-classification", kernel="linear")
+
+mod_svm <- svm(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
+             data=pixels_df,
+             method="C-classification",
+             kernel="linear")
+
+mod_svm
+summary(mod_svm)
+
+plot(mod_svm)
+
+# Now predict the subset data based on the model; prediction for entire area takes longer time
+r_predicted_svm <- predict(r_stack, mod_svm)
+
+plot(r_predicted_svm)
 
 ############# Compare methods with ROC #######
 
