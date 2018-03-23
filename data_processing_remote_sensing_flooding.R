@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/21/2018
+#DATE MODIFIED: 03/23/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -616,5 +616,35 @@ writeRaster(r_roads_sample,filename=roads_rastername)
 
 names(road_reg_sample)
 View(road_reg_sample@data)
+
+####### Processing training and testing information
+
+class1_data_sf <- st_read(file.path(in_dir_var,"class1.shp"))
+class2_data_sf <- st_read(file.path(in_dir_var,"class2.shp"))
+class3_data_sf <- st_read(file.path(in_dir_var,"class3.shp"))
+
+class1_data_sf$class_ID <- 1
+class2_data_sf$class_ID <- 2
+class3_data_sf$class_ID <- 3
+
+list_class_data_sf <- list(class1_data_sf,class2_data_sf,class3_data_sf)
+names(class1_data_sf)
+table(class1_data_sf$REC_NUM)
+clean_up_data_sf <- function(i,x_sf){
+  data_sf <- x_sf[[i]]
+  data_sf$class_ID <- i
+  data_sf$record_ID <- data_sf$REC_NUM
+  data_sf <- data_sf[,c("record_ID","class_ID")]
+  return(data_sf)
+}
+
+test_sf <- clean_up_data_sf(1,list_class_data_sf)
+View(test_sf)
+list_ground_sf <- lapply(1:length(list_class_data_sf),FUN=clean_up_data_sf,x_sf=list_class_data_sf)
+View(list_ground_sf[[1]])
+
+st_write(list_ground_sf[[1]],"class1_sites.shp",layer_options="OVERWRITE=yes")
+st_write(list_ground_sf[[2]],"class2_sites.shp")
+st_write(list_ground_sf[[3]],"class3_sites.shp")
 
 ################################## End of Script #########################################
