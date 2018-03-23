@@ -214,6 +214,12 @@ points(NDVI~MNDWI,col="red",cex=0.2,subset(pixels_df,class_ID==3))
 histogram(r_date2)
 
 boxplot(MNDWI~class_ID,pixels_df,main="Boxplot for MNDWI per class")
+############### Split training and testing #############
+
+#pixels_df
+##let's keep 30% of data for testing for each class
+
+
 
 ############### Using Classification and Regression Tree model (CART) #########
 
@@ -237,6 +243,17 @@ plot(r_predicted_rpart)
 
 # Now predict the subset data based on the model; prediction for entire area takes longer time
 r_predicted_rpart <- predict(r_stack,mod_rpart, type='class', progress = 'text')
+pr <- predict(ss, model.class, type='class', progress = 'text')
+
+library(rasterVis)
+pr <- ratify(pr)
+rat <- levels(pr)[[1]]
+rat$legend <- c("cloud","forest","crop","fallow","built-up","open-soil","water","grassland")
+levels(pr) <- rat
+levelplot(pr, maxpixels = 1e6,
+          col.regions = c("darkred","cyan","yellow","burlywood","darkgreen","lightgreen","darkgrey","blue"),
+          scales=list(draw=FALSE),
+          main = "Supervised Classification of Sentinel data")
 
 ############### Using KNN or SVM #########
 
@@ -257,6 +274,10 @@ r_predicted_svm <- predict(r_stack, mod_svm)
 plot(r_predicted_svm)
 histogram(r_predicted_svm)
 
+### get confusion matrix?
+#table(pred,y)
+#https://rischanlab.github.io/SVM.html
+
 ################# Using Neural Network ##################
 
 ##### plot feature space:
@@ -265,24 +286,23 @@ dim(pixels_df)
 selected_var <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")#,"NDVI","MNDWI")
 nrow(pixels_df)
 
-test <- nnet(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
-             x=subset(pixels_df,select=selected_var),
-             y=subset(pixels_df,select=c("class_ID")),weights = rep( 1,1520),
-             size=7)
+pixels_df_subset <- subset(pixels_df,select=c("class_ID",selected_var))
+dim(pixels_df_subset)
+mod_nnet <- nnet(as.formula("class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3"),
+             #x=subset(pixels_df,select=selected_var),
+             #y=subset(pixels_df,select=c("class_ID")),
+             data=pixels_df_subset,
+             #weights = 1,
+             size=10)
 
-test <- nnet(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
-             x=subset(pixels_df,select=selected_var),
-             y=subset(pixels_df,select=c("class_ID")))
+r_predicted_nnet <- predict(subset(r_stack,3:9),mod_nnet,"class",overwrite=T)
 
-?nnet
+#model <- mlp(dat$inputsTrain, dat$targetsTrain, size=1, learnFunc="SCG", learnFuncParams=c(0, 0, 0, 0), 
+#             maxit=400, inputsTest=dat$inputsTest, targetsTest=dat$targetsTest)
 
-             #right_side_formula <- paste(explanatory_variables,collapse = " + ")
-#model_formula_str <- paste0(y_var," ~ ",right_side_formula)
-             
-names(pixels_df)
-neuralnet
-pixels_df
-##let's keep 30% of data for testing for each class
+plot(r_predicted_nnet)
+
+#neuralnet
 
 ### Now do a unsupervised
 ## do a supervised
@@ -293,9 +313,7 @@ pixels_df
 
 #nnet()
 
-
 ############# Compare methods with ROC #######
-
 
 nlcd2006_reg_RITA <- raster(file.path(in_dir_var,nlcd_2006_filename)) 
 #11: open water
