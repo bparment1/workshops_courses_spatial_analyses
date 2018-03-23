@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/13/2018 
-#DATE MODIFIED: 03/21/2018
+#DATE MODIFIED: 03/23/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -38,12 +38,13 @@ library(foreign) # import datasets from SAS, spss, stata and other sources
 library(gdata) #read xls, dbf etc., not recently updated but useful
 library(classInt) #methods to generate class limits
 library(plyr) #data wrangling: various operations for splitting, combining data
-library(gstat) #spatial interpolation and kriging methods
+#library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf)
 library(plotrix) #various graphic functions e.g. draw.circle
 library(nnet)
+library(rpart)
 
 ###### Functions used in this script
 
@@ -86,7 +87,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise6_03212018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise6_03232018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 #ARG4
@@ -126,18 +127,6 @@ if(create_out_dir_param==TRUE){
 ###
 ## Second list.files and create raster images stack
 
-nlcd2006_reg_RITA <- raster(file.path(in_dir_var,nlcd_2006_filename)) 
-#11: open water
-#90:Woody Wetlands
-#95:Emergent Herbaceuous Wetlands
-
-plot(nlcd2006_reg_RITA==90)
-plot(nlcd2006_reg_RITA==95)
-plot(nlcd2006_reg_RITA==11)
-
-lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),sep=",")
-lc_legend_df
-View(lc_legend_df)
 
 ###### Read in modis 09
 
@@ -151,25 +140,33 @@ names(r_date1) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 names(r_date2) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 
 r_date2_MNDWI <- (subset(r_date2,"Green") - subset(r_date2,"SWIR2")) / (subset(r_date2,"Green") + subset(r_date2,"SWIR2"))
-plot(r_date2_MNDWI)
+plot(r_date2_MNDWI,zlim=c(-1,1))
 r_date1_MNDWI <- (subset(r_date1,"Green") - subset(r_date1,"SWIR2")) / (subset(r_date1,"Green") + subset(r_date1,"SWIR2"))
-plot(r_date1_MNDWI)
+plot(r_date1_MNDWI,zlim=c(-1,1))
 
 r_date2_NDVI <- (subset(r_date2,"NIR") - subset(r_date2,"Red")) / (subset(r_date2,"NIR") + subset(r_date2,"Red"))
 plot(r_date2_NDVI)
 r_date1_NDVI <- (subset(r_date1,"NIR") - subset(r_date1,"Red")) / (subset(r_date1,"NIR") + subset(r_date1,"Red"))
 plot(r_date1_NDVI)
-writeRaster(r_date1_NDVI,"ndvi_date1.rst")
-NAvalue(r_date1_NDVI) <- 9999
-writeRaster(r_date2_NDVI,"ndvi_date2.rst")
-NAvalue(r_date2_NDVI) <- 9999
-plot(r_date2_MNDWI)
+#writeRaster(r_date1_NDVI,"ndvi_date1.rst")
+#NAvalue(r_date1_NDVI) <- 9999
+#writeRaster(r_date2_NDVI,"ndvi_date2.rst")
+#NAvalue(r_date2_NDVI) <- 9999
+#plot(r_date2_MNDWI)
 
+class2_sites.shp
 #training_data_sf <- st_read("training1.shp")
-class1_data_sf <- st_read("class1.shp")
-class2_data_sf <- st_read("class2.shp")
-class3_data_sf <- st_read("class3.shp")
+class1_data_sf <- st_read(file.path(in_dir_var,"class1_sites.shp"))
+class2_data_sf <- st_read(file.path(in_dir_var,"class2_sites.shp"))
+class3_data_sf <- st_read(file.path(in_dir_var,"class3_sites.shp"))
 
+class_data_sf <- rbind(class1_data_sf,class2_data_sf,class3_data_sf)
+class_data_sf$poly_ID <- 1:nrow(class_data_sf) #unique ID for each polygon
+nrow(class_data_sf)
+
+class_data_sp <- as(class_data_sf,"Spatial")
+
+###merg sf data
 list_class_sf <- list(class1_data_sf,class2_data_sf,class3_data_sf)
 list_class_sp <- lapply(list_class_sf,function(x){as(x,"Spatial")})
 
@@ -178,44 +175,18 @@ r_y <- init(r_date2,"x") #raster with coordiates y
 
 r_stack <- stack(r_x,r_y,r_date2,r_date2_NDVI,r_date2_MNDWI)
 names(r_stack) <- c("x","y","Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3","NDVI","MNDWI")
+pixels_df <- extract(r_stack,class_data_sp,df=T)
 
-#lapply()
-#list_pixels_df_test1 <- lapply(list_class_sp,function(x){extract(r_stack,x,df=T)})
-#list_pixels_df_test2 <- lapply(list_class_sp,function(x){extract(r_stack,x,sp=T,df=T)})
-#list_pixels_df <- lapply(1:length(list_class_sp),function(i){pix_df <- extract(r_stack,list_class_sp[[i]],df=T);pix_df$class_ID <- i})
-list_pixels_df <- lapply(list_class_sp,function(x){extract(r_stack,x,df=T)})
-list_class_pixels_df <- lapply(1:length(list_pixels_df),function(i){list_pixels_df[[i]]$class_ID <- i})
-
-list_class_pixels_df <- list_pixels_df
-list_class_pixels_df[[1]]$class_ID <- 1
-list_class_pixels_df[[2]]$class_ID <- 2
-list_class_pixels_df[[3]]$class_ID <- 3
-
-list_tmp <- list_pixels_df
-list_tmp[[1]]$class_id <- 1
-View(list_tmp[[1]])
-View(list_pixels_df[[1]])
-View(list_class_pixels_df[[1]])
-
-#list_pixels_df <- list_pixels_df_test2
-#class1_data_sp$class_ID <- 1
-#class2_data_sp$class_ID <- 2
-#class3_data_sp$class_ID <- 3
-
-## Note that both step above can be combined but for ease of understanding we kept them separate.
-#pix_df <- extract(r_stack,training_data_sf,df=T)
-pixels_df <- do.call("rbind",list_pixels_df)
-pixels_df <- do.call("rbind",list_class_pixels_df)
-
-View(pixels_df)
-pix_df <- as.data.frame(pix_df)
-names(pix_df)
-names(pix_df) <- c("poly_ID","Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3","NDVI","MNDWI")
-dim(pix_df)
+dim(pixels_df) #We have 1547 pixels extracted
+class_data_df <- class_data_sf
+st_geometry(class_data_df) <- NULL #this will coerce the sf object into a data.frame
+pixels_df <- merge(pixels_extracted_df,class_data_df,by.x="ID",by.y="poly_ID")
 
 #Show average MNDWI and NDVI for each class
-
 ### Need to add other extract for other land cover!!
+#View(pixels_df)
+#names(pixels_df)
+#class(pixels_df)
 
 #1) vegetation abd other
 #2) Flooded vegetation
@@ -223,33 +194,27 @@ dim(pix_df)
 
 #so the classification will have three classes!!!
 
-
-## Maybe also do a unsupervised?
-
-#############
+######## Examining sites data used for the classification
 
 #Water
 x_range <- range(pixels_df$Green,na.rm=T)
 y_range <- range(pixels_df$NIR,na.rm=T)
 
-#plot(Green~NIR,xlim=x_range,ylim=y_range,col="blue",subset(pixels_df,class_ID==1))
-plot(Green~NIR,xlim=c(0,1),ylim=c(0,1),col="blue",subset(pixels_df,class_ID==1))
-points(Green~NIR,col="green",subset(pixels_df,class_ID==2))
-points(Green~NIR,col="red",subset(pixels_df,class_ID==3))
+###Add legend?
+plot(NIR~Green,xlim=x_range,ylim=y_range,cex=0.2,col="blue",subset(pixels_df,class_ID==1))
+points(NIR~Green,col="green",cex=0.2,subset(pixels_df,class_ID==2))
+points(NIR~Green,col="red",cex=0.2,subset(pixels_df,class_ID==3))
 
-plot(Green~NIR,xlim=c(0,0.5),ylim=c(0,0.2),cex=0.2,col="blue",subset(pixels_df,class_ID==1))
-points(Green~NIR,col="green",cex=0.2,subset(pixels_df,class_ID==2))
-points(Green~NIR,col="red",cex=0.2,subset(pixels_df,class_ID==3))
+plot(NDVI~MNDWI,xlim=c(-1,1),ylim=c(-1,1),cex=0.2,col="blue",subset(pixels_df,class_ID==1))
+points(NDVI~MNDWI,col="green",cex=0.2,subset(pixels_df,class_ID==2))
+points(NDVI~MNDWI,col="red",cex=0.2,subset(pixels_df,class_ID==3))
 
 histogram(r_date2)
-histogram(pix_df)
 
-# NRT MODIS
-# Other
+boxplot(MNDWI~class_ID,pixels_df)
 
 ############### Using Classification and Regression Tree model (CART) #########
 
-library(rpart)
 # grow tree 
 fit <- rpart(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
              method="class", 
@@ -347,6 +312,19 @@ plot(r_predicted_svm)
 
 ############# Compare methods with ROC #######
 
+
+nlcd2006_reg_RITA <- raster(file.path(in_dir_var,nlcd_2006_filename)) 
+#11: open water
+#90:Woody Wetlands
+#95:Emergent Herbaceuous Wetlands
+
+plot(nlcd2006_reg_RITA==90)
+plot(nlcd2006_reg_RITA==95)
+plot(nlcd2006_reg_RITA==11)
+
+lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),sep=",")
+lc_legend_df
+#View(lc_legend_df)
 
 ################### End of Script #########################
 
