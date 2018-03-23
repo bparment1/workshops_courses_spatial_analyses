@@ -224,27 +224,7 @@ boxplot(MNDWI~class_ID,pixels_df,main="Boxplot for MNDWI per class")
 pixels_df$pix_ID <- 1:nrow(pixels_df)
 prop <- 0.3
 table(pixels_df$class_ID)
-
-### Let's 
-
-?createDataPartition
-a <- createDataPartition(iris$Species, list=FALSE)
-training <- iris[a,]
-test <- iris[-a,]
-
-data_df <- subset(pixels_df,class_ID==1)
-n <- nrow(data_df)
-ns<-n-round(n*prop)   #Create a sample from the data frame with 70% of the rows
-nv<-n-ns              #create a sample for validation with prop of the rows
-ind.training <- sample(nrow(data_df), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
-ind.testing <- setdiff(1:nrow(data_df), ind.training) #index for testing samples
-#Find the corresponding 
-data_training <- data_df[ind.training,] #selected the randomly sampled stations
-data_testing <- data_df[ind.training,] #selected the randomly sampled stations
-
-data_df$training <- data
-data_df[["training"]] <- data_df[ind.training,]
-
+set.seed(100)
 ### This is for one class:
 #Better as a function but we use a loop for clarity here:
 
@@ -262,26 +242,19 @@ data_df <- do.call(rbind,list_data_df)
 
 dim(data_df)
 View(data_df)
-### Let's split for all class using the function that implements the lines above
-##
-#l_indices <- lapply(1:3,function(i){data_df <- subset(pixels_df,class_ID==i); createDataPartition(data_df$ID,p=0.7)})
-#l_indices[[1]]
-test <- createDataPartition(pixels_df$ID,p=0.7,list=F)
-test <- createDataPartition(pixels_df$ID,p=0.7)
-#length(test)
 
-dim(test)/nrow(pixels_df)
-
+data_training <- subset(data_df,training==1)
 
 ## Do neural net, cart, random forest,svm
 ############### Using Classification and Regression Tree model (CART) #########
 
 # grow tree 
+#mod_rpart <- rpart(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
+#             method="class", 
+#             data=pixels_df)
 mod_rpart <- rpart(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
-             method="class", 
-             data=pixels_df)
-plot(mod_rpart)
-text(fit,cex=0.8)
+                   method="class", 
+                   data=data_training)
 
 # Plot the fitted  classification tree
 plot(mod_rpart, uniform=TRUE, main="Classification Tree")
@@ -290,19 +263,11 @@ text(mod_rpart, cex=.8)
 plot(mod_rpart, uniform=TRUE, main="Classification Tree")
 text(mod_rpart, use.n=TRUE, all=TRUE, cex=.8)
 
-#### Predict for each pixel of the raster
-r_predicted_rpart <- predict(r_stack,mod_rpart)
-plot(r_predicted_rpart)
-
 # Now predict the subset data based on the model; prediction for entire area takes longer time
 r_predicted_rpart <- predict(r_stack,mod_rpart, type='class', progress = 'text')
-pr <- predict(ss, model.class, type='class', progress = 'text')
 
 plot(r_predicted_rpart)
 r_predicted_rpart <- ratify(r_predicted_rpart)
-class(r_predicted_rpart)
-r_predicted_rpart
-
 rat <- levels(r_predicted_rpart)[[1]]
 rat$legend <- c("vegetation","wetland","water")
 levels(r_predicted_rpart) <- rat
@@ -316,19 +281,31 @@ levelplot(r_predicted_rpart, maxpixels = 1e6,
 ## set class_ID as factor to generate classification
 pixels_df$class_ID <- as.factor(pixels_df$class_ID)
 mod_svm <- svm(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
-               data=pixels_df,
+               data=data_training,
                method="C-classification",
                kernel="linear") # can be radial
 
 summary(mod_svm)
 
-plot(mod_svm)
+#plot(mod_svm)
 
 # Now predict the subset data based on the model; prediction for entire area takes longer time
-r_predicted_svm <- predict(r_stack, mod_svm)
+raster_outfilename <- paste0("r_predicted_svm_",out_suffix,file_format)
+r_predicted_svm <- predict(r_stack, mod_svm,
+                           progress = 'text',
+                           filename=raster_outfilename,
+                           overwrite=T)
 
 plot(r_predicted_svm)
 histogram(r_predicted_svm)
+r_predicted_svm <- ratify(r_predicted_svm)
+rat <- levels(r_predicted_svm)[[1]]
+rat$legend <- c("vegetation","wetland","water")
+levels(r_predicted_svm) <- rat
+levelplot(r_predicted_svm, maxpixels = 1e6,
+          col.regions = c("green","blue","darkblue"),
+          scales=list(draw=FALSE),
+          main = "SVM classification")
 
 ### get confusion matrix?
 #table(pred,y)
@@ -337,44 +314,86 @@ histogram(r_predicted_svm)
 ################# Using Neural Network ##################
 
 ##### plot feature space:
-pixels_df <- na.omit(pixels_df)
-dim(pixels_df)
+data_training_df <- na.omit(data_training)
+dim(data_training_df)
 selected_var <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")#,"NDVI","MNDWI")
-nrow(pixels_df)
+nrow(data_training_df)
 
-pixels_df_subset <- subset(pixels_df,select=c("class_ID",selected_var))
-dim(pixels_df_subset)
-mod_nnet <- nnet(as.formula("class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3"),
+data_training_df_subset <- subset(data_training,select=c("class_ID",selected_var))
+dim(data_training_df_subset)
+data_training_df_subset$class_ID
+
+mod_nnet <- nnet(as.factor(class_ID) ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
              #x=subset(pixels_df,select=selected_var),
              #y=subset(pixels_df,select=c("class_ID")),
-             data=pixels_df_subset,
+             data=data_training_df_subset,
              #weights = 1,
-             size=10)
+             size=10,
+             type="class")
 
-r_predicted_nnet <- predict(subset(r_stack,3:9),mod_nnet,"class",overwrite=T)
+?nnet
 
+NAvalue(r_stack) <- -9999
+raster_outfilename <- paste0("r_predicted_nnet_",out_suffix,file_format)
+r_predicted_nnet <- predict(subset(r_stack,3:9),mod_nnet,type="raw",overwrite=T)
+r_predicted_nnet <- predict(r_stack,mod_nnet,
+                            type="raw",
+                            filename=raster_outfilename,
+                            overwrite=T)
+??raster::predict
+r_predicted_nnet <- predict(subset(r_stack,3:9),mod_nnet,type="class",na.rm=T,overwrite=T)
+names(r_stack)
+pnnet <- raster::predict(object=xn, model=results, fun=predict.NNET, na.rm=TRUE, factors=factors,
+                         filename=fullname, progress='text', overwrite=TRUE)
+https://rdrr.io/cran/BiodiversityR/src/R/ensemble.raster.R
+mod_nnet$fitted.values
+?predict.nnet
+#plot(r_predicted_nnet)
+#unique(r_predicted_nnet)
 #model <- mlp(dat$inputsTrain, dat$targetsTrain, size=1, learnFunc="SCG", learnFuncParams=c(0, 0, 0, 0), 
 #             maxit=400, inputsTest=dat$inputsTest, targetsTest=dat$targetsTest)
 
 plot(r_predicted_nnet)
-
+histogram(r_predicted_nnet)
 
 #nnet()
 
-############# Compare methods with ROC #######
+######## Compare methods for the performance #################
 
-nlcd2006_reg_RITA <- raster(file.path(in_dir_var,nlcd_2006_filename)) 
-#11: open water
-#90:Woody Wetlands
-#95:Emergent Herbaceuous Wetlands
+dim(data_df)
+data_testing <- subset(data_df,training==0)
+#predict()
+#Not working here:
+#testing_rpart <- predict.rpart(mod_rpart, data_testing,type='class')
+testing_rpart <- predict(mod_rpart, data_testing,type='class')
 
-plot(nlcd2006_reg_RITA==90)
-plot(nlcd2006_reg_RITA==95)
-plot(nlcd2006_reg_RITA==11)
+#class(data_testing)
+#testing_svm <- e1071::predict(data_testing,mod_svm, type='class')
+testing_svm <- predict(mod_svm,data_testing, type='class')
 
-lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),sep=",")
-lc_legend_df
-#View(lc_legend_df)
+#### Generate confusion matrix!!!
+
+tb_rpart <- table(testing_rpart,data_test$class_ID)
+tb_svm <- table(testing_svm,data_test$class_ID)
+
+sum(table(testing_rpart))
+
+tb_rpart[1]/sum(tb_rpart[1,])
+tb_svm[1]/sum(tb_svm[,1])
+#overall accuracy for svm
+sum(diag(tb_svm))/sum(table(testing_svm))
+#overall accuracy for rpart
+sum(diag(tb_rpart))/sum(table(testing_rpart))
+
+
+#Generate more accuracy measurements from CARET
+accuracy_info_svm <- confusionMatrix(testing_svm,data_test$class_ID, positive = NULL)
+accuracy_info_rpart <- confusionMatrix(testing_rpart,data_test$class_ID, positive = NULL)
+
+accuracy_info_rpart$overall
+accuracy_info_svm$overall
+
+#### write out the results:
 
 
 ################### End of Script #########################
