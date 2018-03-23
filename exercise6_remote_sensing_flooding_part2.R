@@ -45,6 +45,8 @@ library(sf)
 library(plotrix) #various graphic functions e.g. draw.circle
 library(nnet)
 library(rpart)
+library(e1071)
+library(caret)
 
 ###### Functions used in this script
 
@@ -211,46 +213,51 @@ points(NDVI~MNDWI,col="red",cex=0.2,subset(pixels_df,class_ID==3))
 
 histogram(r_date2)
 
-boxplot(MNDWI~class_ID,pixels_df)
+boxplot(MNDWI~class_ID,pixels_df,main="Boxplot for MNDWI per class")
 
 ############### Using Classification and Regression Tree model (CART) #########
 
 # grow tree 
-fit <- rpart(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
+mod_rpart <- rpart(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
              method="class", 
              data=pixels_df)
-plot(fit)
+plot(mod_rpart)
 text(fit,cex=0.8)
 
-# Much cleaner way is to plot the trained classification tree
-plot(model.class, uniform=TRUE, main="Classification Tree")
-text(model.class, cex=.8)
-plot(fit, uniform=TRUE, 
-     main="Classification Tree for Kyphosis")
-text(fit, use.n=TRUE, all=TRUE, cex=.8)
-#https://www.statmethods.net/advstats/cart.html
+# Plot the fitted  classification tree
+plot(mod_rpart, uniform=TRUE, main="Classification Tree")
+text(mod_rpart, cex=.8)
 
-# prune the tree 
-pfit<- prune(fit, cp=   fit$cptable[which.min(fit$cptable[,"xerror"]),"CP"])
+plot(mod_rpart, uniform=TRUE, main="Classification Tree")
+text(mod_rpart, use.n=TRUE, all=TRUE, cex=.8)
 
-# plot the pruned tree 
-plot(pfit, uniform=TRUE, 
-     main="Pruned Classification Tree for Kyphosis")
-text(pfit, use.n=TRUE, all=TRUE, cex=.8)
-
-r_predicted <- predict(r_stack,fit)
-plot(r_predicted)
-test <- unique(r_predicted)
-
-test
+#### Predict for each pixel of the raster
+r_predicted_rpart <- predict(r_stack,mod_rpart)
+plot(r_predicted_rpart)
 
 # Now predict the subset data based on the model; prediction for entire area takes longer time
-r_predicted <- predict(r_stack, fit, type='class', progress = 'text')
+r_predicted_rpart <- predict(r_stack,mod_rpart, type='class', progress = 'text')
 
-plot(r_predicted)
+############### Using KNN or SVM #########
 
+## set class_ID as factor to generate classification
+pixels_df$class_ID <- as.factor(pixels_df$class_ID)
+mod_svm <- svm(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
+               data=pixels_df,
+               method="C-classification",
+               kernel="linear") # can be radial
 
-############### Using Neural Network #########
+summary(mod_svm)
+
+plot(mod_svm)
+
+# Now predict the subset data based on the model; prediction for entire area takes longer time
+r_predicted_svm <- predict(r_stack, mod_svm)
+
+plot(r_predicted_svm)
+histogram(r_predicted_svm)
+
+################# Using Neural Network ##################
 
 ##### plot feature space:
 pixels_df <- na.omit(pixels_df)
@@ -277,7 +284,6 @@ neuralnet
 pixels_df
 ##let's keep 30% of data for testing for each class
 
-
 ### Now do a unsupervised
 ## do a supervised
 ## Split training and testing... 
@@ -287,28 +293,6 @@ pixels_df
 
 #nnet()
 
-############### Using KNN or SVM #########
-
-library(e1071)
-
-svm_model <- svm(Species~ ., data=trainset, method="C-classification", kernel="linear")
-
-svm_model <- svm(Species~ ., data=trainset, method="C-classification", kernel="linear")
-
-mod_svm <- svm(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
-             data=pixels_df,
-             method="C-classification",
-             kernel="linear")
-
-mod_svm
-summary(mod_svm)
-
-plot(mod_svm)
-
-# Now predict the subset data based on the model; prediction for entire area takes longer time
-r_predicted_svm <- predict(r_stack, mod_svm)
-
-plot(r_predicted_svm)
 
 ############# Compare methods with ROC #######
 
@@ -325,6 +309,7 @@ plot(nlcd2006_reg_RITA==11)
 lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),sep=",")
 lc_legend_df
 #View(lc_legend_df)
+
 
 ################### End of Script #########################
 
