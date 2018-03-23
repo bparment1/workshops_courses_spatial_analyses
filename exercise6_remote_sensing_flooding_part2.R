@@ -214,13 +214,66 @@ points(NDVI~MNDWI,col="red",cex=0.2,subset(pixels_df,class_ID==3))
 histogram(r_date2)
 
 boxplot(MNDWI~class_ID,pixels_df,main="Boxplot for MNDWI per class")
+
 ############### Split training and testing #############
 
-#pixels_df
 ##let's keep 30% of data for testing for each class
+## Split training and testing... 
+
+#pixels_df
+pixels_df$pix_ID <- 1:nrow(pixels_df)
+prop <- 0.3
+table(pixels_df$class_ID)
+
+### Let's 
+
+?createDataPartition
+a <- createDataPartition(iris$Species, list=FALSE)
+training <- iris[a,]
+test <- iris[-a,]
+
+data_df <- subset(pixels_df,class_ID==1)
+n <- nrow(data_df)
+ns<-n-round(n*prop)   #Create a sample from the data frame with 70% of the rows
+nv<-n-ns              #create a sample for validation with prop of the rows
+ind.training <- sample(nrow(data_df), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
+ind.testing <- setdiff(1:nrow(data_df), ind.training) #index for testing samples
+#Find the corresponding 
+data_training <- data_df[ind.training,] #selected the randomly sampled stations
+data_testing <- data_df[ind.training,] #selected the randomly sampled stations
+
+data_df$training <- data
+data_df[["training"]] <- data_df[ind.training,]
+
+### This is for one class:
+#Better as a function but we use a loop for clarity here:
+
+list_data_df <- vector("list",length=3)
+for(i in 1:3){
+  data_df <- subset(pixels_df,class_ID==i)
+  data_df$pix_id <- 1:nrow(data_df)
+  indices <- as.vector(createDataPartition(data_df$pix_ID,p=0.7,list=F))
+  data_df$training <-  as.numeric(data_df$pix_id %in% indices)
+  #table(data_df$training)
+  list_data_df[[i]] <- data_df
+}
+
+data_df <- do.call(rbind,list_data_df)
+
+dim(data_df)
+View(data_df)
+### Let's split for all class using the function that implements the lines above
+##
+#l_indices <- lapply(1:3,function(i){data_df <- subset(pixels_df,class_ID==i); createDataPartition(data_df$ID,p=0.7)})
+#l_indices[[1]]
+test <- createDataPartition(pixels_df$ID,p=0.7,list=F)
+test <- createDataPartition(pixels_df$ID,p=0.7)
+#length(test)
+
+dim(test)/nrow(pixels_df)
 
 
-
+## Do neural net, cart, random forest,svm
 ############### Using Classification and Regression Tree model (CART) #########
 
 # grow tree 
@@ -245,15 +298,18 @@ plot(r_predicted_rpart)
 r_predicted_rpart <- predict(r_stack,mod_rpart, type='class', progress = 'text')
 pr <- predict(ss, model.class, type='class', progress = 'text')
 
-library(rasterVis)
-pr <- ratify(pr)
-rat <- levels(pr)[[1]]
-rat$legend <- c("cloud","forest","crop","fallow","built-up","open-soil","water","grassland")
-levels(pr) <- rat
-levelplot(pr, maxpixels = 1e6,
-          col.regions = c("darkred","cyan","yellow","burlywood","darkgreen","lightgreen","darkgrey","blue"),
+plot(r_predicted_rpart)
+r_predicted_rpart <- ratify(r_predicted_rpart)
+class(r_predicted_rpart)
+r_predicted_rpart
+
+rat <- levels(r_predicted_rpart)[[1]]
+rat$legend <- c("vegetation","wetland","water")
+levels(r_predicted_rpart) <- rat
+levelplot(r_predicted_rpart, maxpixels = 1e6,
+          col.regions = c("green","blue","darkblue"),
           scales=list(draw=FALSE),
-          main = "Supervised Classification of Sentinel data")
+          main = "Classification Tree")
 
 ############### Using KNN or SVM #########
 
@@ -302,14 +358,6 @@ r_predicted_nnet <- predict(subset(r_stack,3:9),mod_nnet,"class",overwrite=T)
 
 plot(r_predicted_nnet)
 
-#neuralnet
-
-### Now do a unsupervised
-## do a supervised
-## Split training and testing... 
-
-## Do ROC here!!!
-## Do neural net, cart, random forest,svm
 
 #nnet()
 
