@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 03/21/2018
+#DATE MODIFIED: 03/24/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -83,7 +83,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise4_03202018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise4_03242018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 #ARG4
@@ -134,11 +134,17 @@ r_lc_date2 <- raster(infile_land_cover_date2)
 lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),sep=",")
 lc_legend_df
 View(lc_legend_df)
-plot(r_lc_date1==90)
-plot(r_lc_date2==95)
-plot(r_lc_date1==11)
-plot(r_lc_date1)
-plot(r_lc_date2)
+
+### get confusion matrix?
+#table(pred,y)
+#https://rischanlab.github.io/SVM.html
+
+#
+plot(r_lc_date1,col=lc_col) #will need to add the legend!!
+plot(r_lc_date2,col=lc_col)
+
+names(lc_legend_df)
+dim(lc_legend_df)
 
 freq_tb_date1 <- freq(r_lc_date1)
 freq_tb_date2 <- freq(r_lc_date2)
@@ -166,6 +172,28 @@ lc_df <- data.frame(ID=freq_tb_date1$value,
 lc_df$diff <- lc_df$lc2011 - lc_df$lc2001 
 
 View(lc_df)
+
+### Let's make plot of land cover types and differences
+lc_legend_df<- subset(lc_legend_df,COUNT>0)
+
+lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",")
+i<-1
+n_cat <- nrow(lc_legend_df)
+lc_col <- lapply(1:n_cat,function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
+lc_col <- unlist(lc_col)
+
+r_lc_date1 <- ratify(r_lc_date1)
+rat <- levels(r_lc_date1)[[1]]
+
+as.character(lc_df$name)
+#rat$legend <- c("vegetation","wetland","water")
+rat$legend <- as.character(lc_df$name)
+levels(r_lc_date1) <- rat
+levelplot(r_lc_date1, maxpixels = 1e6,
+          col.regions = lc_col,
+          scales=list(draw=FALSE),
+          main = "NLCD 2001")
+plot(r_lc_date1)
 #positive means increase, negative a decrease
 
 xtab_df <- crosstab(r_lc_date1,r_lc_date2)
