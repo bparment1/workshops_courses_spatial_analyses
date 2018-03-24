@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/13/2018 
-#DATE MODIFIED: 03/23/2018
+#DATE MODIFIED: 03/24/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -234,7 +234,6 @@ for(i in 1:3){
   data_df$pix_id <- 1:nrow(data_df)
   indices <- as.vector(createDataPartition(data_df$pix_ID,p=0.7,list=F))
   data_df$training <-  as.numeric(data_df$pix_id %in% indices)
-  #table(data_df$training)
   list_data_df[[i]] <- data_df
 }
 
@@ -252,7 +251,7 @@ data_training <- subset(data_df,training==1)
 #mod_rpart <- rpart(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
 #             method="class", 
 #             data=pixels_df)
-mod_rpart <- rpart(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
+mod_rpart <- rpart(class_ID ~ Red + NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
                    method="class", 
                    data=data_training)
 
@@ -264,7 +263,11 @@ plot(mod_rpart, uniform=TRUE, main="Classification Tree")
 text(mod_rpart, use.n=TRUE, all=TRUE, cex=.8)
 
 # Now predict the subset data based on the model; prediction for entire area takes longer time
-r_predicted_rpart <- predict(r_stack,mod_rpart, type='class', progress = 'text')
+raster_out_filename <- paste0("r_predicted_rpart_",out_suffix,file_format)
+r_predicted_rpart <- predict(r_stack,mod_rpart, 
+                             type='class',
+                             filename=raster_out_filename,
+                             progress = 'text')
 
 plot(r_predicted_rpart)
 r_predicted_rpart <- ratify(r_predicted_rpart)
@@ -275,6 +278,7 @@ levelplot(r_predicted_rpart, maxpixels = 1e6,
           col.regions = c("green","blue","darkblue"),
           scales=list(draw=FALSE),
           main = "Classification Tree")
+
 
 ############### Using KNN or SVM #########
 
@@ -340,12 +344,14 @@ r_predicted_nnet <- predict(r_stack,mod_nnet,
                             type="raw",
                             filename=raster_outfilename,
                             overwrite=T)
-??raster::predict
-r_predicted_nnet <- predict(subset(r_stack,3:9),mod_nnet,type="class",na.rm=T,overwrite=T)
+
+#test <- predict(mod_nnet,as.data.frame(subset(r_stack,3:9))
+#??raster::predict
+r_predicted_nnet <- predict(subset(r_stack,3:9),mod_nnet,fun=predict.nnet,type="class",na.rm=T,overwrite=T)
 names(r_stack)
 pnnet <- raster::predict(object=xn, model=results, fun=predict.NNET, na.rm=TRUE, factors=factors,
                          filename=fullname, progress='text', overwrite=TRUE)
-https://rdrr.io/cran/BiodiversityR/src/R/ensemble.raster.R
+#https://rdrr.io/cran/BiodiversityR/src/R/ensemble.raster.R
 mod_nnet$fitted.values
 ?predict.nnet
 #plot(r_predicted_nnet)
@@ -355,8 +361,6 @@ mod_nnet$fitted.values
 
 plot(r_predicted_nnet)
 histogram(r_predicted_nnet)
-
-#nnet()
 
 ######## Compare methods for the performance #################
 
@@ -376,10 +380,21 @@ testing_svm <- predict(mod_svm,data_testing, type='class')
 tb_rpart <- table(testing_rpart,data_test$class_ID)
 tb_svm <- table(testing_svm,data_test$class_ID)
 
-sum(table(testing_rpart))
+#testing_rpart: map prediction in the rows
+#data_test$class_ID: ground truth data in the columns
+#
+#http://spatial-analyst.net/ILWIS/htm/ilwismen/confusion_matrix.htm
+#Producer accuracy: it is the fraction of correctly classified pixels with regard to all pixels 
+#of that ground truth class. 
+#User accuracy:
 
-tb_rpart[1]/sum(tb_rpart[1,])
-tb_svm[1]/sum(tb_svm[,1])
+(table(testing_rpart)) #classification, map results
+(table(data_test$class_ID)) #reference, ground truth in columns
+
+
+tb_rpart[1]/sum(tb_rpart[,1]) #producer accuracy
+tb_svm[1]/sum(tb_svm[,1]) #producer accuracy
+
 #overall accuracy for svm
 sum(diag(tb_svm))/sum(table(testing_svm))
 #overall accuracy for rpart
@@ -394,7 +409,7 @@ accuracy_info_rpart$overall
 accuracy_info_svm$overall
 
 #### write out the results:
-
+#write.table("")
 
 ################### End of Script #########################
 
