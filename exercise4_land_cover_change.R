@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 03/24/2018
+#DATE MODIFIED: 03/25/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -96,10 +96,10 @@ ref_rast_name <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_worksho
 elevation_fname <- "srtm_Houston_area_90m.tif"
 roads_fname <- "r_roads_Harris.tif"
 
+infile_land_cover_date1 <- "r_2001_nlcd30m_Houston.tif"
+infile_land_cover_date2 <- "r_2011_nlcd30m_Houston.tif"
+
 ################# START SCRIPT ###############################
-
-### PART I: READ AND PREPARE DATA FOR ANALYSES #######
-
 
 ## First create an output directory
 
@@ -115,65 +115,23 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-## Second list.files and create raster images stack
+### PART I: READ AND PREPARE DATA FOR ANALYSES #######
 
-# agg_3_r_nlcd2006_Houston.tif
-# agg_3_r_nlcd2011_Houston.tif
-# nlcd_legend.txt
-# r_2006_nlcd30m_Houston.tif.aux.xml
-# r_2006_nlcd30m_Houston.tif
-# r_2011_nlcd30m_Houston.tif.aux.xml
-# r_2011_nlcd30m_Houston.tif
-infile_land_cover_date1 <- file.path(in_dir_var,"r_2001_nlcd30m_Houston.tif")
-#infile_land_cover_date1 <- "r_2006_nlcd30m_Houston.tif"
-infile_land_cover_date2 <- file.path(in_dir_var,"r_2011_nlcd30m_Houston.tif")
- 
-r_lc_date1 <- raster(infile_land_cover_date1) 
-r_lc_date2 <- raster(infile_land_cover_date2) 
+r_lc_date1 <- raster(file.path(in_dir_var,infile_land_cover_date1)) 
+r_lc_date2 <- raster(file.path(in_dir_var,infile_land_cover_date2)) 
 
 lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),sep=",")
-lc_legend_df
-View(lc_legend_df)
+head(lc_legend_df) #inspect data
 
-### get confusion matrix?
-#table(pred,y)
-#https://rischanlab.github.io/SVM.html
+plot(r_lc_date1) #will need to add the legend and add the appropriate palette!!
+plot(r_lc_date2)
 
-#
-plot(r_lc_date1,col=lc_col) #will need to add the legend!!
-plot(r_lc_date2,col=lc_col)
+###  PART I: Analyze change
 
+### Let's make plot of land cover types and differences
 names(lc_legend_df)
 dim(lc_legend_df)
 
-freq_tb_date1 <- freq(r_lc_date1)
-freq_tb_date2 <- freq(r_lc_date2)
-
-View(freq_tb_date1)
-View(freq_tb_date2)
-
-freq_tb_date1 <- merge(freq_tb_date1,lc_legend_df,by.x="value",by.y="ID")
-freq_tb_date2 <- merge(freq_tb_date2,lc_legend_df,by.x="value",by.y="ID")
-
-freq_tb_date1$date <- 2001
-freq_tb_date2$date <- 2011
-
-### No category disappeared:
-freq_tb_date1$value==freq_tb_date2$value
-#lc_df <- data.frame(ID=freq_tb_date1$value,
-#                    lc2006=freq_tb_date1$COUNT,#count is wrong!!!! that is from 2006
-#                    lc2011=freq_tb_date2$COUNT)
-
-lc_df <- data.frame(ID=freq_tb_date1$value,
-           lc2001=freq_tb_date1$count,
-           lc2011=freq_tb_date2$count,
-           name=freq_tb_date1$NLCD.2006.Land.Cover.Class)
-
-lc_df$diff <- lc_df$lc2011 - lc_df$lc2001 
-
-View(lc_df)
-
-### Let's make plot of land cover types and differences
 lc_legend_df<- subset(lc_legend_df,COUNT>0)
 
 lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",")
@@ -194,45 +152,6 @@ levelplot(r_lc_date1, maxpixels = 1e6,
           scales=list(draw=FALSE),
           main = "NLCD 2001")
 #positive means increase, negative a decrease
-
-xtab_df <- crosstab(r_lc_date1,r_lc_date2)
-dim(xtab_df)
-View(xtab_df)
-
-### This removes the zero transitions:
-xtab_df_long <- crosstab(r_lc_date1,r_lc_date2,long=T)
-View(xtab_df_long)
-
-### What is the largest land transition?
-
-xtab_df_long[which.max(xtab_df_long$Freq),]
-#23:Developed, Medium Intensity
-
-lc_transitions_df <- xtab_df_long[order(xtab_df_long$Freq,decreasing=T),]
-View(lc_transitions_df)
-#let's remove all the persisence classes:
-
-#?crosstab
-
-persistence_cat <- lc_transitions_df$r_2001_nlcd30m_Houston==lc_transitions_df$r_2011_nlcd30m_Houston
-
-sum(persistence_cat)
-
-lc_change_df <- lc_transitions_df[!persistence_cat,]
-dim(lc_change_df)
-dim(lc_transitions_df)
-
-#View(lc_change_df)
-# Hay pasture: 81
-#Cultivated Crops: 82
-
-#21: Developed, Open Space
-#22: Developed, Low Intensity
-#23: Developed, Medium Intensity
-#24: Developed, High Intensity
-
-#highest transition: 21 to 23
-#second hightest: 81-23
 
 # Too much information: let's aggregate and summize the info:
 
@@ -300,6 +219,9 @@ r_not_cat2 <- r_date1_rec!=2 #remove areas that were already developed in date1
 r_change <- r_cat2 * r_not_cat2 #mask
 plot(r_change)
 change_tb <- freq(r_change) #this is about 500,000 pixels!!!
+
+#####################################
+############# PART II: Prepare varialbes for land cover change ##############
 
 # change to urban from 2001 to 2011
 # compute rate of growth for a year and project in 2022
@@ -421,6 +343,8 @@ r_date1_rec_masked <- mask(r_date1_rec,r_mask,maskvalue=1)
 
 plot(r_date1_rec_masked)
 
+############# PART III: Set up logistic Model ##############
+
 ###### The logistic regression comes here:
 
 r_elevation_reg
@@ -453,10 +377,12 @@ variables_df$change <- as.factor(variables_df$change)
 names(variables_df)
 #names(variables_df) <- c("change","land_cover","elevation","roads_dist","developped_dist")
 
-mod <- glm(change ~ land_cover + elevation + roads_dist + developped_dist, 
+mod_glm <- glm(change ~ land_cover + elevation + roads_dist + developped_dist, 
            data=variables_df , family=binomial())
-mod
-r_p <- predict(r_variables, mod, type="response")
+mod_glm
+summary(mod_glm)
+summary(mod)
+r_p <- predict(r_variables, mod_glm, type="response")
 plot(r_p)
 
 histogram(r_p)
@@ -494,7 +420,5 @@ str(rocd2_rf)
 
 #Access table: 
 roc_table_rf <- slot(rocd2_rf,"table")
-
-###### 
 
 ####################### End of script #####################################
