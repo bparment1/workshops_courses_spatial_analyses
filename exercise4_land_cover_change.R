@@ -193,7 +193,6 @@ levelplot(r_lc_date1, maxpixels = 1e6,
           col.regions = lc_col,
           scales=list(draw=FALSE),
           main = "NLCD 2001")
-plot(r_lc_date1)
 #positive means increase, negative a decrease
 
 xtab_df <- crosstab(r_lc_date1,r_lc_date2)
@@ -283,7 +282,7 @@ names(lc_df) <- c("value","date1","date2")
 lc_df$diff <- lc_df$date2 - lc_df$date1
 
 lc_df <- merge(lc_df,label_legend_df,by.x="value",by.y="ID",all.y=F)
-lc_df <- lc_df[!duplicated(test_df),]
+lc_df <- lc_df[!duplicated(lc_df),]
 barplot(lc_df$diff,names.arg=lc_df$name,las=2)
 total_val  <- sum(lc_df$date1)
 lc_df$perc_change <- 100*lc_df$diff/total_val 
@@ -295,10 +294,10 @@ View(lc_df)
 ### reclassify:  
 
 #devopped
-r_cat2 <- r_date2_rec==2
-r_not_cat2 <- r_date1_rec!=2
+r_cat2 <- r_date2_rec==2 # developped on date 2
+r_not_cat2 <- r_date1_rec!=2 #remove areas that were already developed in date1
 
-r_change <- r_cat2 * r_not_cat2
+r_change <- r_cat2 * r_not_cat2 #mask
 plot(r_change)
 change_tb <- freq(r_change) #this is about 500,000 pixels!!!
 
@@ -326,7 +325,8 @@ change_tb <- freq(r_change) #this is about 500,000 pixels!!!
 r_cat2<- r_date1_rec==2
 plot(r_cat2)
 
-writeRaster(r_cat2,filename = "developped_2001.tif")
+cat_bool_fname <- "developped_2001.tif"
+writeRaster(r_cat2,filename = cat_bool_fname,overwrite=T)
 ### distance to existing in 2001
 
 r_roads <- raster(file.path(in_dir_var,roads_fname))
@@ -386,8 +386,10 @@ max_val <- cellStats(r_roads_distance,max)
 #y = ax + b with b=0
 #with 9 being new max and 0 being new min
 a = (1 - 0) /(max_val - min_val)
-a=1
+#a=1
 r_roads_dist <- r_roads_distance * a
+r_roads_dist <- (1/r_roads_distance) * 1000
+
 plot(r_roads_dist)
 
 #Get distance from managed land
@@ -398,6 +400,8 @@ plot(r_roads_dist)
 
 a = (1 - 0) /(max_val - min_val) #linear rescaling factor
 r_developped_dist <- r_developped_distance * a
+r_developped_dist <- (1/r_developped_distance) * 1000
+plot(r_developped_dist)
 
 ############ Now deal with elevation
 
@@ -411,7 +415,7 @@ r_elevation_reg <- projectRaster(r_elevation_30m,r_date1_rec)
 #?mask
 r_mask <- r_date1_rec==2
 
-NAvalue(r_date1_rec_masked)
+#NAvalue(r_date1_rec_masked)
 r_date1_rec_masked <- mask(r_date1_rec,r_mask,maskvalue=1)
 #r_date1_rec[r_date1_rec==2] <- NA
 
@@ -464,5 +468,33 @@ plot(r_change)
 plot(r_date1_rec_masked)
 tb_freq <- freq(r_date1_rec_masked)
 View(tb_freq)
+
+y_var <- "change"
+y_ref <- as.numeric(as.character(data[[y_var]])) #boolean reference values
+index_val <- predicted_rf_mat[,2] #probabilities
+
+index_val<- mod$fitted.values
+y_ref <- as.numeric(as.character(mod$data$change))
+names(mod$data)
+mask_val <- 1:nrow(variables_df)
+rocd2_rf <- ROC(index=index_val, 
+                boolean=y_ref, 
+                mask=mask_val,
+                nthres=100)
+sum(is.na(index_val))
+sum(is.na(y_ref))
+
+slot(rocd2_rf,"AUC") #this is your AUC from the logistic modeling
+#Plot ROC curve:
+plot(rocd2_rf,
+     main="ROC")
+
+names(rocd2_rf)
+str(rocd2_rf)
+
+#Access table: 
+roc_table_rf <- slot(rocd2_rf,"table")
+
+###### 
 
 ####################### End of script #####################################
