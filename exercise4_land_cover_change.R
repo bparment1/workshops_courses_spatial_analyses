@@ -88,6 +88,7 @@ create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 #ARG4
 method_proj_val <- "bilinear" # "ngb"
+gdal_installed <- TRUE
 
 #ARG9
 #local raster name defining resolution, extent
@@ -181,8 +182,7 @@ names(nlcd_legend_df)
 
 #class(lc_df$ID)
 nlcd_legend_df$id_l2
-nlcd_legend_df <- subset(nlcd_legend_df,id_l2%in%lc_df$ID ) 
-dim(nlcd_legend_df)
+
 
 ### Let's identify existing cover:
 r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
@@ -190,8 +190,13 @@ r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
 freq_tb_nlcd <- as.data.frame(freq(r_stack_nlcd,merge=T))
 View(freq_tb_nlcd)
 
-rec_df <- nlcd_legend_df[,c(2,1)]
+freq_tb_nlcd$ID
 
+nlcd_legend_df <- subset(nlcd_legend_df,id_l2%in%freq_tb_nlcd$value ) 
+dim(nlcd_legend_df)
+
+### Selectet relevant columns
+rec_df <- nlcd_legend_df[,c(2,1)]
 
 #r_date1_rec <- subs(r_lc_date1,nlcd_legend_df[,1:2],by="id_l1","id_l2")
 r_date1_rec <- subs(r_lc_date1,rec_df,by="id_l2","id_l1")
@@ -238,7 +243,7 @@ change_tb <- freq(r_change) #this is about 500,000 pixels!!!
 #change_tb
 
 #####################################
-############# PART II: Prepare varialbes for land cover change ##############
+############# PART III: Prepare varialbes for land cover change ##############
 
 # change to urban from 2001 to 2011
 # compute rate of growth for a year and project in 2022
@@ -270,21 +275,32 @@ writeRaster(r_cat2,filename = cat_bool_fname,overwrite=T)
 
 r_roads <- raster(file.path(in_dir_var,roads_fname))
 #<- "r_roads_Harris.tif"
-plot(r_roads)
-r_roads_bool <- r_roads >0
+plot(r_roads,colNA="black")
+
+#?aggregate
+r_roads_90m <- aggregate(r_roads,fact=3,fun=mean)
+plot(r_roads_90m)
+
+r_roads_bool <- r_roads_90m >0
+plot(r_roads_bool)
+
 roads_bool_fname <- "roads_bool.tif" 
 writeRaster(r_roads_bool,filename = roads_bool_fname,overwrite=T)
 
+
 if(gdal_installed==TRUE){
   
-  ## Distance from developped land
-  srcfile <- cat_bool_fname 
+  ## Distance from developped land in 2001
+  srcfile <- cat_bool_fname  
   
   dstfile_developped <- file.path(out_dir,paste("developped_distance_",out_suffix,file_format,sep=""))
   n_values <- "1"
   
   ### Note that gdal_proximity doesn't like when path is too long
-  cmd_developped_str <- paste("gdal_proximity.py",basename(srcfile),basename(dstfile_developped),"-values",n_values,sep=" ")
+  cmd_developped_str <- paste("gdal_proximity.py",
+                              basename(srcfile),
+                              basename(dstfile_developped),
+                              "-values",n_values,sep=" ")
 
   ### Distance from roads
   
@@ -314,8 +330,8 @@ if(gdal_installed==TRUE){
   r_roads_distance <- raster(file.path(in_dir_var,paste("roads_bool_distance",file_format,sep="")))
 }
 
-plot(r_developped_distance)
-plot(r_roads_distance)
+plot(r_developped_distance) #This is at 90m.
+plot(r_roads_distance) #This is at 90m.
 
 #Now rescale the distance...
 min_val <- cellStats(r_roads_distance,min) 
@@ -345,11 +361,15 @@ plot(r_developped_dist)
 ############ Now deal with elevation
 
 r_elevation <- raster(file.path(in_dir_var,elevation_fname))
-#<- "srtm_Houston_area_90m.tif"
-r_elevation_30m <- disaggregate(r_elevation,fact=3)
-projection(r_elevation_30m)
-r_elevation_reg <- projectRaster(r_elevation_30m,r_date1_rec)
 
+#<- "srtm_Houston_area_90m.tif"
+#r_elevation_30m <- disaggregate(r_elevation,fact=3)
+projection(r_elevation)
+r_elevation_reg <- projectRaster(r_elevation,r_date1_rec)
+
+r_terrain <- terrain(r_elevation_reg)
+plot(r_terrain)
+?terrain
 ### reclass Land cover
 #?mask
 r_mask <- r_date1_rec==2
@@ -364,6 +384,15 @@ plot(r_date1_rec_masked)
 
 ###### The logistic regression comes here:
 
+tx_counties <- counties(state = 'TX', cb = TRUE, resolution = '20m')
+plot(tx_counties)
+
+names(tx_counties)
+test <- subset(tx_counties,tx_counties$NAME== "Harris")
+View(test)
+
+plot(test)
+plot()
 r_elevation_reg
 r_date1_rec_masked
 r_roads_dist
@@ -379,6 +408,9 @@ plot(r_mask)
 plot(r_change)
 r_variables <- stack(r_change,r_date1_rec_masked,r_elevation_reg,r_roads_dist,r_developped_dist)
 r_variables <- mask(r_variables,mask=r_mask,maskvalue=0)
+NAvalue(r_variables) <- -9999
+
+plot(r_variables)
 #plot(r_not_cat2)
 names(r_variables) <- c("change","land_cover","elevation","roads_dist","developped_dist")
 
@@ -395,7 +427,7 @@ names(variables_df)
 #names(variables_df) <- c("change","land_cover","elevation","roads_dist","developped_dist")
 
 mod_glm <- glm(change ~ land_cover + elevation + roads_dist + developped_dist, 
-           data=variables_df , family=binomial())
+           data=variables_df , family=binomial)
 mod_glm
 summary(mod_glm)
 summary(mod)
