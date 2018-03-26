@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 03/25/2018
+#DATE MODIFIED: 03/26/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -96,8 +96,9 @@ ref_rast_name <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_worksho
 elevation_fname <- "srtm_Houston_area_90m.tif"
 roads_fname <- "r_roads_Harris.tif"
 
-infile_land_cover_date1 <- "r_2001_nlcd30m_Houston.tif"
-infile_land_cover_date2 <- "r_2011_nlcd30m_Houston.tif"
+infile_land_cover_date1 <- "agg_3_r_nlcd2001_Houston.tif"
+infile_land_cover_date2 <- "agg_3_r_nlcd2006_Houston.tif"
+infile_land_cover_date3 <- "agg_3_r_nlcd2011_Houston.tif"
 
 ################# START SCRIPT ###############################
 
@@ -115,18 +116,21 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-### PART I: READ AND PREPARE DATA FOR ANALYSES #######
+### PART I: READ AND VISUALIZE DATA #######
 
 r_lc_date1 <- raster(file.path(in_dir_var,infile_land_cover_date1)) 
 r_lc_date2 <- raster(file.path(in_dir_var,infile_land_cover_date2)) 
+r_lc_date3 <- raster(file.path(in_dir_var,infile_land_cover_date2)) 
 
-lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),sep=",")
+lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),stringsAsFactors = F,sep=",")
 head(lc_legend_df) #inspect data
 
-plot(r_lc_date1) #will need to add the legend and add the appropriate palette!!
-plot(r_lc_date2)
+plot(r_lc_date2) #will need to add the legend and add the appropriate palette!!
 
-###  PART I: Analyze change
+### Let's add legend:
+
+freq_tb_date2 <- freq(r_lc_date2)
+View(freq_tb_date2)
 
 ### Let's make plot of land cover types and differences
 names(lc_legend_df)
@@ -140,27 +144,32 @@ n_cat <- nrow(lc_legend_df)
 lc_col <- lapply(1:n_cat,function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
 lc_col <- unlist(lc_col)
 
-r_lc_date1 <- ratify(r_lc_date1)
-rat <- levels(r_lc_date1)[[1]]
+r_lc_date2 <- ratify(r_lc_date2)
+rat <- levels(r_lc_date2)[[1]] #this is a data.frame!
 
-as.character(lc_df$name)
-#rat$legend <- c("vegetation","wetland","water")
-rat$legend <- as.character(lc_df$name)
-levels(r_lc_date1) <- rat
-levelplot(r_lc_date1, maxpixels = 1e6,
+subset(lc_legend_df$NLCD.2006.Land.Cover.Class)
+lc_legend_df_date2 <- subset(lc_legend_df,lc_legend_df$ID%in% (rat[,1]))
+
+#as.character(lc_df$name)
+rat$legend <- lc_legend_df_date2$NLCD.2006.Land.Cover.Class
+levels(r_lc_date2) <- rat
+levelplot(r_lc_date2, maxpixels = 1e6,
           col.regions = lc_col,
           scales=list(draw=FALSE),
-          main = "NLCD 2001")
-#positive means increase, negative a decrease
+          main = "NLCD 2006")
 
-# Too much information: let's aggregate and summize the info:
+######################################
+###  PART II : Analyze change
 
-unique(lc_legend_df$ID)
+## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decrese, increase, persistence will 
+## generate a large number of transitions (above 150 in this case!)
+
+## Too much information: let's aggregate leveraging the hierachical nature of NLCD Anderson Classification system.
 
 df_reclasss <- lc_legend_df$ID
 
-lc_df$ID
-View(lc_df)
+#lc_df$ID
+#View(lc_df)
 
 #as.character(lc_df$ID)[1]
 
@@ -170,12 +179,19 @@ nlcd_legend_df <- read_xlsx(infile_name_nlcd_legend)
 View(nlcd_legend_df)
 names(nlcd_legend_df)
 
-class(lc_df$ID)
+#class(lc_df$ID)
 nlcd_legend_df$id_l2
 nlcd_legend_df <- subset(nlcd_legend_df,id_l2%in%lc_df$ID ) 
 dim(nlcd_legend_df)
 
+### Let's identify existing cover:
+r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
+
+freq_tb_nlcd <- as.data.frame(freq(r_stack_nlcd,merge=T))
+View(freq_tb_nlcd)
+
 rec_df <- nlcd_legend_df[,c(2,1)]
+
 
 #r_date1_rec <- subs(r_lc_date1,nlcd_legend_df[,1:2],by="id_l1","id_l2")
 r_date1_rec <- subs(r_lc_date1,rec_df,by="id_l2","id_l1")
@@ -207,7 +223,7 @@ total_val  <- sum(lc_df$date1)
 lc_df$perc_change <- 100*lc_df$diff/total_val 
 barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
 
-View(lc_df)
+#View(lc_df)
 ## Plot the changes here by land cover classes
 
 ### reclassify:  
@@ -219,6 +235,7 @@ r_not_cat2 <- r_date1_rec!=2 #remove areas that were already developed in date1
 r_change <- r_cat2 * r_not_cat2 #mask
 plot(r_change)
 change_tb <- freq(r_change) #this is about 500,000 pixels!!!
+#change_tb
 
 #####################################
 ############# PART II: Prepare varialbes for land cover change ##############
