@@ -5,7 +5,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/16/2018
+#DATE MODIFIED: 03/26/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -122,7 +122,7 @@ aggregate_raster_fun <- function(l_rast,cat_names,agg_method_cat="majority",agg_
   #
   # Authors: Benoit Parmentier
   # Created: 03/02/2017
-  # Modified: 03/16/2018
+  # Modified: 03/26/2018
   # To Do: 
   # - Add option to disaggregate
   # - add additional options to do aggregation
@@ -521,6 +521,21 @@ aggregate_raster <- function(r_in, agg_fact, reg_ref_rast=NULL,agg_fun="mean",ou
   
   return(out_rast_name)
   
+}
+
+scale_rast_fun <- function(i,r_stack,min_val=NULL,max_val=NULL){
+  #
+  #
+  
+  r <- subset(r_stack,i)
+  if(is.null(min_val)){
+    min_val <- minValue(r)
+  }
+  if(is.null(max_val)){
+    max_val <- maxValue(r)
+  }
+  r_scaled <- round(255*(r-min_val)/(max_val-min_val))
+  return(r_scaled)
 }
 
 
