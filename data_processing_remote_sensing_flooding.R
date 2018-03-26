@@ -5,12 +5,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/07/2018 
-#DATE MODIFIED: 03/23/2018
+#DATE MODIFIED: 03/26/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
 #
-#COMMIT: generate input mod09 images
+#COMMIT: coarsening NLCD
 #
 #################################################################################################
 
@@ -44,7 +44,7 @@ library(tigris)
 
 ###### Functions used in this script
 
-data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03162018.R" #PARAM 1
+data_processing_functions <- "data_processing_remote_sensing_flooding_functions_03262018.R" #PARAM 1
 script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/R_scripts"
 
 source(file.path(script_path,data_processing_functions)) #source all functions used in this script 1.
@@ -62,6 +62,11 @@ infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_trai
 infilename_2006_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2006_landcover_2011_edition_2014_10_10/nlcd_2006_landcover_2011_edition_2014_10_10.img"
 infilename_2001_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2001_landcover_2011_edition_2014_10_10/nlcd_2001_landcover_2011_edition_2014_10_10.img"
 infilename_2011_nlcd30m <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/nlcd_2011_landcover_2011_edition_2014_10_10/nlcd_2011_landcover_2011_edition_2014_10_10.img"
+
+mosaic_reflectance_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/mosaic_output/mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_02132018.tif"
+#Relevant time steps for RITA:
+#mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_02132018.tif
+#mosaiced_MOD09A1_A2005273__006_reflectance_masked_RITA_02132018.tif
 
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
@@ -185,7 +190,7 @@ res(r_after)
 #### now write out data at 926m
 
 raster_name_tmp <- lf_reflectance[34]
-raster_name_tmp <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
+#raster_name_tmp <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
 bylayer_val <- FALSE
 out_suffix_str <- NULL
 data_type_str <- dataType(r_before)
@@ -234,29 +239,13 @@ r <- subset(r_before,1)
 r_test <- round(255*(r-min_val[1])/(max_val[1]-min_val[1]))
 q_val <- quantile(r,probs=seq(0,1,0.01))
 
-
-i <- 1
-
-scale_rast_fun <- function(i,r_stack,min_val=NULL,max_val=NULL){
-  #
-  #
-  
-  r <- subset(r_stack,i)
-  if(is.null(min_val)){
-    min_val <- minValue(r)
-  }
-  if(is.null(max_val)){
-    max_val <- maxValue(r)
-  }
-  r_scaled <- round(255*(r-min_val)/(max_val-min_val))
-  return(r_scaled)
-}
-
+### Can rescale images on 0-255 scale:
 r_red <- scale_rast_fun(1,r_before)
 r_blue <- scale_rast_fun(3,r_before)
 r_green <- scale_rast_fun(4,r_before)
 r_nir <- scale_rast_fun(2,r_before)
 
+### Testing streching of images before generating color composite
 r_test <- stretch(r_red,minq=0,maxq=100)
 histogram(r_test)
 histogram(r_red)
@@ -289,10 +278,6 @@ plotRGB(r_rgb,
 #G = XS2 (red band)
 #B = XS1 (green band)
 
-writeRaster(r_red,"r_red.rst")
-writeRaster(r_blue,"r_blue.rst")
-writeRaster(r_green,"r_green.rst")
-
 r_red <- scale_rast_fun(1,r_before,0,0.3)
 r_blue <- scale_rast_fun(3,r_before,0,0.3)
 r_green <- scale_rast_fun(4,r_before,0,0.3)
@@ -300,12 +285,14 @@ r_nir <- scale_rast_fun(2,r_before,0,0.3)
 
 r_rgb <- stack(r_red,r_green,r_blue,r_nir)
 
-plotRGB(r_rgb,
+try(plotRGB(r_rgb,
         r=1,
         g=2,
         b=3,
         #scale=255,
-        strech="hist")
+        strech="hist"))
+#error here needs to be explored
+
 ### False color composite:
 
 plotRGB(r_rgb,
@@ -332,7 +319,6 @@ r_test <- (r-0)*(255-0)
 plot(r_test)
 
 plot(r_test)
-?quantile
 
 quantile(r, probs = c(0.25, 0.75), type=7,names = FALSE)
 
@@ -340,13 +326,9 @@ plot(r_test)
 histogram(r_test)
 histogram(r)
 
-
 ###### For Houston area:
-#mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_02132018.tif
-#mosaiced_MOD09A1_A2005273__006_reflectance_masked_RITA_02132018.tif
 
-mosaic_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/mosaic_output/mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_02132018.tif"
-r_mosaiced <- brick(mosaic_filename)
+r_mosaiced <- brick(mosaic_reflectance_filename)
 
 plot(r_mosaiced)
 #crop()
@@ -380,9 +362,6 @@ writeRaster(ref_rast,file.path(out_dir,ref_rast_name_generated))
 plot(ref_rast)
 names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 
-#mosaic_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/mosaic_output/mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_02132018.tif"
-#r_mosaiced <- brick(mosaic_filename)
-
 ######################## PART II: PROCESSING NLCD ##############
 
 #infile_reg_outline_Houston_city_limits <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/Houston_City_Limit.shp"
@@ -396,9 +375,9 @@ r_2011_nlcd30m <- raster(infilename_2011_nlcd30m)
 
 r_2006_nlcd30m
 r_2001_nlcd30m
-
 r_2011_nlcd30m
-dataType(r_2001_nlcd30m)
+
+dataType(r_2001_nlcd30m)#this is byte or unsigned integer from 0-255
 dataType(r_2011_nlcd30m)
 legend_col <- r_2006_nlcd30m@legend
 class(legend_col)
@@ -410,14 +389,15 @@ names(lc_nlcd_legend)
 
 lc_nlcd_legend_filename <- "nlcd_legend.txt"
 write.table(lc_nlcd_legend,file=lc_nlcd_legend_filename,sep=",")
-#lc_types <- r_2006_nlcd30m@data@attributes[[1]]$Land.Cover.Class
-#unique(legend_col@colortable)
+
+lc_types <- r_2006_nlcd30m@data@attributes[[1]]$Land.Cover.Class
+unique(legend_col@colortable)
 #[1] "#000000" "#00F900" "#476BA0" "#D1DDF9" "#DDC9C9" "#D89382"
 #[7] "#ED0000" "#AA0000" "#B2ADA3" "#F9F9F9" "#68AA63" "#1C6330"
 #[13] "#B5C98E" "#A58C30" "#CCBA7C" "#E2E2C1" "#C9C977" "#99C147"
 #[19] "#77AD93" "#DBD83D" "#AA7028" "#BAD8EA" "#B5D3E5" "#70A3BA"
 
-#Need to reclass values in NLCD and plot different classes
+#Can also write out this palette.
 
 ########### Let's crop to match the area of interests: Houston and RITA  ####
 
@@ -432,13 +412,17 @@ list_reg_outline <- list(infile_reg_outline_RITA,infile_reg_outline_Houston_city
 #inputs:
 #ref
 #this is at 926m
-rast_ref_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
+#rast_ref_filename <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
+ref_rast_name <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/data/revised_area_Rita/r_ref_Houston_RITA.tif"
+
 list_out_suffix <- list("RITA","Houston")
-list_ref_rast_name <- list(rast_ref_filename,NULL)
+list_ref_rast_name <- list(ref_rast_name,NULL)
 list_agg_fact_val <- list("NULL",3) 
 #names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 
 i<-2
+
+#### This can be made into a function: may be used in workshop so keep as loop for now
 
 for(i in 1:length(list_reg_outline)){
   #
@@ -467,29 +451,33 @@ for(i in 1:length(list_reg_outline)){
   
   reg_sf_nlcd <- st_transform(reg_sf,projection(r_2001_nlcd30m))
   reg_sp_nlcd <- as(reg_sf_nlcd,"Spatial")
+  
   #out_suffix_str
   r_2001_nlcd30m_reg <- crop(r_2001_nlcd30m,
                          reg_sp_nlcd,
                          paste0("r_2001_nlcd30m_",out_suffix_str,file_format),
                          overwrite=T)
+  r_2006_nlcd30m_reg <- crop(r_2006_nlcd30m,
+                             reg_sp_nlcd,
+                             paste0("r_2006_nlcd30m_",out_suffix_str,file_format),
+                             overwrite=T)
   r_2011_nlcd30m_reg <- crop(r_2011_nlcd30m,
                          reg_sp_nlcd,
                          filename=paste0("r_2011_nlcd30m_",out_suffix_str,file_format),
                          overwrite=T)
   
-  plot(r_2001_nlcd30m_reg,main="2006")
+  plot(r_2001_nlcd30m_reg,main="2001")
+  plot(r_2006_nlcd30m_reg,main="2006")
   plot(r_2011_nlcd30m_reg,main="2011")
   
-  #freq(r_nlcd30m_RITA)
-  
   ## input files to aggregate
-  l_rast <- list(r_2001_nlcd30m,r_2011_nlcd30m)
+  l_rast <- list(r_2001_nlcd30m_reg,r_2006_nlcd30m_reg,r_2011_nlcd30m_reg)
   #cat_names <- NULL
-  names(l_rast) <- c("nlcd2001","nlcd2011")
-  cat_names <- c("nlcd2001","nlcd2011")
+  names(l_rast) <- c("nlcd2001","nlcd2006","nlcd2011")
+  cat_names <- c("nlcd2001","nlcd2006","nlcd2011")
   
   ### Get to 1km (or ~926m):
-  #debug(aggregate_raster_fun)
+  #undebug(aggregate_raster_fun)
   #agg_fact_val <- 3
   #rast_ref <- NULL
   
