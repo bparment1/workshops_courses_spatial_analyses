@@ -68,16 +68,10 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-#function_analyses <- "exercise2_fire_alaska_analyses_functions_03232017.R" #PARAM 1
-script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/R_scripts"
-#source(file.path(script_path,function_preprocessing_and_analyses)) #source all functions used in this script 1.
-
 #####  Parameters and argument set up ###########
 
-#in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_6/data/reflectance_RITA"
 in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/data/"
 out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/outputs"
-infile_reg_outline <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/revised_area_Rita/new_strata_rita_10282017.shp"
 
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
@@ -91,6 +85,8 @@ date_event <- ""
 #ARG4
 method_proj_val <- "bilinear" # "ngb"
 gdal_installed <- TRUE
+
+rastername_county_harris <- "harris_county_mask.tif"
 
 #ARG9
 #local raster name defining resolution, extent
@@ -162,7 +158,7 @@ levelplot(r_lc_date2, maxpixels = 1e6,
           main = "NLCD 2006")
 
 ######################################
-###  PART II : Analyze change
+###  PART II : Analyze change and transitions
 
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decrese, increase, persistence will 
 ## generate a large number of transitions (above 150 in this case!)
@@ -244,7 +240,7 @@ change_tb <- freq(r_change) #this is about 500,000 pixels!!!
 #change_tb
 
 #####################################
-############# PART III: Prepare variables for land cover change ##############
+############# PART III: PROCESS and Prepare variables for land change modeling ##############
 
 # change to urban from 2001 to 2011
 # compute rate of growth for a year and project in 2022
@@ -376,7 +372,7 @@ r_date1_rec_masked <- mask(r_date1_rec,r_mask,maskvalue=1)
 
 plot(r_date1_rec_masked)
 
-############# PART III: Set up logistic Model ##############
+############# PART IV: Run Model and perform assessment ##############
 
 ###### The logistic regression comes here:
 
@@ -393,6 +389,8 @@ r_mask <- (r_date1_rec!=2)*(r_date1_rec!=1)
 
 plot(r_mask)
 NAvalue(r_mask) <- 0 
+
+r_county_harris <- raster(rastername_county_harris)
 
 ### Sscreen for area of interest
 r_mask <- r_mask * r_county_harris
