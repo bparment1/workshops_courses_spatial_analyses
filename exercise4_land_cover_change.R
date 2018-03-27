@@ -367,7 +367,7 @@ r_elevation <- raster(file.path(in_dir_var,elevation_fname))
 projection(r_elevation)
 r_elevation_reg <- projectRaster(r_elevation,r_date1_rec)
 
-r_terrain <- terrain(r_elevation_reg)
+r_slope <- terrain(r_elevation_reg)
 plot(r_terrain)
 ?terrain
 ### reclass Land cover
@@ -384,16 +384,9 @@ plot(r_date1_rec_masked)
 
 ###### The logistic regression comes here:
 
-tx_counties <- counties(state = 'TX', cb = TRUE, resolution = '20m')
-plot(tx_counties)
-
-names(tx_counties)
-test <- subset(tx_counties,tx_counties$NAME== "Harris")
-View(test)
-
 plot(test)
 plot()
-r_elevation_reg
+r_slope
 r_date1_rec_masked
 r_roads_dist
 r_developped_dist
@@ -402,17 +395,26 @@ r_change
 
 ### let's split training and testing??
 #removing water and developped in 2001
+r_mask <- (r_date1_rec!=2)*(r_date1_rec!=1)*r_county_harris
 r_mask <- (r_date1_rec!=2)*(r_date1_rec!=1)
+
 plot(r_mask)
+NAvalue(r_mask) <- 0 
+
+r_mask <- r_mask * r_county_harris
+r_mask[r_mask==0]<-NA
+plot(r_mask)
+tb<- freq(r_mask)
+tb
 
 plot(r_change)
-r_variables <- stack(r_change,r_date1_rec_masked,r_elevation_reg,r_roads_dist,r_developped_dist)
-r_variables <- mask(r_variables,mask=r_mask,maskvalue=0)
+r_variables <- stack(r_change,r_date1_rec_masked,r_slope,r_roads_dist,r_developped_dist)
+r_variables <- mask(r_variables,mask=r_mask)
 NAvalue(r_variables) <- -9999
 
 plot(r_variables)
 #plot(r_not_cat2)
-names(r_variables) <- c("change","land_cover","elevation","roads_dist","developped_dist")
+names(r_variables) <- c("change","land_cover","slope","roads_dist","developped_dist")
 
 ### May be useful to have x and y locations
 
@@ -426,8 +428,8 @@ variables_df$change <- as.factor(variables_df$change)
 names(variables_df)
 #names(variables_df) <- c("change","land_cover","elevation","roads_dist","developped_dist")
 
-mod_glm <- glm(change ~ land_cover + elevation + roads_dist + developped_dist, 
-           data=variables_df , family=binomial)
+mod_glm <- glm(change ~ land_cover + slope + roads_dist + developped_dist, 
+           data=variables_df , family=binomial())
 mod_glm
 summary(mod_glm)
 summary(mod)
