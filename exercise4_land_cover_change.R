@@ -427,13 +427,10 @@ plot(r_test)
 dim(r_NA)
 freq(r_test)
 
-calc()
-plot(r_NA)
-plot(r_NA)
-
-r_test2 <- mask(r_variables,r_test)
-NA_freq_tb2 <- freq(r_test2,value=NA,merge=T)
-
+r_mask <- r_test
+r_variables <- mask(r_variables,r_test)
+#r_variables <- freq(r_test2,value=NA,merge=T)
+names(r_variables) <- c("change","land_cover","slope","roads_dist","developped_dist")
 
 ### May be useful to have x and y locations
 variables2_df <- (as.data.frame(r_variables))
@@ -441,7 +438,7 @@ dim(variables2_df)
 variables_df <- na.omit(as.data.frame(r_variables))
 #variables_df <- na.omit(variable_df)
 dim(variables_df)
-
+#View(variables_df)
 variables_df$land_cover <- as.factor(variables_df$land_cover)
 variables_df$change <- as.factor(variables_df$change)
 
@@ -466,37 +463,36 @@ plot(r_date1_rec_masked)
 tb_freq <- freq(r_date1_rec_masked)
 View(tb_freq)
 
-y_var <- "change"
-y_ref <- as.numeric(as.character(data[[y_var]])) #boolean reference values
-index_val <- predicted_rf_mat[,2] #probabilities
+#y_var <- "change"
+#y_ref <- as.numeric(as.character(data[[y_var]])) #boolean reference values
+#index_val <- predicted_rf_mat[,2] #probabilities
 
 index_val<- mod_glm$fitted.values
 y_ref <- as.numeric(as.character(mod_glm$data$change))
-names(mod$data)
 mask_val <- 1:nrow(variables_df)
-rocd2_rf <- ROC(index=index_val, 
+rocd2_df <- ROC(index=index_val, 
                 boolean=y_ref, 
                 mask=mask_val,
-                nthres=20)
+                nthres=100)
 sum(is.na(index_val))
 sum(is.na(y_ref))
 r_p
-slot(rocd2_rf,"AUC") #this is your AUC from the logistic modeling
+slot(rocd2_df,"AUC") #this is your AUC from the logistic modeling
 #Plot ROC curve:
-plot(rocd2_rf,
+plot(rocd2_df,
      main="ROC")
 
-plot(rocd2_rf,labelThres=T,
-     main="ROC")
-names(rocd2_rf)
-str(rocd2_rf)
+names(rocd2_df)
+str(rocd2_df)
 
 #Access table: 
-roc_table_rf <- slot(rocd2_rf,"table")
-rocd2_rf
+roc_table_df <- slot(rocd2_rf,"table")
+rocd2_df
 
 ### Can also use the raster directly:
 
+r_change_harris <- subset(r_variables,"change")
+plot(r_change_harris)
 
 r_p_mask <- mask(r_p,r_change_harris)
 plot(r_p_mask)
@@ -506,11 +502,15 @@ rocd2_rast <- ROC(index=r_p_mask,
                 mask=r_change_harris,
                 nthres=100)
 
+rocd2_rast <- ROC(index=r_p, 
+                  boolean=r_change_harris, 
+                  mask=r_mask,
+                  nthres=100)
+
 plot(rocd2_rast)
+slot(rocd2_rast,"AUC") #this is your AUC from the logistic modeling
 
 plot(r_p)
-r_change_harris <- subset(r_variables,"change")
-plot(r_change_harris)
 freq(r_change_harris)
 plot(r_mask)
 freq(r_change_harris)
