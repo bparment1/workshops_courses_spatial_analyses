@@ -1,12 +1,12 @@
 ####################################   Land Use and Land Cover Change   #######################################
 ############################  Analyze Land Cover change in Houston  #######################################
-#This script performs analyses for the Exercise 4 of the Short Course using reflectance data derived from MODIS.
-#The goal is to assess land cover change using two land cover maps.
-#Additional datasets are provided for the land cover change modeling. 
+#This script performs analyses for the Exercise 4 of the Short Course using aggregated NLCD values.
+#The goal is to assess land cover change using two land cover maps in the Houston areas.
+#Additional datasets are provided for the land cover change modeling. A model is built for Harris county.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 03/26/2018
+#DATE MODIFIED: 03/27/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -25,7 +25,7 @@ library(maptools) # tools to manipulate spatial data
 library(parallel) # parallel computation, part of base package no
 library(rasterVis) # raster visualization operations
 library(raster) # raster functionalities
-library(forecast) #ARIMA forecasting
+library(forecast) #ARIMA forecasting 
 library(xts) #extension for time series object and analyses
 library(zoo) # time series object and analysis
 library(lubridate) # dates functionality
@@ -43,6 +43,8 @@ library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf) #spatial objects and functionalities
 library(plotrix) #various graphic functions e.g. draw.circle
+library(TOC)
+library(ROCR)
 
 ###### Functions used in this script
 
@@ -183,7 +185,6 @@ names(nlcd_legend_df)
 #class(lc_df$ID)
 nlcd_legend_df$id_l2
 
-
 ### Let's identify existing cover:
 r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
 
@@ -243,7 +244,7 @@ change_tb <- freq(r_change) #this is about 500,000 pixels!!!
 #change_tb
 
 #####################################
-############# PART III: Prepare varialbes for land cover change ##############
+############# PART III: Prepare variables for land cover change ##############
 
 # change to urban from 2001 to 2011
 # compute rate of growth for a year and project in 2022
@@ -256,17 +257,10 @@ change_tb <- freq(r_change) #this is about 500,000 pixels!!!
 #var3: elevation, low slope
 #var4: landcover before
 
-#Not available yer: var5: conservation areas
 
-#Suitable land cover:
-#-meadow is cheap: easier than forest
-#-forest ok
-#-urban: NA (already urban cannot transition)
-#
+## 1) Generate var1 and var2 : distance to developped and distance to roads
 
-## could also do a logistic
-
-r_cat2<- r_date1_rec==2
+r_cat2<- r_date1_rec==2 #developped in 2001
 plot(r_cat2)
 
 cat_bool_fname <- "developped_2001.tif"
@@ -343,7 +337,7 @@ max_val <- cellStats(r_roads_distance,max)
 a = (1 - 0) /(max_val - min_val)
 #a=1
 r_roads_dist <- r_roads_distance * a
-r_roads_dist <- (1/r_roads_distance) * 1000
+#r_roads_dist <- (1/r_roads_distance) * 1000
 
 plot(r_roads_dist)
 
@@ -355,10 +349,10 @@ plot(r_roads_dist)
 
 a = (1 - 0) /(max_val - min_val) #linear rescaling factor
 r_developped_dist <- r_developped_distance * a
-r_developped_dist <- (1/r_developped_distance) * 1000
-plot(r_developped_dist)
+#r_developped_dist <- (1/r_developped_distance) * 1000
+#plot(r_developped_dist)
 
-############ Now deal with elevation
+## 2) Generate var3 : slope
 
 r_elevation <- raster(file.path(in_dir_var,elevation_fname))
 
@@ -367,9 +361,11 @@ r_elevation <- raster(file.path(in_dir_var,elevation_fname))
 projection(r_elevation)
 r_elevation_reg <- projectRaster(r_elevation,r_date1_rec)
 
-r_slope <- terrain(r_elevation_reg)
-plot(r_terrain)
-?terrain
+r_slope <- terrain(r_elevation_reg,unit="degrees")
+plot(r_slope)
+
+## 3) Generate var4 : previous land cover
+
 ### reclass Land cover
 #?mask
 r_mask <- r_date1_rec==2
@@ -384,23 +380,21 @@ plot(r_date1_rec_masked)
 
 ###### The logistic regression comes here:
 
-plot(test)
-plot()
-r_slope
-r_date1_rec_masked
 r_roads_dist
 r_developped_dist
+r_slope
+r_date1_rec_masked
 
 r_change
 
-### let's split training and testing??
-#removing water and developped in 2001
-r_mask <- (r_date1_rec!=2)*(r_date1_rec!=1)*r_county_harris
+#Generate mask removing water and developped in 2001
+#r_mask <- (r_date1_rec!=2)*(r_date1_rec!=1)*r_county_harris
 r_mask <- (r_date1_rec!=2)*(r_date1_rec!=1)
 
 plot(r_mask)
 NAvalue(r_mask) <- 0 
 
+### Sscreen for area of interest
 r_mask <- r_mask * r_county_harris
 r_mask[r_mask==0]<-NA
 plot(r_mask)
@@ -410,14 +404,40 @@ tb
 plot(r_change)
 r_variables <- stack(r_change,r_date1_rec_masked,r_slope,r_roads_dist,r_developped_dist)
 r_variables <- mask(r_variables,mask=r_mask)
+
 NAvalue(r_variables) <- -9999
 
 plot(r_variables)
+
+
 #plot(r_not_cat2)
 names(r_variables) <- c("change","land_cover","slope","roads_dist","developped_dist")
 
-### May be useful to have x and y locations
+### Check for consistency in mask:
+NA_freq_tb <- freq(r_variables,value=NA,merge=T)
+?freq
+View(NA_freq_tb)
 
+### let's recombine all NA for consstencies:
+plot(r_variables)
+r_NA <- r_variables > -1
+
+r_test <- overlay(r_NA,fun=sum)
+plot(r_test)
+dim(r_NA)
+freq(r_test)
+
+calc()
+plot(r_NA)
+plot(r_NA)
+
+r_test2 <- mask(r_variables,r_test)
+NA_freq_tb2 <- freq(r_test2,value=NA,merge=T)
+
+
+### May be useful to have x and y locations
+variables2_df <- (as.data.frame(r_variables))
+dim(variables2_df)
 variables_df <- na.omit(as.data.frame(r_variables))
 #variables_df <- na.omit(variable_df)
 dim(variables_df)
@@ -437,10 +457,10 @@ r_p <- predict(r_variables, mod_glm, type="response")
 plot(r_p)
 
 histogram(r_p)
-histogram(p,xlim=c(0,1),breaks=10)
+histogram(r_p,xlim=c(0,1),breaks=10)
 
 #### Do AUC to check how good it is?
-plot(r_change)
+plot(subset(r_variables,"change"))
 
 plot(r_date1_rec_masked)
 tb_freq <- freq(r_date1_rec_masked)
@@ -450,26 +470,50 @@ y_var <- "change"
 y_ref <- as.numeric(as.character(data[[y_var]])) #boolean reference values
 index_val <- predicted_rf_mat[,2] #probabilities
 
-index_val<- mod$fitted.values
-y_ref <- as.numeric(as.character(mod$data$change))
+index_val<- mod_glm$fitted.values
+y_ref <- as.numeric(as.character(mod_glm$data$change))
 names(mod$data)
 mask_val <- 1:nrow(variables_df)
 rocd2_rf <- ROC(index=index_val, 
                 boolean=y_ref, 
                 mask=mask_val,
-                nthres=100)
+                nthres=20)
 sum(is.na(index_val))
 sum(is.na(y_ref))
-
+r_p
 slot(rocd2_rf,"AUC") #this is your AUC from the logistic modeling
 #Plot ROC curve:
 plot(rocd2_rf,
      main="ROC")
 
+plot(rocd2_rf,labelThres=T,
+     main="ROC")
 names(rocd2_rf)
 str(rocd2_rf)
 
 #Access table: 
 roc_table_rf <- slot(rocd2_rf,"table")
+rocd2_rf
+
+### Can also use the raster directly:
+
+
+r_p_mask <- mask(r_p,r_change_harris)
+plot(r_p_mask)
+NAvalue(r_p_mask)
+rocd2_rast <- ROC(index=r_p_mask, 
+                boolean=subset(r_variables,"change"), 
+                mask=r_change_harris,
+                nthres=100)
+
+plot(rocd2_rast)
+
+plot(r_p)
+r_change_harris <- subset(r_variables,"change")
+plot(r_change_harris)
+freq(r_change_harris)
+plot(r_mask)
+freq(r_change_harris)
+freq(r_mask)
 
 ####################### End of script #####################################
