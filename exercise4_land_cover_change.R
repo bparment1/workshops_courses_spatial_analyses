@@ -67,9 +67,8 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
 in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/data/"
 out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/outputs"
 
-#region coordinate reference system
-#http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
-CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
+#NLCD coordinate reference system: we will use this projection rather than TX.
+CRS_reg <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 file_format <- ".tif" #raster output format 
 NA_flag_val <- -9999 # NA value assigned to output raster
 out_suffix <-"exercise4_03282018" #output suffix for the files and ouptu folder #PARAM 8
@@ -136,62 +135,61 @@ lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured r
 lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
 
 ### row 2 correspond to the "open water" category
-rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
+color_val_water <- rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
+color_val_developed_high <- rgb(lc_legend_df$Red[7],lc_legend_df$Green[7],lc_legend_df$Blue[7],maxColorValue = 255)
 
-i<-1
+lc_col_palette <- c(color_val_water,color_val_developed_high)
+
+barplot(c(1,1), 
+        col=lc_col_palette,
+        main="Visualization of color palette for NLCD land cover",
+        names.arg=c("Open water",	"Developed, High Intensity"),las=1)
+
+### Let's generate a color for all the land cover categories by using lapply and function
 n_cat <- nrow(lc_legend_df)
-lc_col <- lapply(1:n_cat,function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
-lc_col <- unlist(lc_col)
+lc_col_palette <- lapply(1:n_cat,
+                 FUN=function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
+lc_col_palette <- unlist(lc_col_palette)
 
-r_lc_date2 <- ratify(r_lc_date2)
-rat <- levels(r_lc_date2)[[1]] #this is a data.frame!
+lc_legend_df$palette <- lc_col_palette
 
-subset(lc_legend_df$NLCD.2006.Land.Cover.Class)
-lc_legend_df_date2 <- subset(lc_legend_df,lc_legend_df$ID%in% (rat[,1]))
-rat$legend <- lc_legend_df_date2$NLCD.2006.Land.Cover.Class
-levels(r_lc_date2) <- rat
+r_lc_date2 <- ratify(r_lc_date2) # create a raster layer with categorical information
+rat <- levels(r_lc_date2)[[1]] #This is a data.frame with the categories present in the raster
+
+lc_legend_df_date2 <- subset(lc_legend_df,lc_legend_df$ID%in% (rat[,1])) #find the land cover types present in date 2 (2006)
+rat$legend <- lc_legend_df_date2$NLCD.2006.Land.Cover.Class #assign it back in case it is missing
+levels(r_lc_date2) <- rat #add the information to the raster layer
 
 ### Now generate a plot of land cover with the NLCD legend and palette
-levelplot(r_lc_date2, maxpixels = 1e6,
-          col.regions = lc_col,
+levelplot(r_lc_date2, 
+          col.regions = lc_legend_df_date2$palette,
           scales=list(draw=FALSE),
           main = "NLCD 2006")
 
 ################################################
 ###  PART II : Analyze change and transitions
 
-## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decrese, increase, persistence will 
-## generate a large number of transitions (above 150 in this case!)
+## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain), 
+# persistence in land cover will generate a large number of transitions (potential up to 15*15=225 transitions in this case!)
 
-## Too much information: let's aggregate leveraging the hierachical nature of NLCD Anderson Classification system.
+## To generalize the information, let's aggregate leveraging the hierachical nature of NLCD Anderson Classification system.
 
-df_reclasss <- lc_legend_df$ID
+lc_system_nlcd_df <- read_xlsx(file.path(in_dir_var,infile_name_nlcd_classification_system))
 
-infile_name_nlcd_legend <- list.files(path=in_dir_var,pattern="*.xlsx",full.names=T)
+head(lc_system_nlcd_df) #inspect data
 
-classification_system_nlcd <- read.table(file.path(in_dir_var,infile_name_nlcd_classification_system),
-                                         stringsAsFactors = F,
-                                         sep=",")
-
-nlcd_legend_df <- read_xlsx(infile_name_nlcd_legend)
-View(nlcd_legend_df)
-names(nlcd_legend_df)
-
-nlcd_legend_df$id_l2
-
-### Let's identify existing cover:
+### Let's identify existing cover and compute change:
 r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
 
 freq_tb_nlcd <- as.data.frame(freq(r_stack_nlcd,merge=T))
-View(freq_tb_nlcd)
+head(freq_tb_nlcd)
 
-freq_tb_nlcd$ID
+dim(lc_system_nlcd_df) # We have categories that are not relevant to the study area and time period.
+lc_system_nlcd_df <- subset(lc_system_nlcd_df,id_l2%in%freq_tb_nlcd$value ) 
+dim(lc_system_nlcd_df) # Now 15 land categories instead of 20.
 
-nlcd_legend_df <- subset(nlcd_legend_df,id_l2%in%freq_tb_nlcd$value ) 
-dim(nlcd_legend_df)
-
-### Selectet relevant columns
-rec_df <- nlcd_legend_df[,c(2,1)]
+### Selectet relevant columns for the reclassification
+rec_df <- lc_system_nlcd_df[,c(2,1)]
 
 #r_date1_rec <- subs(r_lc_date1,nlcd_legend_df[,1:2],by="id_l1","id_l2")
 r_date1_rec <- subs(r_lc_date1,rec_df,by="id_l2","id_l1")
@@ -201,40 +199,52 @@ plot(r_date1_rec)
 
 rec_xtab_df <- crosstab(r_date1_rec,r_date2_rec,long=T)
 names(rec_xtab_df) <- c("2001","2011","freq")
-#View(rec_xtab_df)
 
-### plot urban growth and urban loss?
+head(rec_xtab_df)
+dim(rec_xtab_df) #9*9 possible transitions if we include NA values
+print(rec_xtab_df) # View the full table
 
-ncell(r_date1_rec)
+which.max(rec_xtab_df$freq)
+rec_xtab_df[11,] # Note the most important transition is persistence!!
 
-### Make this a function:
+### Let's rank the transition:
+class(rec_xtab_df)
+is.na(rec_xtab_df$freq)
+rec_xtab_df_ranked <- rec_xtab_df[order(rec_xtab_df$freq,decreasing=T) , ]
+head(rec_xtab_df_ranked) # Unsurprsingly, top transitions are persistence categories
 
-label_legend_df <- data.frame(ID=nlcd_legend_df$id_l1,name=nlcd_legend_df$name_l1)
+### Let's examine the overall change in categories rather than transitions
+
+label_legend_df <- data.frame(ID=lc_system_nlcd_df$id_l1,name=lc_system_nlcd_df$name_l1)
 r_stack <- stack(r_date1_rec,r_date2_rec)
 
 lc_df <- freq(r_stack,merge=T)
 names(lc_df) <- c("value","date1","date2")
-lc_df$diff <- lc_df$date2 - lc_df$date1
+lc_df$diff <- lc_df$date2 - lc_df$date1 #difference for each land cover categories over the 2001-2011 time period
+head(lc_df) # Quickly examine the output
 
+### Add relevant categories
 lc_df <- merge(lc_df,label_legend_df,by.x="value",by.y="ID",all.y=F)
-lc_df <- lc_df[!duplicated(lc_df),]
+lc_df <- lc_df[!duplicated(lc_df),] #remove duplictates
+head(lc_df) # Note the overall cahnge
+
+#### Now visualize the overall land cover changes
 barplot(lc_df$diff,names.arg=lc_df$name,las=2)
 total_val  <- sum(lc_df$date1)
 lc_df$perc_change <- 100*lc_df$diff/total_val 
 barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
 
-### reclassify:  
+### Create a change image to map all pixels that transitioned to the developed category:  
 
-#devopped
 r_cat2 <- r_date2_rec==2 # developped on date 2
-r_not_cat2 <- r_date1_rec!=2 #remove areas that were already developed in date1
+r_not_cat2 <- r_date1_rec!=2 #remove areas that were already developed in date1, we do not want persistence
 
 r_change <- r_cat2 * r_not_cat2 #mask
-plot(r_change)
-change_tb <- freq(r_change) #this is about 500,000 pixels!!!
+plot(r_change,main="Land transitions to developed over 2001-2011")
+change_tb <- freq(r_change) #Find out how many pixels transitions to developped
 
 #####################################
-############# PART III: PROCESS and Prepare variables for land change modeling ##############
+############# PART III: Process and Prepare variables for land change modeling ##############
 
 ## y= 1 if change to urban over 2001-2011
 ### Explanatory variables:
@@ -245,15 +255,16 @@ change_tb <- freq(r_change) #this is about 500,000 pixels!!!
 
 ## 1) Generate var1 and var2 : distance to developped and distance to roads
 
+### Distance to existing in 2001: prepare information
 r_cat2<- r_date1_rec==2 #developped in 2001
 plot(r_cat2)
-
 cat_bool_fname <- "developped_2001.tif"
 writeRaster(r_cat2,filename = cat_bool_fname,overwrite=T)
-### distance to existing in 2001
 
+### Read in data for road count
 r_roads <- raster(file.path(in_dir_var,roads_fname))
 plot(r_roads,colNA="black")
+res(r_roads)
 
 r_roads_90m <- aggregate(r_roads,
                          fact=3, #factor of aggregation in x and y
@@ -265,7 +276,6 @@ plot(r_roads_bool)
 
 roads_bool_fname <- "roads_bool.tif" 
 writeRaster(r_roads_bool,filename = roads_bool_fname,overwrite=T)
-
 
 ### This part could be transformed into a function but we keep it for clarity and learning:
 if(gdal_installed==TRUE){
