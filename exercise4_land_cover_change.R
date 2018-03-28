@@ -1,14 +1,14 @@
 ####################################   Land Use and Land Cover Change   #######################################
 ############################  Analyze Land Cover change in Houston  #######################################
-#This script performs analyses for the Exercise 4 of the Short Course using aggregated NLCD values.
+#This script performs analyses for the Exercise 4 of the Geospatial Short Course using aggregated NLCD values.
 #The goal is to assess land cover change using two land cover maps in the Houston areas.
 #Additional datasets are provided for the land cover change modeling. A model is built for Harris county.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 03/27/2018
+#DATE MODIFIED: 03/28/2018
 #Version: 1
-#PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
+#PROJECT: SESYNC and AAG 2018 Geospatial Short Course 
 #TO DO:
 #
 #COMMIT: more processing of elevevation and roads
@@ -61,47 +61,37 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
   return(outDir)
 }
 
-#Used to load RData object saved within the functions produced.
-load_obj <- function(f){
-  env <- new.env()
-  nm <- load(f, env)[1]
-  env[[nm]]
-}
-
 #####  Parameters and argument set up ###########
 
+#Separate inputs and outputs directories
 in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/data/"
 out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/outputs"
 
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
-file_format <- ".tif" #PARAM5
-NA_value <- -9999 #PARAM6
-NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise4_03242018" #output suffix for the files and ouptu folder #PARAM 8
-create_out_dir_param=TRUE #PARAM9
-date_event <- ""
-#ARG4
-method_proj_val <- "bilinear" # "ngb"
-gdal_installed <- TRUE
+file_format <- ".tif" #raster output format 
+NA_flag_val <- -9999 # NA value assigned to output raster
+out_suffix <-"exercise4_03282018" #output suffix for the files and ouptu folder #PARAM 8
+create_out_dir_param=TRUE # if TRUE, a output dir using output suffix will be created
+method_proj_val <- "bilinear" # method option for the reprojection and resampling 
+gdal_installed <- TRUE #if TRUE, GDAL is used to generate distance files
 
-rastername_county_harris <- "harris_county_mask.tif"
+rastername_county_harris <- "harris_county_mask.tif" #Region of interest: extent of Harris County
+elevation_fname <- "srtm_Houston_area_90m.tif" #SRTM elevation
+roads_fname <- "r_roads_Harris.tif" #Road count for Harris county
 
-#ARG9
-#local raster name defining resolution, extent
-ref_rast_name <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/data/r_ref_Houston_RITA.tif"
-
-elevation_fname <- "srtm_Houston_area_90m.tif"
-roads_fname <- "r_roads_Harris.tif"
-
+### Aggreagate NLCD input files
 infile_land_cover_date1 <- "agg_3_r_nlcd2001_Houston.tif"
 infile_land_cover_date2 <- "agg_3_r_nlcd2006_Houston.tif"
 infile_land_cover_date3 <- "agg_3_r_nlcd2011_Houston.tif"
 
-################# START SCRIPT ###############################
+infile_name_nlcd_legend <- "nlcd_legend.txt"
+infile_name_nlcd_classification_system <- "classification_system_nlcd_legend.xlsx"
 
-## First create an output directory
+######################### START SCRIPT ###############################
+
+## First create an output directory to separate inputs and outputs
 
 if(is.null(out_dir)){
   out_dir <- dirname(in_dir) #output will be created in the input dir
@@ -115,29 +105,39 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
+###########################################
 ### PART I: READ AND VISUALIZE DATA #######
 
-r_lc_date1 <- raster(file.path(in_dir_var,infile_land_cover_date1)) 
-r_lc_date2 <- raster(file.path(in_dir_var,infile_land_cover_date2)) 
-r_lc_date3 <- raster(file.path(in_dir_var,infile_land_cover_date2)) 
+r_lc_date1 <- raster(file.path(in_dir_var,infile_land_cover_date1)) #NLCD 2001 
+r_lc_date2 <- raster(file.path(in_dir_var,infile_land_cover_date2)) #NLCD 2006
+r_lc_date3 <- raster(file.path(in_dir_var,infile_land_cover_date2)) #NLCD 2011
 
-lc_legend_df <- read.table(file.path(in_dir_var,"nlcd_legend.txt"),stringsAsFactors = F,sep=",")
-head(lc_legend_df) #inspect data
+lc_legend_df <- read.table(file.path(in_dir_var,infile_name_nlcd_legend),
+                           stringsAsFactors = F,
+                           sep=",")
 
-plot(r_lc_date2) #will need to add the legend and add the appropriate palette!!
+head(lc_legend_df) # Inspect data
 
-### Let's add legend:
+plot(r_lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
+
+### Let's add legend and examine existing land cover categories
 
 freq_tb_date2 <- freq(r_lc_date2)
-View(freq_tb_date2)
+head(freq_tb_date2) #view first 5 rows, note this is a matrix object.
 
-### Let's make plot of land cover types and differences
+### Let's generate a palette from the NLCD legend information to view the existing land cover for 2006.
 names(lc_legend_df)
-dim(lc_legend_df)
+dim(lc_legend_df) #contains a lot of empty rows
 
-lc_legend_df<- subset(lc_legend_df,COUNT>0)
+lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured rows
+### Generate a palette color from the input Red, Green and Blue information using RGB encoding:
 
-lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",")
+
+lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
+
+### row 2 correspond to the "open water" category
+rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
+
 i<-1
 n_cat <- nrow(lc_legend_df)
 lc_col <- lapply(1:n_cat,function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
@@ -148,16 +148,16 @@ rat <- levels(r_lc_date2)[[1]] #this is a data.frame!
 
 subset(lc_legend_df$NLCD.2006.Land.Cover.Class)
 lc_legend_df_date2 <- subset(lc_legend_df,lc_legend_df$ID%in% (rat[,1]))
-
-#as.character(lc_df$name)
 rat$legend <- lc_legend_df_date2$NLCD.2006.Land.Cover.Class
 levels(r_lc_date2) <- rat
+
+### Now generate a plot of land cover with the NLCD legend and palette
 levelplot(r_lc_date2, maxpixels = 1e6,
           col.regions = lc_col,
           scales=list(draw=FALSE),
           main = "NLCD 2006")
 
-######################################
+################################################
 ###  PART II : Analyze change and transitions
 
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decrese, increase, persistence will 
@@ -167,18 +167,16 @@ levelplot(r_lc_date2, maxpixels = 1e6,
 
 df_reclasss <- lc_legend_df$ID
 
-#lc_df$ID
-#View(lc_df)
-
-#as.character(lc_df$ID)[1]
-
 infile_name_nlcd_legend <- list.files(path=in_dir_var,pattern="*.xlsx",full.names=T)
+
+classification_system_nlcd <- read.table(file.path(in_dir_var,infile_name_nlcd_classification_system),
+                                         stringsAsFactors = F,
+                                         sep=",")
 
 nlcd_legend_df <- read_xlsx(infile_name_nlcd_legend)
 View(nlcd_legend_df)
 names(nlcd_legend_df)
 
-#class(lc_df$ID)
 nlcd_legend_df$id_l2
 
 ### Let's identify existing cover:
@@ -225,9 +223,6 @@ total_val  <- sum(lc_df$date1)
 lc_df$perc_change <- 100*lc_df$diff/total_val 
 barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
 
-#View(lc_df)
-## Plot the changes here by land cover classes
-
 ### reclassify:  
 
 #devopped
@@ -237,22 +232,16 @@ r_not_cat2 <- r_date1_rec!=2 #remove areas that were already developed in date1
 r_change <- r_cat2 * r_not_cat2 #mask
 plot(r_change)
 change_tb <- freq(r_change) #this is about 500,000 pixels!!!
-#change_tb
 
 #####################################
 ############# PART III: PROCESS and Prepare variables for land change modeling ##############
 
-# change to urban from 2001 to 2011
-# compute rate of growth for a year and project in 2022
-# show in plot:
-
 ## y= 1 if change to urban over 2001-2011
-### Suitability:
+### Explanatory variables:
 #var1: distance to existing urban in 2001
 #var2: distance to road in 2001
-#var3: elevation, low slope
-#var4: landcover before
-
+#var3: elevation, low slope better for new development
+#var4: past land cover state that may influence future land change
 
 ## 1) Generate var1 and var2 : distance to developped and distance to roads
 
@@ -264,20 +253,21 @@ writeRaster(r_cat2,filename = cat_bool_fname,overwrite=T)
 ### distance to existing in 2001
 
 r_roads <- raster(file.path(in_dir_var,roads_fname))
-#<- "r_roads_Harris.tif"
 plot(r_roads,colNA="black")
 
-#?aggregate
-r_roads_90m <- aggregate(r_roads,fact=3,fun=mean)
+r_roads_90m <- aggregate(r_roads,
+                         fact=3, #factor of aggregation in x and y
+                         fun=mean) #function used in aggregation values
 plot(r_roads_90m)
 
-r_roads_bool <- r_roads_90m >0
+r_roads_bool <- r_roads_90m > 0
 plot(r_roads_bool)
 
 roads_bool_fname <- "roads_bool.tif" 
 writeRaster(r_roads_bool,filename = roads_bool_fname,overwrite=T)
 
 
+### This part could be transformed into a function but we keep it for clarity and learning:
 if(gdal_installed==TRUE){
   
   ## Distance from developped land in 2001
@@ -337,9 +327,6 @@ r_roads_dist <- r_roads_distance * a
 
 plot(r_roads_dist)
 
-#Get distance from managed land
-#b. Which parts of Clay County contain proximity-to-managed-lands characteristics that would make them more favorable to be used as conservation lands?
-
 #min_val <- cellStats(r_developped_distance,min) 
 #max_val <- cellStats(r_developped_distance,max)
 
@@ -352,18 +339,17 @@ r_developped_dist <- r_developped_distance * a
 
 r_elevation <- raster(file.path(in_dir_var,elevation_fname))
 
-#<- "srtm_Houston_area_90m.tif"
-#r_elevation_30m <- disaggregate(r_elevation,fact=3)
-projection(r_elevation)
-r_elevation_reg <- projectRaster(r_elevation,r_date1_rec)
+projection(r_elevation) # This is not in the same projection as the study area. 
+r_elevation_reg <- projectRaster(from= r_elevation, #input raster to reproject
+                                 to= r_date1_rec, #raster with desired extent, resolution and projection system
+                                 method= method_proj_val) #method used in the reprojection
 
 r_slope <- terrain(r_elevation_reg,unit="degrees")
 plot(r_slope)
 
-## 3) Generate var4 : previous land cover
+## 3) Generate var4 : past land cover state
 
 ### reclass Land cover
-#?mask
 r_mask <- r_date1_rec==2
 
 #NAvalue(r_date1_rec_masked)
@@ -406,7 +392,6 @@ r_variables <- mask(r_variables,mask=r_mask)
 NAvalue(r_variables) <- -9999
 
 plot(r_variables)
-
 
 #plot(r_not_cat2)
 names(r_variables) <- c("change","land_cover","slope","roads_dist","developped_dist")
@@ -506,7 +491,7 @@ rocd2_rast <- ROC(index=r_p,
                   nthres=100)
 
 plot(rocd2_rast)
-slot(rocd2_rast,"AUC") #this is your AUC from the logistic modeling
+slot(rocd2_rast,"AUC") #this is the AUC from the logistic modeling
 
 plot(r_p)
 freq(r_change_harris)
@@ -514,4 +499,4 @@ plot(r_mask)
 freq(r_change_harris)
 freq(r_mask)
 
-####################### End of script #####################################
+###############################  End of script  #####################################
