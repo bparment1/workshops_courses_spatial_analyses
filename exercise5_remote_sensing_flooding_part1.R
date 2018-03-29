@@ -59,51 +59,6 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
   return(outDir)
 }
 
-#Used to load RData object saved within the functions produced.
-load_obj <- function(f){
-  env <- new.env()
-  nm <- load(f, env)[1]
-  env[[nm]]
-}
-
-generate_dates_by_step <-function(start_date,end_date,step_date){
-  #library(xts) declare out of this function
-  #library(zoo)
-  #library(lubridate)
-  
-  st <- as.Date(start_date,format="%Y.%m.%d")
-  en <- as.Date(end_date,format="%Y.%m.%d")
-  #year_list <-seq(format(st,"%Y"),format(en,"%Y")) #extract year
-  year_list <- seq(as.numeric(strftime(st,"%Y")),as.numeric(strftime(en,"%Y"))) #extract year
-  
-  ll_list <- vector("list",length=length(year_list))
-  for (i in 1:length(year_list)){
-    if(i==1){
-      first_date <-st
-    }else{
-      first_date<-paste(year_list[[i]],"-01","-01",sep="")
-    }
-    if(i==length(year_list)){
-      last_date <-en
-    }else{
-      last_date<-paste(year_list[[i]],"-12","-31",sep="")
-    }
-    #ll <- seq.Date(st, en, by=step)
-    ll <- seq.Date(as.Date(first_date), as.Date(last_date), by=step_date)
-    ll_list[[i]]<-as.character(ll)
-    #paste(yday(ll,)
-  }
-  
-  #
-  dates_modis <-as.Date(unlist((ll_list))) 
-  
-  dates_DOY_modis <- as.character(paste(year(dates_modis),sprintf("%03d", yday(dates_modis)),sep=""))
-  dates_obj <- list(dates_modis,dates_DOY_modis)
-  names(dates_obj) <- c("dates","doy")  
-  return(dates_obj)
-}
-
-
 #####  Parameters and argument set up ###########
 
 in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_5/data/reflectance_RITA"
@@ -119,25 +74,14 @@ NA_flag_val <- NA_value #PARAM7
 out_suffix <-"exercise5_03292018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 method_proj_val <- "bilinear" # "ngb"
-date_param <- "2005.01.01;2005.12.31;8" #start date, end date, time_step
-
-#scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
-scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
-#ARGS14
-product_type = c("reflectance") #can be LST, ALBEDO etc.#this can be set from the modis product!! #param 19
-#ARG15
 multiband <- TRUE #This is only used for multiband products?
-#ARGS16: This can be removed in the future by stating LST_Day as a product type
-num_cores <- 4 #option for parallel processes
 
-
-#ARG9
-
-#infile_reg_outline <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/new_strata_rita_10282017.shp"
+### Input data files used:
 infile_reg_outline <- "new_strata_rita_10282017.shp"
-#local raster name defining resolution, extent
 ref_rast_name <- "r_ref_Houston_RITA.tif"
-
+infile_modis_bands_information <- "df_modis_band_info.txt"
+nlcd_2006_filename <- "nlcd_2006_RITA.tif"
+infile_name_nlcd_legend <- "nlcd_legend.txt"
 #34: 2005-09-22 2005265
 infile_reflectance_date1 <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
 #35: 2005-09-30 2005273
@@ -162,18 +106,6 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-## Second list.files and create raster images stack
-
-lf_reflectance <- list.files(path=in_dir_reflectance, pattern="*.tif",full.names=T)
-r_refl_ts <- stack(lf_reflectance) #          #note this creates 46*7 bands
-date_range <- unlist(strsplit(date_param,";")) #NDVI Alaska, year 2005 (this is a 16 days product)
-df_dates <- as.data.frame(generate_dates_by_step(start_date=date_range[1],
-                                                 end_date=date_range[2],
-                                                 step_date=as.numeric(date_range[3])))
-
-#34: 2005265 this is Sept 22
-#35: 2005273 this is Sept 30
-
 ##### PART I: DISPLAY AND EXPLORE DATA ##############
 
 #lf_var <- list.files(path=in_dir_var,pattern="*.tif$",full.names=T)
@@ -182,6 +114,8 @@ df_dates <- as.data.frame(generate_dates_by_step(start_date=date_range[1],
 #dim(r_var) #dimension of the stack with 
 #plot(r_var)
 
+## #34: 2005265 this is Sept 22
+## #35: 2005273 this is Sept 30
 r_before <- brick(file.path(in_dir_var,infile_reflectance_date1)) # <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
 r_after <- brick(file.path(in_dir_var,infile_reflectance_date2)) # <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
 
@@ -197,54 +131,55 @@ r_ref <- rasterize(reg_sp,
                    r_before,
                    field="OBJECTID_1",
                    fun="first")
+plot(r_ref) # zone 2 is flooded and zone 1 is not flooded
 
-test <- st_centroid(reg_sf)
-test
+#### Let's examine a location within FEMA flooded zone and outside: use centroids
+centroids_sf <- st_centroid(reg_sf)
 
-df_before <- extract(r_before,test)
-df_after <- extract(r_after,test)
+df_before <- extract(r_before,centroids_sf)
+df_after <- extract(r_after,centroids_sf)
 
-### We need to rethink the ordering of band:
+### Plot values of bands before and after for flooded region:
 plot(df_before[2,],type="l")
 lines(df_after[2,],col="red")
 
-## Read in table info?
+## Read band information since it is more informative!!
+df_modis_band_info <- read.table(file.path(in_dir_var,infile_modis_bands_information),
+                                 sep=",",
+                                 stringsAsFactors = F)
+print(df_modis_band_info)
 
-df_modis_band_info <- data.frame("band_name"=NA,"band_number"=NA,"start_wlength"=NA,"end_wlength"=NA)
-df_modis_band_info[1,] <- c("Red", 1, 620,670)
-df_modis_band_info[2,] <- c("NIR", 2,841,876) 
-df_modis_band_info[3,] <- c("Blue",3,459,479)
-df_modis_band_info[4,] <- c("Green",4,545,565)
-df_modis_band_info[5,] <- c("SWIR1",5,1230,1250)
-df_modis_band_info[6,] <- c("SWIR2",6,1628,1652)
-df_modis_band_info[7,] <- c("SWIR3",7,2105,2155)
+names(r_before) <- df_modis_band_info$band_name
+names(r_after) <- df_modis_band_info$band_name
 
-#View(df_modis_band_info)
-write.table(df_modis_band_info,
-            file=paste0("df_modis_band_info",".txt"),
-            sep=",")
+### Order band in terms of wavelenth:
 
+df_modis_band_info <- df_modis_band_info[order(df_modis_band_info$start_wlength),]
 #SWIR1 (1230–1250 nm), SWIR2 (1628–1652 nm) and SWIR3 (2105–2155 nm).
-band_refl_order <- c(3,4,1,2,5,6,7)
+band_refl_order <- df_modis_band_info$band_number
 
-names(r_before) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
-names(r_after) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
-
-plot(df_before[2,band_refl_order],type="l")
+plot(df_before[2,band_refl_order],type="l",main="Reflectance profile for centroid of flooded area")
 lines(df_after[2,band_refl_order],col="red")
-plot(df_before[1,band_refl_order],type="l")
-lines(df_after[1,band_refl_order],col="red")
-plot(df_after[1,band_refl_order],col="red")
+# Add legend
 
 ###### Now do a extraction for nlcd data
-
-nlcd_2006_filename <- "nlcd_2006_RITA.tif"
-nlcd2006_reg <- raster(nlcd_2006_filename)
+nlcd2006_reg <- raster(file.path(in_dir_var,nlcd_2006_filename))
 
 avg_nlcd <- as.data.frame(zonal(r_before,nlcd2006_reg,fun="mean"))
-avg_nlcd <- as.data.frame(avg_nlcd)
 
-avg_nlcd
+lc_legend_df <- read.table(file.path(in_dir_var,infile_name_nlcd_legend),
+                           stringsAsFactors = F,
+                           sep=",")
+print(avg_nlcd)
+
+names(lc_legend_df)
+### Add relevant categories
+lc_legend_df_subset <- subset(lc_legend_df,select=c("ID","NLCD.2006.Land.Cover.Class")]
+avg_nlcd_test <- merge(avg_nlcd,lc_legend_df_subset,by.x="zone",by.y="ID",all.y=F)
+View(avg_nlcd_test)
+lc_df <- lc_df[!duplicated(lc_df),] #remove duplictates
+head(lc_df) # Note the overall cahnge
+
 #View(avg_nlcd)
 names(avg_nlcd)
 
