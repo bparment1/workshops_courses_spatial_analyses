@@ -91,7 +91,6 @@ infile_reflectance_date2 <- "mosaiced_MOD09A1_A2005273__006_reflectance_masked_R
 
 ### PART I: READ AND PREPARE DATA FOR ANALYSES #######
 
-
 ## First create an output directory
 
 if(is.null(out_dir)){
@@ -108,11 +107,6 @@ if(create_out_dir_param==TRUE){
 
 ##### PART I: DISPLAY AND EXPLORE DATA ##############
 
-#lf_var <- list.files(path=in_dir_var,pattern="*.tif$",full.names=T)
-#r_var <- stack(lf_var) # create a raster stack, this is not directly stored in memory
-
-#dim(r_var) #dimension of the stack with 
-#plot(r_var)
 
 ## #34: 2005265 this is Sept 22
 ## #35: 2005273 this is Sept 30
@@ -165,30 +159,30 @@ lines(df_after[2,band_refl_order],col="red")
 ###### Now do a extraction for nlcd data
 nlcd2006_reg <- raster(file.path(in_dir_var,nlcd_2006_filename))
 
-avg_nlcd <- as.data.frame(zonal(r_before,nlcd2006_reg,fun="mean"))
+avg_reflectance_nlcd <- as.data.frame(zonal(r_before,nlcd2006_reg,fun="mean"))
 
 lc_legend_df <- read.table(file.path(in_dir_var,infile_name_nlcd_legend),
                            stringsAsFactors = F,
                            sep=",")
-print(avg_nlcd)
+print(avg_reflectance_nlcd)
 
 names(lc_legend_df)
 ### Add relevant categories
-lc_legend_df_subset <- subset(lc_legend_df,select=c("ID","NLCD.2006.Land.Cover.Class")]
-avg_nlcd_test <- merge(avg_nlcd,lc_legend_df_subset,by.x="zone",by.y="ID",all.y=F)
-View(avg_nlcd_test)
-lc_df <- lc_df[!duplicated(lc_df),] #remove duplictates
-head(lc_df) # Note the overall cahnge
+lc_legend_df_subset <- subset(lc_legend_df,select=c("ID","NLCD.2006.Land.Cover.Class"))
+names(lc_legend_df_subset) <- c("ID","cat_name")
 
-#View(avg_nlcd)
-names(avg_nlcd)
+avg_reflectance_nlcd <- merge(avg_reflectance_nlcd,lc_legend_df_subset,by.x="zone",by.y="ID",all.y=F)
+View(avg_reflectance_nlcd)
+
+names(avg_reflectance_nlcd)
 
 col_ordering <- band_refl_order + 1
-plot(as.numeric(avg_nlcd[9,col_ordering]),type="l") #42 evergreen forest
-lines(as.numeric(avg_nlcd[6,col_ordering]),type="l") #22 developed,High intensity
-class(avg_nlcd)
 
-plot(avg_nlcd$Red,avg_nlcd$NIR)
+plot(as.numeric(avg_reflectance_nlcd[9,col_ordering]),type="l") #42 evergreen forest
+lines(as.numeric(avg_reflectance_nlcd[6,col_ordering]),type="l") #22 developed,High intensity
+class(avg_reflectance_nlcd)
+
+#plot(avg_reflectance_nlcd$Red,avg_reflectance_nlcd$NIR)
 
 #############
 
@@ -251,7 +245,9 @@ points(df_test[df_test$nlcd_2006_RITA==22,c("Blue")],
        df_test[df_test$nlcd_2006_RITA==22,c("Red")],
        col="brown",cex=0.15)
 
-#### Stretch to 0-255 range:
+#### Generate Color composites
+
+### True color composite
 
 plotRGB(r_before,
         r=1,
@@ -260,15 +256,26 @@ plotRGB(r_before,
         scale=0.6,
         strech="hist")
 
-plotRGB(r_after,
-        r=1,
-        g=4,
-        b=3,
+### False color composite:
+
+plotRGB(r_before,
+        r=2,
+        g=1,
+        b=4,
         scale=0.6,
         strech="hist")
 
-r_test### Experiment with threshold:
-?colorRamps
+plotRGB(r_after,
+        r=2,
+        g=1,
+        b=4,
+        scale=0.6,
+        strech="hist")
+
+### Note the effect of flooding is particularly visible in the false color composites.
+
+### Experiment with threshold:
+
 col_palette <- colorRampPalette(c("black","blue"))(255)
 #colorRampPalette(c("red", "white", "blue"))(255)
 plot(subset(r_before,"NIR") < 0.2)
@@ -282,21 +289,6 @@ plot(subset(r_before,"NIR") < 0.2)
 plot(subset(r_after,"NIR") < 0.2)
 
 #Compare to actual flooding data
-
-
-#names(r_before) <- 
-#### Add by land cover here:
-#Label all pixel with majority vegetation in NIR-Red
-#Label all pixel with majority water in NIR-Red
-#Label all pixel with majority urban in NIR-Red
-
-## Show water and forest? on a plot
-
-#show expected change vector from forest to water
-## Show e
-
-### Make polygons in lake 
-
 
 ############## Generating indices:
 
@@ -536,3 +528,32 @@ points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
 #5) Use disaggregated values from NLCD %cover from 30m and correlate with the new indices...
 #6) Compare area before and after classified as water with thresholding (don't forget to mask)
 #
+
+############
+
+
+#### Add by land cover here:
+#Label all pixel with majority vegetation in NIR-Red
+#Label all pixel with majority water in NIR-Red
+#Label all pixel with majority urban in NIR-Red
+
+## Show water and forest? on a plot
+
+#show expected change vector from forest to water
+## Show e
+
+### Make polygons in lake 
+
+#### Add by land cover here:
+#Label all pixel with majority vegetation in NIR-Red
+#Label all pixel with majority water in NIR-Red
+#Label all pixel with majority urban in NIR-Red
+
+## Show water and forest? on a plot
+
+#show expected change vector from forest to water
+## Show e
+
+### Make polygons in lake 
+
+
