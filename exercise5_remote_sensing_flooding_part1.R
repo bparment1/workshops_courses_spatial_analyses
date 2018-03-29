@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/05/2018 
-#DATE MODIFIED: 03/13/2018
+#DATE MODIFIED: 03/29/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -38,7 +38,7 @@ library(foreign) # import datasets from SAS, spss, stata and other sources
 library(gdata) #read xls, dbf etc., not recently updated but useful
 library(classInt) #methods to generate class limits
 library(plyr) #data wrangling: various operations for splitting, combining data
-library(gstat) #spatial interpolation and kriging methods
+#library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf)
@@ -103,36 +103,24 @@ generate_dates_by_step <-function(start_date,end_date,step_date){
   return(dates_obj)
 }
 
-#function_preprocessing_and_analyses <- "fire_alaska_analyses_preprocessing_functions_03102017.R" #PARAM 1
-#function_analyses <- "exercise2_fire_alaska_analyses_functions_03232017.R" #PARAM 1
-script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/R_scripts"
-#source(file.path(script_path,function_preprocessing_and_analyses)) #source all functions used in this script 1.
-#source(file.path(script_path,function_analyses)) #source all functions used in this script 1.
 
 #####  Parameters and argument set up ###########
 
-in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/data/reflectance_RITA"
-in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/data/"
-out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_5/outputs"
-infile_reg_outline <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/new_strata_rita_10282017.shp"
+in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_5/data/reflectance_RITA"
+in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_5/data"
+out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_5/outputs"
+
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise5_03052018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise5_03292018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
-date_event <- ""
-#ARG4
 method_proj_val <- "bilinear" # "ngb"
-
-#ARG9
-#local raster name defining resolution, extent
-ref_rast_name <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
-#ARG11
 date_param <- "2005.01.01;2005.12.31;8" #start date, end date, time_step
-#ARG13
+
 #scaling_factors <- c(1,-273.15) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for LST 
 scaling_factors <- c(0.0001,0) #set up as slope (a) and intercept (b), if NULL, no scaling done, setting for NDVI 
 #ARGS14
@@ -141,6 +129,19 @@ product_type = c("reflectance") #can be LST, ALBEDO etc.#this can be set from th
 multiband <- TRUE #This is only used for multiband products?
 #ARGS16: This can be removed in the future by stating LST_Day as a product type
 num_cores <- 4 #option for parallel processes
+
+
+#ARG9
+
+#infile_reg_outline <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/new_strata_rita_10282017.shp"
+infile_reg_outline <- "new_strata_rita_10282017.shp"
+#local raster name defining resolution, extent
+ref_rast_name <- "r_ref_Houston_RITA.tif"
+
+#34: 2005-09-22 2005265
+infile_reflectance_date1 <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
+#35: 2005-09-30 2005273
+infile_reflectance_date2 <- "mosaiced_MOD09A1_A2005273__006_reflectance_masked_RITA_reg_1km.tif"
 
 ################# START SCRIPT ###############################
 
@@ -173,14 +174,6 @@ df_dates <- as.data.frame(generate_dates_by_step(start_date=date_range[1],
 #34: 2005265 this is Sept 22
 #35: 2005273 this is Sept 30
 
-#generate dates for 16 days product
-#dates_val <- generate_dates_by_step(date_range[1],date_range[2],16)$dates #NDVI Katrina
-
-file.info(lf_reflectance[1])$size/(1024*1024) # this is in bytes, convert to mb
-dataType(r_refl_ts) #Examine the data type used in the storing of data, this is float 32 signed: FLT4S
-inMemory(r_refl_ts) #Is the data in memory? Raster package does not load in memory automatically.
-dim(r_refl_ts) #dimension of the raster object: rows, cols, layers/bands
-
 ##### PART I: DISPLAY AND EXPLORE DATA ##############
 
 #lf_var <- list.files(path=in_dir_var,pattern="*.tif$",full.names=T)
@@ -189,31 +182,21 @@ dim(r_refl_ts) #dimension of the raster object: rows, cols, layers/bands
 #dim(r_var) #dimension of the stack with 
 #plot(r_var)
 
-reg_sf <- st_read(infile_reg_outline)
+r_before <- brick(file.path(in_dir_var,infile_reflectance_date1)) # <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
+r_after <- brick(file.path(in_dir_var,infile_reflectance_date2)) # <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
+
+plot(r_before)
+
+reg_sf <- st_read(file.path(in_dir_var,infile_reg_outline))
 reg_sf <- st_transform(reg_sf,
                        crs=CRS_reg)
 reg_sp <-as(reg_sf, "Spatial") 
 plot(reg_sf$geometry)
 
-#r_tmp <- subset(r_refl_ts,1)
-r_tmp <- brick(lf_reflectance[1])
-
 r_ref <- rasterize(reg_sp,
                    r_before,
                    field="OBJECTID_1",
                    fun="first")
-
-r_before <- brick(lf_reflectance[34])
-r_after <- brick(lf_reflectance[35])
-
-r_before <- r_before*(1/0.0001)
-r_after <- r_after*(1/0.0001)
-
-###
-tb_before <- freq(r_before,merge=T)
-View(tb_before)
-plot(r_after,colNA="black")
-plot(r_before,colNA="black")
 
 test <- st_centroid(reg_sf)
 test
