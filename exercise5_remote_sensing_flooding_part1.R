@@ -374,14 +374,15 @@ plot(r_overlap) ## Flood map area of aggreement with FEMA
 ######## Let's carry out a PCA in T-mode #######
 
 #Correlate long term mean to PC!
-cor_mat_layerstats <- layerStats(r_after, 'pearson', na.rm=T)
+cor_mat_layerstats <- layerStats(r_before, 'pearson', na.rm=T)
 cor_matrix <- cor_mat_layerstats$`pearson correlation coefficient`
 class(cor_matrix)
 print(cor_matrix) #note size is 7x7
 
 pca_mod <- principal(cor_matrix,nfactors=7,rotate="none")
 class(pca_mod$loadings)
-str(pca_mod$loadings)
+print(pca_mod$loadings)
+
 plot(pca_mod$loadings[,1][band_refl_order],type="b",
      xlab="time steps",
      ylab="PC loadings",
@@ -409,12 +410,13 @@ plot(pca_mod$values,main="Scree plot: Variance explained",type="b")
 ### Using predict function: this is recommended for raster imagery!!
 # note the use of the 'index' argument
 r_pca <- predict(r_before, pca_mod, index=1:7,filename="pc_scores.tif",overwrite=T) # fast
-plot(-1*r_pca,y=2,zlim=c(-2,2))
+plot(r_pca,y=2,zlim=c(-2,2))
 plot(r_pca,y=1,zlim=c(-2,2))
 plot(r_pca,y=3,zlim=c(-2,2))
 
 plot(subset(r_pca,1),subset(r_pca,2))
 plot(subset(r_pca,2),subset(r_pca,3))
+
 
 #### Generate a plot for PCA with loadings and compare to Tassel Cap
 
@@ -436,7 +438,7 @@ axis(2, las=1,at=seq(-1,1,0.2),cex=1.2) # "1' for side=below, the axis is drawne
 box()    #This draws a box...
 
 title(paste0("Loadings for component ", names(loadings_df)[1]," and " ,names(loadings_df)[2] ))
-draw.circle(0,0,c(1.0,1.0),nv=200)#,border="purple",
+draw.circle(0,0,c(1.0,1.0),nv=500)#,border="purple",
 text(loadings_df[,1],loadings_df[,2],var_labels,pos=1,cex=1)            
 grid(2,2)
 
@@ -444,24 +446,7 @@ grid(2,2)
 
 df_raster_val <- as.data.frame(stack(r_after,r_pca,nlcd2006_reg))
 
-View(df_raster_val)
-
-#Water
-plot(df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.1")],
-       df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.2")],
-       col="blue",cex=0.15)
-
-#Urban: dense
-points(df_raster_val[df_raster_val$nlcd_2006_RITA==22,c("pc_scores.1")],
-       df_raster_val[df_raster_val$nlcd_2006_RITA==22,c("pc_scores.2")],
-       col="brown",cex=0.15)
-
-#Forest:
-points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
-     df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.2")],
-     col="green",cex=0.15)
-
-### Note the negative values are related to Forest on PC2
+#View(df_raster_val)
 
 #Water
 plot(df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.1")],
@@ -480,30 +465,71 @@ points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
        df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.2")],
        col="green",cex=0.15)
 
-r_TCWI =  0.10839 * r_after$Red + 0.0912 * r_after$NIR +0.5065 * r_after$Blue+ 0.404 * r_after$Green 
-            - 0.241 * r_after$SWIR1- 0.4658 * r_after$SWIR2 - 0.5306 * r_after$SWIR3
+### Note the negative values are related to Forest and positve to water on PC2
+plot(r_pca$pc_scores.2 > 0.1) #water related?
+plot(r_pca$pc_scores.2 < - 0.1) #vegetation related?
 
-TCWI <- TCWI*10
-histogram(TCWI)
-plot(TCWI,zlim=c(0,1.5))
 
-plot(TCWI>0.05)
-histogram(TCWI)
+#### Examine relationship with Tasselcap transform:
 #6) TCWI =  0.10839 * Red+ 0.0912 * NIR +0.5065 * Blue+ 0.404 * Green 
 #            - 0.241 * SWIR1- 0.4658 * SWIR2-
 #           0.5306 * SWIR3
 #7) TCBI = 0.3956 * Red + 0.4718 * NIR +0.3354 * Blue+ 0.3834 * Green
 #           + 0.3946 * SWIR1 + 0.3434 * SWIR2+ 0.2964 * SWIR3
 
+
+r_TCWI =  0.10839 * r_before$Red + 0.0912 * r_before$NIR +0.5065 * r_before$Blue+ 0.404 * r_before$Green 
+- 0.241 * r_before$SWIR1- 0.4658 * r_before$SWIR2 - 0.5306 * r_before$SWIR3
+
+r_TCBI = 0.3956 * r_before$Red + 0.4718 * r_before$NIR +0.3354 * r_before$Blue+ 0.3834 * r_before$Green
+          + 0.3946 * r_before$SWIR1 + 0.3434 * r_before$SWIR2+ 0.2964 * r_before$SWIR3
+
+#r_TCWI <- r_TCWI*10
+histogram(r_TCWI)
+plot(r_TCWI)
+plot(r_TCWI,zlim=c(0,0.2))
+
+plot(r_TCWI>0.1)
+
+histogram(r_TCBI)
+plot(r_TCBI)
+plot(r_TCBI,zlim=c(0,0.2))
+
+r_stack <- stack(r_TCWI,r_TCBI, r_pca)
+names(r_stack) <- c("TCWI","TCBI",names(r_pca))
+cor_r_TC <- layerStats(r_stack,"pearson",na.rm=T)
+cor_r_TC <- as.data.frame(cor_r_TC$`pearson correlation coefficient`)
+print(cor_r_TC)
+
+##### Plot on the loading space using TCBI and TCWI as supplementary variables
+var_labels <- rownames(loadings_df)
+
+plot(loadings_df[,1],loadings_df[,2],
+     type="p",
+     pch = 20,
+     col ="blue",
+     xlab=names(loadings_df)[1],
+     ylab=names(loadings_df)[2],
+     ylim=c(-1,1),
+     xlim=c(-1,1),
+     axes = FALSE,
+     cex.lab = 1.2)
+
+points(cor_r_TC$pc_scores.1[1],cor_r_TC$pc_scores.2[1],col="red")
+points(cor_r_TC$pc_scores.1[2],cor_r_TC$pc_scores.2[2],col="green")
+
+axis(1, at=seq(-1,1,0.2),cex=1.2)
+axis(2, las=1,at=seq(-1,1,0.2),cex=1.2) # "1' for side=below, the axis is drawned  on the right at location 0 and 1
+
+box()    #This draws a box...
+
+title(paste0("Loadings for component ", names(loadings_df)[1]," and " ,names(loadings_df)[2] ))
+draw.circle(0,0,c(1.0,1.0),nv=500)#,border="purple",
+text(loadings_df[,1],loadings_df[,2],var_labels,pos=1,cex=1)            
+text(cor_r_TC$pc_scores.1[1],cor_r_TC$pc_scores.2[1],"TCWI",pos=1,cex=1)
+text(cor_r_TC$pc_scores.1[2],cor_r_TC$pc_scores.2[2],"TCBI",pos=1,cex=1)
+
+grid(2,2)
+
 ########################## End of Script ###################################
-
-
-#pca_loadings_dz <- zoo(loadings_df,dates_val) #create zoo object from data.frame and date sequence object
-#?plot.zoo to find out about zoo time series plotting of indexes
-#plot(loadings_df ~ 1:7,
-#     #type="b",
-#     col=c("blue","red","black","orange","green","purple","brown"),
-#     #xlab="time steps",
-#     #ylab="PC loadings",
-#     #ylim=c(-1,1))
 
