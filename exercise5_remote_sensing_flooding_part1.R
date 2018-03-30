@@ -152,13 +152,14 @@ lines(df_after[2,band_refl_order],col="red")
 # Add legend
 
 ###############################################
-##### PART II: Examine spectral class signature for land cover NLCD classes ##############
+##### PART II: Examine spectral class signatures for land cover NLCD classes ##############
 
-###### Now do a extraction for nlcd data
+###### Read in NLDC 2006, note that it was aggregated at 1km.
 nlcd2006_reg <- raster(file.path(in_dir_var,nlcd_2006_filename))
-
+#### Exract averages by NLCD classes using zonal raster
 avg_reflectance_nlcd <- as.data.frame(zonal(r_before,nlcd2006_reg,fun="mean"))
 
+#### read in NLCD legend to add to the average information
 lc_legend_df <- read.table(file.path(in_dir_var,infile_name_nlcd_legend),
                            stringsAsFactors = F,
                            sep=",")
@@ -181,7 +182,7 @@ class(avg_reflectance_nlcd)
 
 #plot(avg_reflectance_nlcd$Red,avg_reflectance_nlcd$NIR)
 
-#############
+####### Explore data in Feature space:
 
 #Feature space NIR1 and Red
 plot(subset(r_before,"Red"),subset(r_before,"NIR"))
@@ -304,85 +305,77 @@ xtab_threshold <- crosstab(r_ref,r_rec_NIR_after,long=T)
 #5) LSWI (LSWIB5) =  (NIR - SWIR2)/(NIR + SWIR2)
 
 names(r_before)
-r_date1_NDVI <- (subset(r_before,"NIR") - subset(r_before,"Red")) / (subset(r_before,"NIR") + subset(r_before,"Red"))
+r_before_NDVI <- (subset(r_before,"NIR") - subset(r_before,"Red")) / (subset(r_before,"NIR") + subset(r_before,"Red"))
+r_after_NDVI <- subset(r_after,"NIR") - subset(r_after,"Red")/(subset(r_after,"NIR") + subset(r_after,"Red"))
 
-#r_date1_NDVI <- subset(r_before,"NIR") - subset(r_before,"Red")/(subset(r_before,"NIR") + subset(r_before,"Red"))
+plot(r_before_NDVI,zlim=c(-1,1),col=matlab.like(255))
+plot(r_after_NDVI,zlim=c(-1,1),col=matlab.like2(255))
 
-plot(r_date1_NDVI,zlim=c(-1,1))
-plot(r_date1_NDVI,zlim=c(-1,1),col=matlab.like(255))
-
-r_date2_NDVI <- (subset(r_after,"NIR") - subset(r_after,"Red"))/ (subset(r_after,"NIR") + subset(r_after,"Red"))
-
-plot(r_date1_NDVI,zlim=c(-1,1),col=matlab.like(255))
-plot(r_date2_NDVI,zlim=c(-1,1),col=matlab.like2(255))
-
-### THis is suggesting flooding!!!
-plot(r_date1_NDVI < -0.5)
-plot(r_date2_NDVI < -0.5)
-plot(r_date1_NDVI < -0.1)
-plot(r_date2_NDVI < -0.1)
+### Experiment with different threshold values:
+# THis is suggesting flooding!!!
+plot(r_before_NDVI < -0.5)
+plot(r_after_NDVI < -0.5)
+plot(r_before_NDVI < -0.1)
+plot(r_after_NDVI < -0.1)
 
 #2) NDWI = (Green - NIR)/(Green + NIR)
 #3) MNDWI = Green - SWIR2 / Green + SWIR2
 
-#Modified NDWI MNDWI : Green - SWIR2/(Green + SWIR2)
+#Modified NDWI known as MNDWI : Green - SWIR2/(Green + SWIR2)
 
-#According to Gao (1996), NDWI is a good
-#indicator for vegetation liquid water content and is less
-#sensitive to atmospheric scattering effects than NDVI. In this
-#study, MODIS band 6 is used for the NDWI calculation,
-#because it is found that MODIS band 6 is sensitive to water
-#types and contents (Li et al., 2011), while band 5 is sensitive
-#to vegetation liquid water content (Gao, 1996).
+#According to Gao (1996), NDWI is a good indicator
+# for vegetation liquid water content and is less
+# sensitive to atmospheric scattering effects than NDVI. 
+# In some studies, MODIS band 6 is used for the NDWI calculation,
+#because it is sensitive to water types and contents (Li et al., 2011), 
+# while band 5 is sensitive to vegetation liquid water content (Gao, 1996).
 
 names(r_before)
-r_date1_MNDWI <- (subset(r_before,"Green") - subset(r_before,"SWIR2")) / (subset(r_before,"Green") + subset(r_before,"SWIR2"))
-r_date2_MNDWI <- (subset(r_after,"Green") - subset(r_after,"SWIR2")) / (subset(r_after,"Green") + subset(r_after,"SWIR2"))
+r_before_MNDWI <- (subset(r_before,"Green") - subset(r_before,"SWIR2")) / (subset(r_before,"Green") + subset(r_before,"SWIR2"))
+r_after_MNDWI <- (subset(r_after,"Green") - subset(r_after,"SWIR2")) / (subset(r_after,"Green") + subset(r_after,"SWIR2"))
 
-plot(r_date1_MNDWI,zlim=c(-1,1))
-plot(r_date1_MNDWI,zlim=c(-1,1),col=rev(matlab.like(255)))
-plot(r_date2_MNDWI,zlim=c(-1,1))
-plot(r_date2_MNDWI,zlim=c(-1,1),col=rev(matlab.like(255)))
+plot(r_before_MNDWI,zlim=c(-1,1),col=rev(matlab.like(255)))
+plot(r_after_MNDWI,zlim=c(-1,1),col=rev(matlab.like(255)))
 
 ### THis is suggesting flooding!!!
-plot(r_date1_MNDWI > 0.5)
-plot(r_date2_MNDWI > 0.5)
-plot(r_date1_MNDWI > 0.1)
-plot(r_date2_MNDWI > 0.1)
+plot(r_before_MNDWI > 0.5)
+plot(r_after_MNDWI > 0.5)
+plot(r_before_MNDWI > 0.1)
+plot(r_after_MNDWI > 0.1)
 
-r_test <- r_date2_MNDWI - r_date1_MNDWI
-plot(r_test)
-
-# NRT MODIS
-# Other
+r_diff_MNDWI <- r_after_MNDWI - r_before_MNDWI
+plot(r_diff_MNDWI)
+plot(r_diff_MNDWI > 0.2) ## Increase in MNDWI: Areas that may have become flooded
 
 # Do relationship with flood zone using ROC?
 ### Generate a map of flooding with MNDWI and compare to FEMA map:
 
-r_date2_flood <- r_date2_MNDWI > 0.1
-plot(r_date2_flood)
+r_after_flood <- r_date2_MNDWI > 0.1
+plot(r_after_flood)
 
 #reclass in zero/1!!!
 
 df <- data.frame(id=c(1,2), v=c(0,1))
-r_ref_test <- subs(r_ref, df)
-plot(r_ref_test)
-#plot(r_ref)
-ref_test_tb <- crosstab(r_date2_flood,r_ref_test)
+r_ref_rec <- subs(r_ref, df)
+plot(r_ref_rec)
+xtab_tb <- crosstab(r_after_flood,r_ref_rec)
 
 ## Compute Jaccard Index:
 
-ref_test_tb$Freq[5]/(sum(ref_test_tb[ref_test_tb$Var1==1,c("Freq")],na.rm = T)+ 
-                     sum(ref_test_tb[ref_test_tb$Var2==1,c("Freq")],na.rm = T))
+xtab_tb$Freq[5]/(sum(xtab_tb[xtab_tb$Var1==1,c("Freq")],na.rm = T)+ 
+                     sum(xtab_tb[xtab_tb$Var2==1,c("Freq")],na.rm = T))
 
-r_date2_flood <- mask(r_date2_flood,r_ref)
+r_after_flood <- mask(r_after_flood,r_ref_rec)
 
-ref_test_tb <- crosstab(r_date2_flood,r_ref_test)
+ref_test_tb <- crosstab(r_date2_flood,r_ref_rec)
 
 ## Compute Jaccard Index:
 
 ref_test_tb$Freq[5]/(sum(ref_test_tb[ref_test_tb$Var1==1,c("Freq")],na.rm = T)+ 
                        sum(ref_test_tb[ref_test_tb$Var2==1,c("Freq")],na.rm = T))
+
+###############################################
+##### PART IV: Principal Component Analysis and band transformation
 
 ###############################################
 ######## Let's carry out a PCA in T-mode #######
@@ -391,11 +384,10 @@ ref_test_tb$Freq[5]/(sum(ref_test_tb[ref_test_tb$Var1==1,c("Freq")],na.rm = T)+
 cor_mat_layerstats <- layerStats(r_after, 'pearson', na.rm=T)
 cor_matrix <- cor_mat_layerstats$`pearson correlation coefficient`
 class(cor_matrix)
-dim(cor_matrix)
-View(cor_matrix)
+print(cor_matrix) #note size is 7x7
 image(cor_matrix)
 
-pca_mod <-principal(cor_matrix,nfactors=7,rotate="none")
+pca_mod <- principal(cor_matrix,nfactors=7,rotate="none")
 class(pca_mod$loadings)
 str(pca_mod$loadings)
 plot(pca_mod$loadings[,1][band_refl_order],type="b",
@@ -409,14 +401,6 @@ title("Loadings for the first three components using T-mode")
 
 ##Make this a time series
 loadings_df <- as.data.frame(pca_mod$loadings[,1:7])
-#pca_loadings_dz <- zoo(loadings_df,dates_val) #create zoo object from data.frame and date sequence object
-#?plot.zoo to find out about zoo time series plotting of indexes
-#plot(loadings_df ~ 1:7,
-#     #type="b",
-#     col=c("blue","red","black","orange","green","purple","brown"),
-#     #xlab="time steps",
-#     #ylab="PC loadings",
-#     #ylim=c(-1,1))
 title("Loadings for the first three components using T-mode")
 names_vals <- c("pc1","pc2","pc3")
 legend("topright",legend=names_vals,
@@ -510,48 +494,7 @@ points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
 #7) TCBI = 0.3956 * Red + 0.4718 * NIR +0.3354 * Blue+ 0.3834 * Green
 #           + 0.3946 * SWIR1 + 0.3434 * SWIR2+ 0.2964 * SWIR3
 
-################### End of Script #########################
+########################## End of Script ###################################
 
-#plot(stack(r_pc1,r_pc2))
-#layerStats(r_pc1,r_NDVI_mean )
-#cor_pc <- layerStats(stack(r_pc1,r_NDVI_mean),'pearson', na.rm=T)
-#cor_pc #PC1 correspond to the average mean by pixel as expected.
-#plot(r_pc2)
-
-### Potential follow up questions:
-#1) compare wetness index from TCP in predicted flooded areas
-#2) Use ROC to compare?
-#3) Use NLCD and extract other reflectance curve.
-#4) Use NLCD and recombine values using the general legend
-#5) Use disaggregated values from NLCD %cover from 30m and correlate with the new indices...
-#6) Compare area before and after classified as water with thresholding (don't forget to mask)
-#
-
-############
-
-
-#### Add by land cover here:
-#Label all pixel with majority vegetation in NIR-Red
-#Label all pixel with majority water in NIR-Red
-#Label all pixel with majority urban in NIR-Red
-
-## Show water and forest? on a plot
-
-#show expected change vector from forest to water
-## Show e
-
-### Make polygons in lake 
-
-#### Add by land cover here:
-#Label all pixel with majority vegetation in NIR-Red
-#Label all pixel with majority water in NIR-Red
-#Label all pixel with majority urban in NIR-Red
-
-## Show water and forest? on a plot
-
-#show expected change vector from forest to water
-## Show e
-
-### Make polygons in lake 
 
 
