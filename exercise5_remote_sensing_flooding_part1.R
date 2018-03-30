@@ -156,7 +156,7 @@ lines(df_after[2,band_refl_order],col="red")
 
 ###### Read in NLDC 2006, note that it was aggregated at 1km.
 nlcd2006_reg <- raster(file.path(in_dir_var,nlcd_2006_filename))
-#### Exract averages by NLCD classes using zonal raster
+#### Extract zonal averages by NLCD classes using zonal raster
 avg_reflectance_nlcd <- as.data.frame(zonal(r_before,nlcd2006_reg,fun="mean"))
 
 #### read in NLCD legend to add to the average information
@@ -176,71 +176,94 @@ View(avg_reflectance_nlcd)
 names(avg_reflectance_nlcd)
 col_ordering <- band_refl_order + 1
 
-plot(as.numeric(avg_reflectance_nlcd[9,col_ordering]),type="l") #42 evergreen forest
-lines(as.numeric(avg_reflectance_nlcd[6,col_ordering]),type="l") #22 developed,High intensity
-class(avg_reflectance_nlcd)
-
-#plot(avg_reflectance_nlcd$Red,avg_reflectance_nlcd$NIR)
+plot(as.numeric(avg_reflectance_nlcd[9,col_ordering]),
+     type="l",
+     col="green",
+     xlab="bands",
+     ylab="reflectance") #42 evergreen forest
+lines(as.numeric(avg_reflectance_nlcd[6,col_ordering]),
+      type="l",
+      col="darkred") #22 developed,High intensity
 
 ####### Explore data in Feature space:
 
 #Feature space NIR1 and Red
-plot(subset(r_before,"Red"),subset(r_before,"NIR"))
-plot(subset(r_before,"Green"),subset(r_before,"Red"))
-plot(subset(r_before,"SWIR1"),subset(r_before,"NIR"))
-plot(subset(r_before,"Red"),subset(r_before,"SWIR1"))
+plot(r_before$Red, r_before$NIR)
+plot(r_before$Green,r_before$Red)
+plot(r_before$SWIR1,r_before$NIR)
+plot(r_before$Red,r_before$SWIR1)
 
-df_test <- as.data.frame(stack(r_before,nlcd2006_reg))
+df_r_before_nlcd <- as.data.frame(stack(r_before,nlcd2006_reg))
 
-View(df_test)
+head(df_r_before_nlcd)
 
 #Forest:
-plot(df_test[df_test$nlcd_2006_RITA==42,c("Green")],
-     df_test[df_test$nlcd_2006_RITA==42,c("Red")],
-     col="green",cex=0.15)
+df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==42)
+plot(df_subset$Green,
+     df_subset$Red,
+     col="green",
+     cex=0.15,
+     xlab="Green",
+     ylab="Red",
+     main="Green-Red feature space")
 
 #Urban: dense
-points(df_test[df_test$nlcd_2006_RITA==22,c("Green")],
-       df_test[df_test$nlcd_2006_RITA==22,c("Red")],
-       col="brown",cex=0.15)
+df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==22)
+points(df_subset$Green,
+       df_subset$Red,
+       col="darkred",
+       cex=0.15)
 
-#Water
-points(df_test[df_test$nlcd_2006_RITA==11,c("Green")],
-       df_test[df_test$nlcd_2006_RITA==11,c("Red")],
-       col="blue",cex=0.15)
+#Water: 11 for NLCD
+df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==22)
+points(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("Green")],
+       df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("Red")],
+       col="blue",
+       cex=0.15)
 
 #### Feature space Red and Green
 
 #Forest:
-plot(df_test[df_test$nlcd_2006_RITA==42,c("Red")],
-     df_test[df_test$nlcd_2006_RITA==42,c("NIR")],
-     col="green",cex=0.15)
+plot(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==42,c("Red")],
+     df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==42,c("NIR")],
+     col="green",
+     cex=0.15,
+     xlab="Red",
+     ylab="NIR")
 
 #Urban: dense
-points(df_test[df_test$nlcd_2006_RITA==22,c("Red")],
-     df_test[df_test$nlcd_2006_RITA==22,c("NIR")],
-     col="brown",cex=0.15)
+points(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==22,c("Red")],
+     df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==22,c("NIR")],
+     col="darkred",
+     cex=0.15)
 
 #Water
-points(df_test[df_test$nlcd_2006_RITA==11,c("Red")],
-       df_test[df_test$nlcd_2006_RITA==11,c("NIR")],
+points(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("Red")],
+       df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("NIR")],
        col="blue",cex=0.15)
+
+names_vals <- df_r_before_nlcd$nlcd_2006_RITA[df_r_before_nlcd$nlcd_2006_RITA %in% c(42,22,11)]
+legend("bottomright",legend=names_vals,
+       pt.cex=0.8,cex=1.1,col=c("green","darkred","blue"),
+       lty=c(1,1), # set legend symbol as lines
+       pch=1, #add circle symbol to line
+       lwd=c(1,1),bty="n")
 
 #### Feature space Blue and Red
 
 #Water:
-plot(df_test[df_test$nlcd_2006_RITA==11,c("Blue")],
-       df_test[df_test$nlcd_2006_RITA==11,c("Red")],
+plot(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("Blue")],
+       df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("Red")],
        col="blue",cex=0.15)
 
 #Forest:
-points(df_test[df_test$nlcd_2006_RITA==42,c("Blue")],
-     df_test[df_test$nlcd_2006_RITA==42,c("Red")],
+points(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==42,c("Blue")],
+     df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==42,c("Red")],
      col="green",cex=0.15)
 
 #Urban dense:
-points(df_test[df_test$nlcd_2006_RITA==22,c("Blue")],
-       df_test[df_test$nlcd_2006_RITA==22,c("Red")],
+points(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==22,c("Blue")],
+       df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==22,c("Red")],
        col="brown",cex=0.15)
 
 #### Generate Color composites
@@ -297,7 +320,7 @@ xtab_threshold <- crosstab(r_ref,r_rec_NIR_after,long=T)
 (xtab_theshold[5,3]/freq_fema_zones[2,2])*100 #agreement with FEMA flooded area in %.
 
 ############## Generating indices based on raster algebra of original bands
-## Let's generate a series of indices:
+## Let's generate a series of indices, we list a few possibility from the literature.
 #1) NDVI = (NIR - Red)/(NIR+Red)
 #2) NDWI = (Green - NIR)/(Green + NIR)
 #3) MNDWI = Green - SWIR2 / Green + SWIR2
@@ -305,7 +328,7 @@ xtab_threshold <- crosstab(r_ref,r_rec_NIR_after,long=T)
 #5) LSWI (LSWIB5) =  (NIR - SWIR2)/(NIR + SWIR2)
 
 names(r_before)
-r_before_NDVI <- (subset(r_before,"NIR") - subset(r_before,"Red")) / (subset(r_before,"NIR") + subset(r_before,"Red"))
+r_before_NDVI <- (r_before$NIR - r_before$Red) / (r_before$NIR + r_before$Red)
 r_after_NDVI <- subset(r_after,"NIR") - subset(r_after,"Red")/(subset(r_after,"NIR") + subset(r_after,"Red"))
 
 plot(r_before_NDVI,zlim=c(-1,1),col=matlab.like(255))
@@ -416,7 +439,6 @@ plot(r_pca,y=3,zlim=c(-2,2))
 
 plot(subset(r_pca,1),subset(r_pca,2))
 plot(subset(r_pca,2),subset(r_pca,3))
-
 
 #### Generate a plot for PCA with loadings and compare to Tassel Cap
 
