@@ -313,6 +313,10 @@ plot(r_after_NDVI,zlim=c(-1,1),col=matlab.like2(255))
 
 ### Experiment with different threshold values:
 # THis is suggesting flooding!!!
+
+histogram(r_before_NDVI) # Examine histogram to look for potential threshold values
+histogram(r_after_NDVI) # Examine histogram to look for poential threshold values
+
 plot(r_before_NDVI < -0.5)
 plot(r_after_NDVI < -0.5)
 plot(r_before_NDVI < -0.1)
@@ -323,14 +327,11 @@ plot(r_after_NDVI < -0.1)
 
 #Modified NDWI known as MNDWI : Green - SWIR2/(Green + SWIR2)
 
-#According to Gao (1996), NDWI is a good indicator
-# for vegetation liquid water content and is less
-# sensitive to atmospheric scattering effects than NDVI. 
-# In some studies, MODIS band 6 is used for the NDWI calculation,
-#because it is sensitive to water types and contents (Li et al., 2011), 
-# while band 5 is sensitive to vegetation liquid water content (Gao, 1996).
+#According to Gao (1996), NDWI is a good indicator for vegetation liquid water content and 
+# is less sensitive to atmospheric scattering effects than NDVI. In some studies, MODIS band 6 
+# is used for the NDWI calculation, because it is sensitive to water types and contents 
+# (Li et al., 2011), while band 5 is sensitive to vegetation liquid water content (Gao, 1996).
 
-names(r_before)
 r_before_MNDWI <- (subset(r_before,"Green") - subset(r_before,"SWIR2")) / (subset(r_before,"Green") + subset(r_before,"SWIR2"))
 r_after_MNDWI <- (subset(r_after,"Green") - subset(r_after,"SWIR2")) / (subset(r_after,"Green") + subset(r_after,"SWIR2"))
 
@@ -350,7 +351,7 @@ plot(r_diff_MNDWI > 0.2) ## Increase in MNDWI: Areas that may have become floode
 # Do relationship with flood zone using ROC?
 ### Generate a map of flooding with MNDWI and compare to FEMA map:
 
-r_after_flood <- r_date2_MNDWI > 0.1
+r_after_flood <- r_date2_MNDWI > 0
 plot(r_after_flood)
 
 #reclass in zero/1!!!
@@ -360,19 +361,11 @@ r_ref_rec <- subs(r_ref, df)
 plot(r_ref_rec)
 xtab_tb <- crosstab(r_after_flood,r_ref_rec)
 
-## Compute Jaccard Index:
+## Examine overlap between flooded area and FEMA:
 
-xtab_tb$Freq[5]/(sum(xtab_tb[xtab_tb$Var1==1,c("Freq")],na.rm = T)+ 
-                     sum(xtab_tb[xtab_tb$Var2==1,c("Freq")],na.rm = T))
-
-r_after_flood <- mask(r_after_flood,r_ref_rec)
-
-ref_test_tb <- crosstab(r_date2_flood,r_ref_rec)
-
-## Compute Jaccard Index:
-
-ref_test_tb$Freq[5]/(sum(ref_test_tb[ref_test_tb$Var1==1,c("Freq")],na.rm = T)+ 
-                       sum(ref_test_tb[ref_test_tb$Var2==1,c("Freq")],na.rm = T))
+plot(r_after_flood)
+r_overlap <- r_ref_rec * r_after_flood
+plot(r_overlap) ## Flood map area of aggreement with FEMA
 
 ###############################################
 ##### PART IV: Principal Component Analysis and band transformation
@@ -385,7 +378,6 @@ cor_mat_layerstats <- layerStats(r_after, 'pearson', na.rm=T)
 cor_matrix <- cor_mat_layerstats$`pearson correlation coefficient`
 class(cor_matrix)
 print(cor_matrix) #note size is 7x7
-image(cor_matrix)
 
 pca_mod <- principal(cor_matrix,nfactors=7,rotate="none")
 class(pca_mod$loadings)
@@ -444,7 +436,7 @@ axis(2, las=1,at=seq(-1,1,0.2),cex=1.2) # "1' for side=below, the axis is drawne
 box()    #This draws a box...
 
 title(paste0("Loadings for component ", names(loadings_df)[1]," and " ,names(loadings_df)[2] ))
-draw.circle(0,0,c(1.0,1),nv=200)#,border="purple",
+draw.circle(0,0,c(1.0,1.0),nv=200)#,border="purple",
 text(loadings_df[,1],loadings_df[,2],var_labels,pos=1,cex=1)            
 grid(2,2)
 
@@ -488,6 +480,15 @@ points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
        df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.2")],
        col="green",cex=0.15)
 
+r_TCWI =  0.10839 * r_after$Red + 0.0912 * r_after$NIR +0.5065 * r_after$Blue+ 0.404 * r_after$Green 
+            - 0.241 * r_after$SWIR1- 0.4658 * r_after$SWIR2 - 0.5306 * r_after$SWIR3
+
+TCWI <- TCWI*10
+histogram(TCWI)
+plot(TCWI,zlim=c(0,1.5))
+
+plot(TCWI>0.05)
+histogram(TCWI)
 #6) TCWI =  0.10839 * Red+ 0.0912 * NIR +0.5065 * Blue+ 0.404 * Green 
 #            - 0.241 * SWIR1- 0.4658 * SWIR2-
 #           0.5306 * SWIR3
@@ -497,4 +498,12 @@ points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
 ########################## End of Script ###################################
 
 
+#pca_loadings_dz <- zoo(loadings_df,dates_val) #create zoo object from data.frame and date sequence object
+#?plot.zoo to find out about zoo time series plotting of indexes
+#plot(loadings_df ~ 1:7,
+#     #type="b",
+#     col=c("blue","red","black","orange","green","purple","brown"),
+#     #xlab="time steps",
+#     #ylab="PC loadings",
+#     #ylim=c(-1,1))
 
