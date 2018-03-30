@@ -6,9 +6,9 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/05/2018 
-#DATE MODIFIED: 03/29/2018
+#DATE MODIFIED: 03/30/2018
 #Version: 1
-#PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
+#PROJECT: SESYNC and AAG 2018 Geospatial Short Course and workshop preparation
 #TO DO:
 #
 #COMMIT: PCA loading space
@@ -68,23 +68,20 @@ out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exer
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
-file_format <- ".tif" #PARAM5
-NA_value <- -9999 #PARAM6
-NA_flag_val <- NA_value #PARAM7
+file_format <- ".tif" # Output format for raster images that are written out.
+NA_flag_val <- -9999
 out_suffix <-"exercise5_03292018" #output suffix for the files and ouptu folder #PARAM 8
-create_out_dir_param=TRUE #PARAM9
+create_out_dir_param <- TRUE 
 method_proj_val <- "bilinear" # "ngb"
-multiband <- TRUE #This is only used for multiband products?
 
 ### Input data files used:
-infile_reg_outline <- "new_strata_rita_10282017.shp"
-ref_rast_name <- "r_ref_Houston_RITA.tif"
-infile_modis_bands_information <- "df_modis_band_info.txt"
-nlcd_2006_filename <- "nlcd_2006_RITA.tif"
-infile_name_nlcd_legend <- "nlcd_legend.txt"
-#34: 2005-09-22 2005265
+infile_reg_outline <- "new_strata_rita_10282017.shp" # Region outline and FEMA zones
+infile_modis_bands_information <- "df_modis_band_info.txt" # MOD09 bands information.
+nlcd_2006_filename <- "nlcd_2006_RITA.tif" # NLCD2006 Land cover data aggregated at ~ 1km.
+infile_name_nlcd_legend <- "nlcd_legend.txt" #Legend information for 2006 NLCD.
+#MOD09 surface reflectance product on 2005-09-22 or day of year 2005265
 infile_reflectance_date1 <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
-#35: 2005-09-30 2005273
+#MOD09 surface reflectance product on 2005-09-30 or day of year 2005273
 infile_reflectance_date2 <- "mosaiced_MOD09A1_A2005273__006_reflectance_masked_RITA_reg_1km.tif"
 
 ################# START SCRIPT ###############################
@@ -107,13 +104,11 @@ if(create_out_dir_param==TRUE){
 
 ##### PART I: DISPLAY AND EXPLORE DATA ##############
 
+###### Read in MOD09 reflectance images before and after Hurrican Rita.
+r_before <- brick(file.path(in_dir_var,infile_reflectance_date1)) # Before RITA, Sept. 22, 2005.
+r_after <- brick(file.path(in_dir_var,infile_reflectance_date2)) # After RITA, Sept 30, 2005.
 
-## #34: 2005265 this is Sept 22
-## #35: 2005273 this is Sept 30
-r_before <- brick(file.path(in_dir_var,infile_reflectance_date1)) # <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
-r_after <- brick(file.path(in_dir_var,infile_reflectance_date2)) # <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
-
-plot(r_before)
+plot(r_before) # Note that this is a multibands image.
 
 reg_sf <- st_read(file.path(in_dir_var,infile_reg_outline))
 reg_sf <- st_transform(reg_sf,
@@ -156,6 +151,9 @@ plot(df_before[2,band_refl_order],type="l",main="Reflectance profile for centroi
 lines(df_after[2,band_refl_order],col="red")
 # Add legend
 
+###############################################
+##### PART II: Examine spectral class signature for land cover NLCD classes ##############
+
 ###### Now do a extraction for nlcd data
 nlcd2006_reg <- raster(file.path(in_dir_var,nlcd_2006_filename))
 
@@ -175,7 +173,6 @@ avg_reflectance_nlcd <- merge(avg_reflectance_nlcd,lc_legend_df_subset,by.x="zon
 View(avg_reflectance_nlcd)
 
 names(avg_reflectance_nlcd)
-
 col_ordering <- band_refl_order + 1
 
 plot(as.numeric(avg_reflectance_nlcd[9,col_ordering]),type="l") #42 evergreen forest
@@ -273,42 +270,38 @@ plotRGB(r_after,
         strech="hist")
 
 ### Note the effect of flooding is particularly visible in the false color composites.
+### Let's examine different band combination to enhance features in the image, including flooded areas.
 
-### Experiment with threshold:
+###############################################
+##### PART III: Band combination: Indices and thresholding for flood mapping ##############
 
-col_palette <- colorRampPalette(c("black","blue"))(255)
-#colorRampPalette(c("red", "white", "blue"))(255)
-plot(subset(r_before,"NIR") < 0.2)
-plot(subset(r_before,"Blue"),col=col_palette)
+### NIR experiment with threshold to  map water/flooding
 
 plot(subset(r_before,"NIR"))
 plot(subset(r_after,"NIR"))
 
+### Lower NIR often correlates to areas with high water fraction or inundated:
+r_rec_NIR_before <- subset(r_before,"NIR") < 0.2
+r_rec_NIR_after <- subset(r_after,"NIR") < 0.2
+
 ### THis is suggesting flooding!!!
-plot(subset(r_before,"NIR") < 0.2)
-plot(subset(r_after,"NIR") < 0.2)
+plot(r_rec_NIR_before, main="Before RITA, NIR > 0.2")
+plot(r_rec_NIR_after, main="After RITA, NIR > 0.2")
 
 #Compare to actual flooding data
+freq_fema_zones <- as.data.frame(freq(r_ref))
+xtab_threshold <- crosstab(r_ref,r_rec_NIR_after,long=T)
 
-############## Generating indices:
+## % overlap between the flooded area and values below 0.2 in NIR
+(xtab_theshold[5,3]/freq_fema_zones[2,2])*100 #agreement with FEMA flooded area in %.
 
-#compare indices with FEMA map? Use ROC.
-
-#
-
-####
-# Generate flood index?
-
+############## Generating indices based on raster algebra of original bands
+## Let's generate a series of indices:
 #1) NDVI = (NIR - Red)/(NIR+Red)
 #2) NDWI = (Green - NIR)/(Green + NIR)
 #3) MNDWI = Green - SWIR2 / Green + SWIR2
 #4) NDWI2 (LSWIB5) =  (NIR - SWIR1)/(NIR + SWIR1)
 #5) LSWI (LSWIB5) =  (NIR - SWIR2)/(NIR + SWIR2)
-#6) TCWI =  0.10839 * Red+ 0.0912 * NIR +0.5065 * Blue+ 0.404 * Green 
-#            - 0.241 * SWIR1- 0.4658 * SWIR2-
-#           0.5306 * SWIR3
-#7) TCBI = 0.3956 * Red + 0.4718 * NIR +0.3354 * Blue+ 0.3834 * Green
-#           + 0.3946 * SWIR1 + 0.3434 * SWIR2+ 0.2964 * SWIR3
 
 names(r_before)
 r_date1_NDVI <- (subset(r_before,"NIR") - subset(r_before,"Red")) / (subset(r_before,"NIR") + subset(r_before,"Red"))
@@ -511,6 +504,11 @@ points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
        df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.2")],
        col="green",cex=0.15)
 
+#6) TCWI =  0.10839 * Red+ 0.0912 * NIR +0.5065 * Blue+ 0.404 * Green 
+#            - 0.241 * SWIR1- 0.4658 * SWIR2-
+#           0.5306 * SWIR3
+#7) TCBI = 0.3956 * Red + 0.4718 * NIR +0.3354 * Blue+ 0.3834 * Green
+#           + 0.3946 * SWIR1 + 0.3434 * SWIR2+ 0.2964 * SWIR3
 
 ################### End of Script #########################
 
