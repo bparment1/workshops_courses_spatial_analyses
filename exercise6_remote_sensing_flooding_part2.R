@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/13/2018 
-#DATE MODIFIED: 03/24/2018
+#DATE MODIFIED: 03/31/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -70,18 +70,10 @@ load_obj <- function(f){
   env[[nm]]
 }
 
-#function_preprocessing_and_analyses <- "fire_alaska_analyses_preprocessing_functions_03102017.R" #PARAM 1
-#function_analyses <- "exercise2_fire_alaska_analyses_functions_03232017.R" #PARAM 1
-script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/R_scripts"
-#source(file.path(script_path,function_preprocessing_and_analyses)) #source all functions used in this script 1.
-#source(file.path(script_path,function_analyses)) #source all functions used in this script 1.
-
 #####  Parameters and argument set up ###########
 
-#in_dir_reflectance <- "/nfs/bparmentier-data/Data/workshop_spatial/GIS_training/Exercise_6/data/reflectance_RITA"
 in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_6/data/"
 out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop//Exercise_6/outputs"
-infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_6/data/revised_area_Rita/new_strata_rita_10282017.shp"
 
 #region coordinate reference system
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
@@ -89,7 +81,7 @@ CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=3
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise6_03232018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise6_03312018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 date_event <- ""
 #ARG4
@@ -100,10 +92,10 @@ method_proj_val <- "bilinear" # "ngb"
 ref_rast_name <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
 infile_RITA_reflectance_date1 <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
 infile_RITA_reflectance_date2 <- "mosaiced_MOD09A1_A2005273__006_reflectance_masked_RITA_reg_1km.tif"
+infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_6/data/revised_area_Rita/new_strata_rita_10282017.shp"
 
 nlcd_2006_filename <- "nlcd_2006_RITA.tif"
-#infile_land_cover_date2 <- "nlcd_2011_RITA.tif"
-
+#infile_land_cover_after <- "nlcd_2011_RITA.tif"
 infilename_class1 <- "class1.shp" #
 infilename_class2 <- "class2.shp" #
 infilename_class3 <- "class3.shp" #
@@ -132,31 +124,25 @@ if(create_out_dir_param==TRUE){
 
 ###### Read in modis 09
 
-r_date1 <- brick(file.path(in_dir_var,infile_RITA_reflectance_date1))
-r_date2 <- brick(file.path(in_dir_var,infile_RITA_reflectance_date2))
+r_after <- brick(file.path(in_dir_var,infile_RITA_reflectance_date2))
 
 #SWIR1 (1230–1250 nm), SWIR2 (1628–1652 nm) and SWIR3 (2105–2155 nm).
 band_refl_order <- c(3,4,1,2,5,6,7)
 
-names(r_date1) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
-names(r_date2) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
+names(r_after) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
 
-r_date2_MNDWI <- (subset(r_date2,"Green") - subset(r_date2,"SWIR2")) / (subset(r_date2,"Green") + subset(r_date2,"SWIR2"))
-plot(r_date2_MNDWI,zlim=c(-1,1))
-r_date1_MNDWI <- (subset(r_date1,"Green") - subset(r_date1,"SWIR2")) / (subset(r_date1,"Green") + subset(r_date1,"SWIR2"))
-plot(r_date1_MNDWI,zlim=c(-1,1))
+r_after_MNDWI <- (subset(r_after,"Green") - subset(r_after,"SWIR2")) / (subset(r_after,"Green") + subset(r_after,"SWIR2"))
+plot(r_after_MNDWI,zlim=c(-1,1))
 
-r_date2_NDVI <- (subset(r_date2,"NIR") - subset(r_date2,"Red")) / (subset(r_date2,"NIR") + subset(r_date2,"Red"))
-plot(r_date2_NDVI)
-r_date1_NDVI <- (subset(r_date1,"NIR") - subset(r_date1,"Red")) / (subset(r_date1,"NIR") + subset(r_date1,"Red"))
-plot(r_date1_NDVI)
-#writeRaster(r_date1_NDVI,"ndvi_date1.rst")
-#NAvalue(r_date1_NDVI) <- 9999
-#writeRaster(r_date2_NDVI,"ndvi_date2.rst")
-#NAvalue(r_date2_NDVI) <- 9999
-#plot(r_date2_MNDWI)
+r_after_NDVI <- (subset(r_after,"NIR") - subset(r_after,"Red")) / (subset(r_after,"NIR") + subset(r_after,"Red"))
+plot(r_after_NDVI)
 
-class2_sites.shp
+NAvalue(r_after_NDVI) <- 9999
+out_filename <- file.path(out_dir,"ndvi_post_Rita.tif")
+writeRaster(r_after_NDVI,"ndvi_date1.rst")
+NAvalue(r_after_MNDWI) <- 9999
+writeRaster(r_after_MNDWI,"ndvi_date2.rst")
+
 #training_data_sf <- st_read("training1.shp")
 class1_data_sf <- st_read(file.path(in_dir_var,"class1_sites.shp"))
 class2_data_sf <- st_read(file.path(in_dir_var,"class2_sites.shp"))
@@ -164,18 +150,17 @@ class3_data_sf <- st_read(file.path(in_dir_var,"class3_sites.shp"))
 
 class_data_sf <- rbind(class1_data_sf,class2_data_sf,class3_data_sf)
 class_data_sf$poly_ID <- 1:nrow(class_data_sf) #unique ID for each polygon
-nrow(class_data_sf)
-
+nrow(class_data_sf) # 23 different polygons used at ground truth data
 class_data_sp <- as(class_data_sf,"Spatial")
 
 ###merg sf data
 list_class_sf <- list(class1_data_sf,class2_data_sf,class3_data_sf)
 list_class_sp <- lapply(list_class_sf,function(x){as(x,"Spatial")})
 
-r_x <- init(r_date2,"x") #raster with coordinates x
-r_y <- init(r_date2,"x") #raster with coordiates y
+r_x <- init(r_after,"x") #raster with coordinates x
+r_y <- init(r_after,"x") #raster with coordiates y
 
-r_stack <- stack(r_x,r_y,r_date2,r_date2_NDVI,r_date2_MNDWI)
+r_stack <- stack(r_x,r_y,r_after,r_after_NDVI,r_after_MNDWI)
 names(r_stack) <- c("x","y","Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3","NDVI","MNDWI")
 pixels_df <- extract(r_stack,class_data_sp,df=T)
 
@@ -211,7 +196,7 @@ plot(NDVI~MNDWI,xlim=c(-1,1),ylim=c(-1,1),cex=0.2,col="blue",subset(pixels_df,cl
 points(NDVI~MNDWI,col="green",cex=0.2,subset(pixels_df,class_ID==2))
 points(NDVI~MNDWI,col="red",cex=0.2,subset(pixels_df,class_ID==3))
 
-histogram(r_date2)
+histogram(r_after)
 
 boxplot(MNDWI~class_ID,pixels_df,main="Boxplot for MNDWI per class")
 
