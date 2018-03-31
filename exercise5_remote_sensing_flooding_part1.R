@@ -1,4 +1,4 @@
-####################################    Flood Mapping Analyses   #######################################
+####################################  Introduction to Remote Sensing   #######################################
 ############################  Analyze and map flooding from RITA hurricane  #######################################
 #This script performs analyses for the Exercise 5 of the Short Course using reflectance data derived from MODIS.
 #The goal is to map flooding from RITA using various reflectance bands from Remote Sensing platforms.
@@ -6,12 +6,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/05/2018 
-#DATE MODIFIED: 03/30/2018
+#DATE MODIFIED: 03/31/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 Geospatial Short Course and workshop preparation
 #TO DO:
 #
-#COMMIT: PCA loading space
+#COMMIT: clean up of code
 #
 #################################################################################################
 
@@ -41,7 +41,7 @@ library(plyr) #data wrangling: various operations for splitting, combining data
 #library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
-library(sf)
+library(sf) # spatial objects classes
 library(plotrix) #various graphic functions e.g. draw.circle
 
 ###### Functions used in this script
@@ -70,9 +70,8 @@ out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exer
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
 file_format <- ".tif" # Output format for raster images that are written out.
 NA_flag_val <- -9999
-out_suffix <-"exercise5_03292018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise5_03312018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param <- TRUE 
-method_proj_val <- "bilinear" # "ngb"
 
 ### Input data files used:
 infile_reg_outline <- "new_strata_rita_10282017.shp" # Region outline and FEMA zones
@@ -113,8 +112,7 @@ plot(r_before) # Note that this is a multibands image.
 reg_sf <- st_read(file.path(in_dir_var,infile_reg_outline))
 reg_sf <- st_transform(reg_sf,
                        crs=CRS_reg)
-reg_sp <-as(reg_sf, "Spatial") 
-plot(reg_sf$geometry)
+reg_sp <-as(reg_sf, "Spatial") #Convert to sp object before rasterization
 
 r_ref <- rasterize(reg_sp,
                    r_before,
@@ -147,9 +145,16 @@ df_modis_band_info <- df_modis_band_info[order(df_modis_band_info$start_wlength)
 #SWIR1 (1230–1250 nm), SWIR2 (1628–1652 nm) and SWIR3 (2105–2155 nm).
 band_refl_order <- df_modis_band_info$band_number
 
-plot(df_before[2,band_refl_order],type="l",main="Reflectance profile for centroid of flooded area")
+plot(df_before[2,band_refl_order],type="l",
+     xlab="Bands",
+     ylab="Reflectance",
+     main="Reflectance profile for centroid of flooded area")
 lines(df_after[2,band_refl_order],col="red")
-# Add legend
+names_vals <- c("Before Rita","After Rita")
+legend("topleft",legend=names_vals,
+       pt.cex=0.7,cex=0.7,col=c("black","red"),
+       lty=1, #add circle symbol to line
+       bty="n")
 
 ###############################################
 ##### PART II: Examine spectral class signatures for land cover NLCD classes ##############
@@ -171,7 +176,7 @@ lc_legend_df_subset <- subset(lc_legend_df,select=c("ID","NLCD.2006.Land.Cover.C
 names(lc_legend_df_subset) <- c("ID","cat_name")
 
 avg_reflectance_nlcd <- merge(avg_reflectance_nlcd,lc_legend_df_subset,by.x="zone",by.y="ID",all.y=F)
-View(avg_reflectance_nlcd)
+head(avg_reflectance_nlcd)
 
 names(avg_reflectance_nlcd)
 col_ordering <- band_refl_order + 1
@@ -194,10 +199,9 @@ plot(r_before$SWIR1,r_before$NIR)
 plot(r_before$Red,r_before$SWIR1)
 
 df_r_before_nlcd <- as.data.frame(stack(r_before,nlcd2006_reg))
-
 head(df_r_before_nlcd)
 
-#Forest:
+#Evergreen Forest:
 df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==42)
 plot(df_subset$Green,
      df_subset$Red,
@@ -216,58 +220,83 @@ points(df_subset$Green,
 
 #Water: 11 for NLCD
 df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==22)
-points(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("Green")],
-       df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("Red")],
+points(df_subset$Green,
+       df_subset$Red,
        col="blue",
        cex=0.15)
 
-#### Feature space Red and Green
+title("Feature space Green-Red")
+names_vals <- c("Evergreen Forest","Developed High Intensity","Water")
+legend("topright",legend=names_vals,
+       pt.cex=0.7,cex=0.7,col=c("green","darkred","blue"),
+       pch=1, #add circle symbol to line
+       bty="n")
 
-#Forest:
-plot(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==42,c("Red")],
-     df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==42,c("NIR")],
+#### Feature space Red and NIR
+
+#Evergreen Forest:
+df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==42)
+plot(df_subset$Red,
+     df_subset$NIR,
      col="green",
      cex=0.15,
      xlab="Red",
      ylab="NIR")
 
-#Urban: dense
-points(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==22,c("Red")],
-     df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==22,c("NIR")],
-     col="darkred",
-     cex=0.15)
+#Developed, High Intensity
+df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==22)
+points(df_subset$Red,
+       df_subset$NIR,
+       col="darkred",
+       cex=0.15)
 
 #Water
-points(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("Red")],
-       df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("NIR")],
-       col="blue",cex=0.15)
+df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==11)
+points(df_subset$Red,
+       df_subset$NIR,
+       col="blue",
+       cex=0.15)
 
-names_vals <- df_r_before_nlcd$nlcd_2006_RITA[df_r_before_nlcd$nlcd_2006_RITA %in% c(42,22,11)]
-legend("bottomright",legend=names_vals,
-       pt.cex=0.8,cex=1.1,col=c("green","darkred","blue"),
-       lty=c(1,1), # set legend symbol as lines
+title("Feature space Red-NIR")
+names_vals <- c("Evergreen Forest","Developed High Intensity","Water")
+legend("topright",legend=names_vals,
+       pt.cex=0.7,cex=0.7,col=c("green","darkred","blue"),
        pch=1, #add circle symbol to line
-       lwd=c(1,1),bty="n")
+       bty="n")
 
 #### Feature space Blue and Red
 
 #Water:
-plot(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("Blue")],
-       df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==11,c("Red")],
-       col="blue",cex=0.15)
+df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==11)
+plot(df_subset$Blue,
+       df_subset$Red,
+       col="blue",
+       cex=0.15,
+       xlab="Blue",
+       ylab="Red")
 
-#Forest:
-points(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==42,c("Blue")],
-     df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==42,c("Red")],
-     col="green",cex=0.15)
+#Evergreen Forest:
+df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==42)
+points(df_subset$Blue,
+       df_subset$Red,
+       col="green",
+       cex=0.15)
 
 #Urban dense:
-points(df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==22,c("Blue")],
-       df_r_before_nlcd[df_r_before_nlcd$nlcd_2006_RITA==22,c("Red")],
-       col="brown",cex=0.15)
+df_subset <- subset(df_r_before_nlcd,nlcd_2006_RITA==22)
+points(df_subset$Blue,
+       df_subset$Red,
+       col="darkred",
+       cex=0.15)
+
+title("Feature space Blue-Red")
+names_vals <- c("Evergreen Forest","Developed High Intensity","Water")
+legend("topright",legend=names_vals,
+       pt.cex=0.7,cex=0.7,col=c("green","darkred","blue"),
+       pch=1, #add circle symbol to line
+       bty="n")
 
 #### Generate Color composites
-
 ### True color composite
 
 plotRGB(r_before,
@@ -317,7 +346,7 @@ freq_fema_zones <- as.data.frame(freq(r_ref))
 xtab_threshold <- crosstab(r_ref,r_rec_NIR_after,long=T)
 
 ## % overlap between the flooded area and values below 0.2 in NIR
-(xtab_theshold[5,3]/freq_fema_zones[2,2])*100 #agreement with FEMA flooded area in %.
+(xtab_threshold[5,3]/freq_fema_zones[2,2])*100 #agreement with FEMA flooded area in %.
 
 ############## Generating indices based on raster algebra of original bands
 ## Let's generate a series of indices, we list a few possibility from the literature.
@@ -355,8 +384,8 @@ plot(r_after_NDVI < -0.1)
 # is used for the NDWI calculation, because it is sensitive to water types and contents 
 # (Li et al., 2011), while band 5 is sensitive to vegetation liquid water content (Gao, 1996).
 
-r_before_MNDWI <- (subset(r_before,"Green") - subset(r_before,"SWIR2")) / (subset(r_before,"Green") + subset(r_before,"SWIR2"))
-r_after_MNDWI <- (subset(r_after,"Green") - subset(r_after,"SWIR2")) / (subset(r_after,"Green") + subset(r_after,"SWIR2"))
+r_before_MNDWI <- (r_before$Green - r_before$SWIR2) / (r_before$Green + r_before$SWIR2)
+r_after_MNDWI <- (r_after$Green - r_after$SWIR2) / (r_after$Green + r_after$SWIR2)
 
 plot(r_before_MNDWI,zlim=c(-1,1),col=rev(matlab.like(255)))
 plot(r_after_MNDWI,zlim=c(-1,1),col=rev(matlab.like(255)))
@@ -371,10 +400,19 @@ r_diff_MNDWI <- r_after_MNDWI - r_before_MNDWI
 plot(r_diff_MNDWI)
 plot(r_diff_MNDWI > 0.2) ## Increase in MNDWI: Areas that may have become flooded
 
-# Do relationship with flood zone using ROC?
+#Standardize image:
+mean_val <- cellStats(r_diff_MNDWI,"mean")
+sd_val <- cellStats(r_diff_MNDWI,"sd")
+
+r_diff_std <- (r_diff_MNDWI - mean_val)/ sd_val
+plot(r_diff_std)
+histogram(r_diff_std) 
+plot(r_diff_std > 2) ## increase in MNDWI 2 standard deiation away
+plot(r_diff_std > 1) ## increase in MNDWI 2 standard deiation away
+
 ### Generate a map of flooding with MNDWI and compare to FEMA map:
 
-r_after_flood <- r_date2_MNDWI > 0
+r_after_flood <- r_diff_std > 1 
 plot(r_after_flood)
 
 #reclass in zero/1!!!
@@ -392,9 +430,8 @@ plot(r_overlap) ## Flood map area of aggreement with FEMA
 
 ###############################################
 ##### PART IV: Principal Component Analysis and band transformation
-
-###############################################
-######## Let's carry out a PCA in T-mode #######
+## Another avenue to combine original bands into indices is to use linear transformation.
+## We examine Principal Component Analysis and the Tassel Cap Transform.
 
 #Correlate long term mean to PC!
 cor_mat_layerstats <- layerStats(r_before, 'pearson', na.rm=T)
@@ -429,9 +466,7 @@ legend("topright",legend=names_vals,
 plot(pca_mod$values,main="Scree plot: Variance explained",type="b")
 
 ### Generate scores from eigenvectors
-## Do it two different ways:
-### Using predict function: this is recommended for raster imagery!!
-# note the use of the 'index' argument
+### Using predict function: this is recommended for raster.
 r_pca <- predict(r_before, pca_mod, index=1:7,filename="pc_scores.tif",overwrite=T) # fast
 plot(r_pca,y=2,zlim=c(-2,2))
 plot(r_pca,y=1,zlim=c(-2,2))
@@ -467,8 +502,7 @@ grid(2,2)
 ##### plot feature space:
 
 df_raster_val <- as.data.frame(stack(r_after,r_pca,nlcd2006_reg))
-
-#View(df_raster_val)
+head(df_raster_val)
 
 #Water
 plot(df_raster_val[df_raster_val$nlcd_2006_RITA==11,c("pc_scores.1")],
@@ -491,14 +525,12 @@ points(df_raster_val[df_raster_val$nlcd_2006_RITA==42,c("pc_scores.1")],
 plot(r_pca$pc_scores.2 > 0.1) #water related?
 plot(r_pca$pc_scores.2 < - 0.1) #vegetation related?
 
-
-#### Examine relationship with Tasselcap transform:
+#### Examine relationship with Tasselcap transform adapted for MODIS:
 #6) TCWI =  0.10839 * Red+ 0.0912 * NIR +0.5065 * Blue+ 0.404 * Green 
 #            - 0.241 * SWIR1- 0.4658 * SWIR2-
 #           0.5306 * SWIR3
 #7) TCBI = 0.3956 * Red + 0.4718 * NIR +0.3354 * Blue+ 0.3834 * Green
 #           + 0.3946 * SWIR1 + 0.3434 * SWIR2+ 0.2964 * SWIR3
-
 
 r_TCWI =  0.10839 * r_before$Red + 0.0912 * r_before$NIR +0.5065 * r_before$Blue+ 0.404 * r_before$Green 
 - 0.241 * r_before$SWIR1- 0.4658 * r_before$SWIR2 - 0.5306 * r_before$SWIR3
@@ -542,7 +574,6 @@ points(cor_r_TC$pc_scores.1[2],cor_r_TC$pc_scores.2[2],col="green")
 
 axis(1, at=seq(-1,1,0.2),cex=1.2)
 axis(2, las=1,at=seq(-1,1,0.2),cex=1.2) # "1' for side=below, the axis is drawned  on the right at location 0 and 1
-
 box()    #This draws a box...
 
 title(paste0("Loadings for component ", names(loadings_df)[1]," and " ,names(loadings_df)[2] ))
@@ -550,7 +581,6 @@ draw.circle(0,0,c(1.0,1.0),nv=500)#,border="purple",
 text(loadings_df[,1],loadings_df[,2],var_labels,pos=1,cex=1)            
 text(cor_r_TC$pc_scores.1[1],cor_r_TC$pc_scores.2[1],"TCWI",pos=1,cex=1)
 text(cor_r_TC$pc_scores.1[2],cor_r_TC$pc_scores.2[2],"TCBI",pos=1,cex=1)
-
 grid(2,2)
 
 ########################## End of Script ###################################
