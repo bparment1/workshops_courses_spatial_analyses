@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/13/2018 
-#DATE MODIFIED: 03/31/2018
+#DATE MODIFIED: 04/01/2018
 #Version: 1
 #PROJECT: SESYNC and AAG 2018 workshop/Short Course preparation
 #TO DO:
@@ -35,7 +35,7 @@ library(sphet) #contains spreg, spatial regression modeling
 library(BMS) #contains hex2bin and bin2hex, Bayesian methods
 library(bitops) # function for bitwise operations
 library(foreign) # import datasets from SAS, spss, stata and other sources
-library(gdata) #read xls, dbf etc., not recently updated but useful
+#library(gdata) #read xls, dbf etc., not recently updated but useful
 library(classInt) #methods to generate class limits
 library(plyr) #data wrangling: various operations for splitting, combining data
 #library(gstat) #spatial interpolation and kriging methods
@@ -79,30 +79,26 @@ out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop//Exe
 #http://spatialreference.org/ref/epsg/nad83-texas-state-mapping-system/proj4/
 CRS_reg <- "+proj=lcc +lat_1=27.41666666666667 +lat_2=34.91666666666666 +lat_0=31.16666666666667 +lon_0=-100 +x_0=1000000 +y_0=1000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
 file_format <- ".tif" #PARAM5
-NA_value <- -9999 #PARAM6
-NA_flag_val <- NA_value #PARAM7
+NA_flag_val <- -9999 #PARAM6
 out_suffix <-"exercise6_03312018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
-date_event <- ""
-#ARG4
-method_proj_val <- "bilinear" # "ngb"
 
 #ARG9
 #local raster name defining resolution, extent
-ref_rast_name <- "/nfs/bparmentier-data/Data/Space_beats_time/Data/data_RITA_reflectance/revised_area_Rita/r_ref_Houston_RITA.tif"
-infile_RITA_reflectance_date1 <- "mosaiced_MOD09A1_A2005265__006_reflectance_masked_RITA_reg_1km.tif"
 infile_RITA_reflectance_date2 <- "mosaiced_MOD09A1_A2005273__006_reflectance_masked_RITA_reg_1km.tif"
-infile_reg_outline_RITA <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_6/data/revised_area_Rita/new_strata_rita_10282017.shp"
+infile_reg_outline <- "new_strata_rita_10282017.shp" # Region outline and FEMA zones
+infile_modis_bands_information <- "df_modis_band_info.txt" # MOD09 bands information.
+nlcd_2006_filename <- "nlcd_2006_RITA.tif" # NLCD2006 Land cover data aggregated at ~ 1km.
 
-nlcd_2006_filename <- "nlcd_2006_RITA.tif"
-#infile_land_cover_after <- "nlcd_2011_RITA.tif"
-infilename_class1 <- "class1.shp" #
-infilename_class2 <- "class2.shp" #
-infilename_class3 <- "class3.shp" #
+infilename_class1 <- "class1.shp" # Ground truth data for class 1
+infilename_class2 <- "class2.shp" # Ground truth data for class 2
+infilename_class3 <- "class3.shp" # Ground truth data for class 3
 
-################# START SCRIPT ###############################
+#class1_sites.shp
 
-### PART I: READ AND PREPARE DATA FOR ANALYSES #######
+###########################  START SCRIPT  ##############################
+
+####### SET UP OUTPUT DIRECTORY #######
 
 ## First create an output directory
 
@@ -118,44 +114,57 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-###
-## Second list.files and create raster images stack
+#####################################
+##### PART I: DISPLAY AND EXPLORE DATA ##############
 
-
-###### Read in modis 09
-
+#### MOD09 raster image after hurricane Rita
 r_after <- brick(file.path(in_dir_var,infile_RITA_reflectance_date2))
 
-#SWIR1 (1230–1250 nm), SWIR2 (1628–1652 nm) and SWIR3 (2105–2155 nm).
-band_refl_order <- c(3,4,1,2,5,6,7)
+## Read band information since it is more informative!!
+df_modis_band_info <- read.table(file.path(in_dir_var,infile_modis_bands_information),
+                                 sep=",",
+                                 stringsAsFactors = F)
+print(df_modis_band_info)
+df_modis_band_info$band_number <- c(3,4,1,2,5,6,7)
+write.table(df_modis_band_info,file.path(in_dir_var,infile_modis_bands_information),
+            sep=",")
 
-names(r_after) <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")
+band_refl_order <- df_modis_band_info$band_number
 
+names(r_after) <- df_modis_band_info$band_name
+
+## Use subset instead of $ if you want to wrap code into function
 r_after_MNDWI <- (subset(r_after,"Green") - subset(r_after,"SWIR2")) / (subset(r_after,"Green") + subset(r_after,"SWIR2"))
 plot(r_after_MNDWI,zlim=c(-1,1))
-
 r_after_NDVI <- (subset(r_after,"NIR") - subset(r_after,"Red")) / (subset(r_after,"NIR") + subset(r_after,"Red"))
 plot(r_after_NDVI)
 
-NAvalue(r_after_NDVI) <- 9999
-out_filename <- file.path(out_dir,"ndvi_post_Rita.tif")
-writeRaster(r_after_NDVI,"ndvi_date1.rst")
-NAvalue(r_after_MNDWI) <- 9999
-writeRaster(r_after_MNDWI,"ndvi_date2.rst")
+data_type_str <- dataType(r_after_NDVI)
+
+NAvalue(r_after_NDVI) <- NA_flag_val
+out_filename <- paste("ndvi_post_Rita","_",out_suffix,file_format,sep="")
+out_filename <- file.path(out_dir,out_filename)
+writeRaster(r_after_NDVI,
+            filename=out_filename,
+            datatype=data_type_str)
+
+NAvalue(r_after_MNDWI) <- NA_flag_val
+out_filename <- paste("mndwi_post_Rita","_",out_suffix,file_format,sep="")
+out_filename <- file.path(out_dir,out_filename)
+writeRaster(r_after_MNDWI,
+            filename=out_filename,
+            datatype=data_type_str)
 
 #training_data_sf <- st_read("training1.shp")
 class1_data_sf <- st_read(file.path(in_dir_var,"class1_sites.shp"))
 class2_data_sf <- st_read(file.path(in_dir_var,"class2_sites.shp"))
 class3_data_sf <- st_read(file.path(in_dir_var,"class3_sites.shp"))
 
+### combine object, note they should be in the same projection system
 class_data_sf <- rbind(class1_data_sf,class2_data_sf,class3_data_sf)
 class_data_sf$poly_ID <- 1:nrow(class_data_sf) #unique ID for each polygon
 nrow(class_data_sf) # 23 different polygons used at ground truth data
 class_data_sp <- as(class_data_sf,"Spatial")
-
-###merg sf data
-list_class_sf <- list(class1_data_sf,class2_data_sf,class3_data_sf)
-list_class_sp <- lapply(list_class_sf,function(x){as(x,"Spatial")})
 
 r_x <- init(r_after,"x") #raster with coordinates x
 r_y <- init(r_after,"x") #raster with coordiates y
