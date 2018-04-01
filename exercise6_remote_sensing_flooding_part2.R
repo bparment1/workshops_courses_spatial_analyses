@@ -146,14 +146,16 @@ out_filename <- paste("ndvi_post_Rita","_",out_suffix,file_format,sep="")
 out_filename <- file.path(out_dir,out_filename)
 writeRaster(r_after_NDVI,
             filename=out_filename,
-            datatype=data_type_str)
+            datatype=data_type_str,
+            overwrite=T)
 
 NAvalue(r_after_MNDWI) <- NA_flag_val
 out_filename <- paste("mndwi_post_Rita","_",out_suffix,file_format,sep="")
 out_filename <- file.path(out_dir,out_filename)
 writeRaster(r_after_MNDWI,
             filename=out_filename,
-            datatype=data_type_str)
+            datatype=data_type_str,
+            overwrite=T)
 
 #training_data_sf <- st_read("training1.shp")
 #1) vegetation and other (small water fraction)
@@ -251,7 +253,7 @@ set.seed(100) ## set random seed for reproducibility
 ##Better as a function but we use a loop for clarity here:
 
 list_data_df <- vector("list",length=3)
-level_labels <- c("water 1","water 2","water 3")
+level_labels <- names_vals
 
 for(i in 1:3){
   data_df <- subset(pixels_df,class_ID==level_labels[i])
@@ -287,7 +289,8 @@ raster_out_filename <- paste0("r_predicted_rpart_",out_suffix,file_format)
 r_predicted_rpart <- predict(r_stack,mod_rpart, 
                              type='class',
                              filename=raster_out_filename,
-                             progress = 'text')
+                             progress = 'text',
+                             overwrite=T)
 
 plot(r_predicted_rpart)
 r_predicted_rpart <- ratify(r_predicted_rpart)
@@ -302,7 +305,7 @@ levelplot(r_predicted_rpart, maxpixels = 1e6,
 ############### Using Support Vector Machine #########
 
 ## set class_ID as factor to generate classification
-#pixels_df$class_ID <- as.factor(pixels_df$class_ID)
+
 mod_svm <- svm(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
                data=data_training,
                method="C-classification",
@@ -328,38 +331,35 @@ levelplot(r_predicted_svm, maxpixels = 1e6,
           scales=list(draw=FALSE),
           main = "SVM classification")
 
-### get confusion matrix?
-#table(pred,y)
-#https://rischanlab.github.io/SVM.html
+###############################################
+##### PART IV: Compare methods for the performance ##############
 
-######## Compare methods for the performance #################
+dim(data_df) # full dataset, let's use data points for testing
+#omit values that contain NA, because may be problematic with SVM.
+data_testing <- na.omit(subset(data_df,training==0)) 
+dim(data_testing)
 
-dim(data_df)
-data_testing <- subset(data_df,training==0)
-#predict()
-#Not working here:
-#testing_rpart <- predict.rpart(mod_rpart, data_testing,type='class')
+#### Predict on testing data using rpart model fitted with training data
 testing_rpart <- predict(mod_rpart, data_testing,type='class')
-
-#class(data_testing)
-#testing_svm <- e1071::predict(data_testing,mod_svm, type='class')
+#### Predict on testing data using SVM model fitted with training data
 testing_svm <- predict(mod_svm,data_testing, type='class')
 
-#### Generate confusion matrix!!!
+## Predicted classes:
+table(testing_svm)
 
-tb_rpart <- table(testing_rpart,data_test$class_ID)
-tb_svm <- table(testing_svm,data_test$class_ID)
+#### Generate confusion matrix to assess the performance of the model
+
+tb_rpart <- table(testing_rpart,data_testing$class_ID)
+tb_svm <- table(testing_svm,data_testing$class_ID)
 
 #testing_rpart: map prediction in the rows
 #data_test$class_ID: ground truth data in the columns
-#
 #http://spatial-analyst.net/ILWIS/htm/ilwismen/confusion_matrix.htm
 #Producer accuracy: it is the fraction of correctly classified pixels with regard to all pixels 
 #of that ground truth class. 
-#User accuracy:
 
-(table(testing_rpart)) #classification, map results
-(table(data_test$class_ID)) #reference, ground truth in columns
+table(testing_rpart) #classification, map results
+table(data_testing$class_ID) #reference, ground truth in columns
 
 
 tb_rpart[1]/sum(tb_rpart[,1]) #producer accuracy
@@ -370,16 +370,16 @@ sum(diag(tb_svm))/sum(table(testing_svm))
 #overall accuracy for rpart
 sum(diag(tb_rpart))/sum(table(testing_rpart))
 
-
 #Generate more accuracy measurements from CARET
-accuracy_info_svm <- confusionMatrix(testing_svm,data_test$class_ID, positive = NULL)
-accuracy_info_rpart <- confusionMatrix(testing_rpart,data_test$class_ID, positive = NULL)
+accuracy_info_svm <- confusionMatrix(testing_svm,data_testing$class_ID, positive = NULL)
+accuracy_info_rpart <- confusionMatrix(testing_rpart,data_testing$class_ID, positive = NULL)
 
 accuracy_info_rpart$overall
 accuracy_info_svm$overall
 
 #### write out the results:
-#write.table("")
+write.table(accuracy_info_rpart$table,"confusion_matrix_rpart.txt",sep=",")
+write.table(accuracy_info_svm$table,"confusion_matrix_svm.txt",sep=",")
 
-################### End of Script #########################
+############################ End of Script ###################################
 
