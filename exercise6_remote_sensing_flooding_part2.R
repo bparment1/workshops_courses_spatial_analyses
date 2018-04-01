@@ -203,8 +203,7 @@ legend("topleft",legend=names_vals,
        bty="n")
 
 ## Let's use a palette that reflects wetness or level of water 
-col_palette = c("cyan","lightblue","blue")
-
+col_palette <- c("green","blue","darkblue")
 plot(NDVI ~ MNDWI,
      xlim=c(-1,1),ylim=c(-1,1),
      cex=0.2,
@@ -221,7 +220,7 @@ points(NDVI ~ MNDWI,
        col=col_palette[3],
        subset(pixels_df,class_ID==3))
 
-names_vals <- c("water class 1","water class 2","water class 3")
+names_vals <- c("vegetation","wetland","water")
 legend("topright",legend=names_vals,
        pt.cex=0.7,cex=0.7,col=col_palette,
        pch=20, #add circle symbol to line
@@ -231,7 +230,7 @@ histogram(r_after)
 
 pixels_df$class_ID <- factor(pixels_df$class_ID,
                     levels = c(1,2,3),
-                    labels = c("water 1","water 2","water 3"))
+                    labels = names_vals)
 
 boxplot(MNDWI~class_ID,
         pixels_df,
@@ -246,14 +245,16 @@ boxplot(MNDWI~class_ID,
 pixels_df$pix_ID <- 1:nrow(pixels_df)
 prop <- 0.3
 table(pixels_df$class_ID)
-set.seed(100)
+set.seed(100) ## set random seed for reproducibility
 
 ### This is for one class:
 ##Better as a function but we use a loop for clarity here:
 
 list_data_df <- vector("list",length=3)
+level_labels <- c("water 1","water 2","water 3")
+
 for(i in 1:3){
-  data_df <- subset(pixels_df,class_ID==i)
+  data_df <- subset(pixels_df,class_ID==level_labels[i])
   data_df$pix_id <- 1:nrow(data_df)
   indices <- as.vector(createDataPartition(data_df$pix_ID,p=0.7,list=F))
   data_df$training <-  as.numeric(data_df$pix_id %in% indices)
@@ -263,17 +264,16 @@ for(i in 1:3){
 data_df <- do.call(rbind,list_data_df)
 
 dim(data_df)
-View(data_df)
+head(data_df)
 
 data_training <- subset(data_df,training==1)
 
-## Do neural net, cart, random forest,svm
+###############################################
+##### PART III: Generate classification using CART and SVM ##############
+
 ############### Using Classification and Regression Tree model (CART) #########
 
-# grow tree 
-#mod_rpart <- rpart(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
-#             method="class", 
-#             data=pixels_df)
+## Fit model using training data for CART
 mod_rpart <- rpart(class_ID ~ Red + NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
                    method="class", 
                    data=data_training)
@@ -281,9 +281,6 @@ mod_rpart <- rpart(class_ID ~ Red + NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
 # Plot the fitted  classification tree
 plot(mod_rpart, uniform=TRUE, main="Classification Tree")
 text(mod_rpart, cex=.8)
-
-plot(mod_rpart, uniform=TRUE, main="Classification Tree")
-text(mod_rpart, use.n=TRUE, all=TRUE, cex=.8)
 
 # Now predict the subset data based on the model; prediction for entire area takes longer time
 raster_out_filename <- paste0("r_predicted_rpart_",out_suffix,file_format)
@@ -302,19 +299,16 @@ levelplot(r_predicted_rpart, maxpixels = 1e6,
           scales=list(draw=FALSE),
           main = "Classification Tree")
 
-
-############### Using KNN or SVM #########
+############### Using Support Vector Machine #########
 
 ## set class_ID as factor to generate classification
-pixels_df$class_ID <- as.factor(pixels_df$class_ID)
+#pixels_df$class_ID <- as.factor(pixels_df$class_ID)
 mod_svm <- svm(class_ID ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
                data=data_training,
                method="C-classification",
                kernel="linear") # can be radial
 
 summary(mod_svm)
-
-#plot(mod_svm)
 
 # Now predict the subset data based on the model; prediction for entire area takes longer time
 raster_outfilename <- paste0("r_predicted_svm_",out_suffix,file_format)
@@ -337,53 +331,6 @@ levelplot(r_predicted_svm, maxpixels = 1e6,
 ### get confusion matrix?
 #table(pred,y)
 #https://rischanlab.github.io/SVM.html
-
-################# Using Neural Network ##################
-
-##### plot feature space:
-data_training_df <- na.omit(data_training)
-dim(data_training_df)
-selected_var <- c("Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3")#,"NDVI","MNDWI")
-nrow(data_training_df)
-
-data_training_df_subset <- subset(data_training,select=c("class_ID",selected_var))
-dim(data_training_df_subset)
-data_training_df_subset$class_ID
-
-mod_nnet <- nnet(as.factor(class_ID) ~ Red +NIR + Blue + Green + SWIR1 + SWIR2 + SWIR3,
-             #x=subset(pixels_df,select=selected_var),
-             #y=subset(pixels_df,select=c("class_ID")),
-             data=data_training_df_subset,
-             #weights = 1,
-             size=10,
-             type="class")
-
-?nnet
-
-NAvalue(r_stack) <- -9999
-raster_outfilename <- paste0("r_predicted_nnet_",out_suffix,file_format)
-r_predicted_nnet <- predict(subset(r_stack,3:9),mod_nnet,type="raw",overwrite=T)
-r_predicted_nnet <- predict(r_stack,mod_nnet,
-                            type="raw",
-                            filename=raster_outfilename,
-                            overwrite=T)
-
-#test <- predict(mod_nnet,as.data.frame(subset(r_stack,3:9))
-#??raster::predict
-r_predicted_nnet <- predict(subset(r_stack,3:9),mod_nnet,fun=predict.nnet,type="class",na.rm=T,overwrite=T)
-names(r_stack)
-pnnet <- raster::predict(object=xn, model=results, fun=predict.NNET, na.rm=TRUE, factors=factors,
-                         filename=fullname, progress='text', overwrite=TRUE)
-#https://rdrr.io/cran/BiodiversityR/src/R/ensemble.raster.R
-mod_nnet$fitted.values
-?predict.nnet
-#plot(r_predicted_nnet)
-#unique(r_predicted_nnet)
-#model <- mlp(dat$inputsTrain, dat$targetsTrain, size=1, learnFunc="SCG", learnFuncParams=c(0, 0, 0, 0), 
-#             maxit=400, inputsTest=dat$inputsTest, targetsTest=dat$targetsTest)
-
-plot(r_predicted_nnet)
-histogram(r_predicted_nnet)
 
 ######## Compare methods for the performance #################
 
