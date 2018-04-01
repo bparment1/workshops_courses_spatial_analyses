@@ -156,6 +156,10 @@ writeRaster(r_after_MNDWI,
             datatype=data_type_str)
 
 #training_data_sf <- st_read("training1.shp")
+#1) vegetation and other (small water fraction)
+#2) Flooded vegetation
+#3) Flooded area, or water (lake etc)
+
 class1_data_sf <- st_read(file.path(in_dir_var,"class1_sites.shp"))
 class2_data_sf <- st_read(file.path(in_dir_var,"class2_sites.shp"))
 class3_data_sf <- st_read(file.path(in_dir_var,"class3_sites.shp"))
@@ -171,24 +175,16 @@ r_y <- init(r_after,"x") #raster with coordiates y
 
 r_stack <- stack(r_x,r_y,r_after,r_after_NDVI,r_after_MNDWI)
 names(r_stack) <- c("x","y","Red","NIR","Blue","Green","SWIR1","SWIR2","SWIR3","NDVI","MNDWI")
-pixels_df <- extract(r_stack,class_data_sp,df=T)
+pixels_extracted_df <- extract(r_stack,class_data_sp,df=T)
 
-dim(pixels_df) #We have 1547 pixels extracted
+dim(pixels_extracted_df) #We have 1547 pixels extracted
 class_data_df <- class_data_sf
 st_geometry(class_data_df) <- NULL #this will coerce the sf object into a data.frame
+
 pixels_df <- merge(pixels_extracted_df,class_data_df,by.x="ID",by.y="poly_ID")
 
-#Show average MNDWI and NDVI for each class
-### Need to add other extract for other land cover!!
-#View(pixels_df)
-#names(pixels_df)
-#class(pixels_df)
-
-#1) vegetation abd other
-#2) Flooded vegetation
-#3) Flooded area, or water (lake etc)
-
-#so the classification will have three classes!!!
+head(pixels_df)
+table(pixels_df$class_ID) # count by class of pixels ground truth data
 
 ######## Examining sites data used for the classification
 
@@ -200,27 +196,60 @@ y_range <- range(pixels_df$NIR,na.rm=T)
 plot(NIR~Green,xlim=x_range,ylim=y_range,cex=0.2,col="blue",subset(pixels_df,class_ID==1))
 points(NIR~Green,col="green",cex=0.2,subset(pixels_df,class_ID==2))
 points(NIR~Green,col="red",cex=0.2,subset(pixels_df,class_ID==3))
+names_vals <- c("water class 1","water class 2","water class 3")
+legend("topleft",legend=names_vals,
+       pt.cex=0.7,cex=0.7,col=c("blue","green","red"),
+       pch=20, #add circle symbol to line
+       bty="n")
 
-plot(NDVI~MNDWI,xlim=c(-1,1),ylim=c(-1,1),cex=0.2,col="blue",subset(pixels_df,class_ID==1))
-points(NDVI~MNDWI,col="green",cex=0.2,subset(pixels_df,class_ID==2))
-points(NDVI~MNDWI,col="red",cex=0.2,subset(pixels_df,class_ID==3))
+## Let's use a palette that reflects wetness or level of water 
+col_palette = c("cyan","lightblue","blue")
+
+plot(NDVI ~ MNDWI,
+     xlim=c(-1,1),ylim=c(-1,1),
+     cex=0.2,
+     col=col_palette[1],
+     subset(pixels_df,class_ID==1))
+
+points(NDVI ~ MNDWI,
+       cex=0.2,
+       col=col_palette[2],
+       subset(pixels_df,class_ID==2))
+
+points(NDVI ~ MNDWI,
+       cex=0.2,
+       col=col_palette[3],
+       subset(pixels_df,class_ID==3))
+
+names_vals <- c("water class 1","water class 2","water class 3")
+legend("topright",legend=names_vals,
+       pt.cex=0.7,cex=0.7,col=col_palette,
+       pch=20, #add circle symbol to line
+       bty="n")
 
 histogram(r_after)
 
-boxplot(MNDWI~class_ID,pixels_df,main="Boxplot for MNDWI per class")
+pixels_df$class_ID <- factor(pixels_df$class_ID,
+                    levels = c(1,2,3),
+                    labels = c("water 1","water 2","water 3"))
 
-############### Split training and testing #############
+boxplot(MNDWI~class_ID,
+        pixels_df,
+        xlab="category",
+        main="Boxplot for MNDWI per class")
+
+###############################################
+##### PART II: Split training and testing ##############
 
 ##let's keep 30% of data for testing for each class
-## Split training and testing... 
 
-#pixels_df
 pixels_df$pix_ID <- 1:nrow(pixels_df)
 prop <- 0.3
 table(pixels_df$class_ID)
 set.seed(100)
+
 ### This is for one class:
-#Better as a function but we use a loop for clarity here:
+##Better as a function but we use a loop for clarity here:
 
 list_data_df <- vector("list",length=3)
 for(i in 1:3){
