@@ -2,7 +2,6 @@
 """
 Spyder Editor.
 """
-
 ####################################    Spatial Analyses: SYRACUSE   #######################################
 #######################################  Analyse data from Census #######################################
 #This script performs basic analyses for the Exercise 1 of the workshop using Census data.
@@ -19,7 +18,7 @@ Spyder Editor.
 #
 ##################################################################################################
 
-###### Library used
+###### Library used in this script
 
 import gdal
 import numpy as np
@@ -31,7 +30,7 @@ import pandas as pd
 import os, glob
 from rasterio import plot
 import geopandas as gpd
-
+import descartes
 
 ################ NOW FUNCTIONS  ###################
 
@@ -65,21 +64,26 @@ def open_image(url):
 #####  Parameters and argument set up ########### 
 
 #ARGS 1
-in_dir = "//home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_1/data"
-#in_dir <- "/nfs/tjovanovic-data/Data/Baltimore/Hydrology/GAstart"
+in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_1/data"
 #ARGS 2
-out_dir = "/nfs/bparmentier-data/Data/projects/urban_green_planning/outputs"
+out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_1/outputs"
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix = "processing_data_11082018" #output suffix for the files and ouptut folder
+out_suffix = "exercise1_12292018" #output suffix for the files and ouptut folder
 #ARGS 8
-num_cores = 2 # number of cores
+NA_value = -9999 # number of cores
 file_format = ".tif"
 
-dem_baltimore_filename = "DEM_BaltArea_1m.tif"
-lc_baltimore_filename = "landCover_area1m.tif"
-reg_outline_filename = "watersheds8digit.shp"
+ct_2000_fname = "ct_00.shp" # CT_00: Cencus Tracts 2000
+bg_2000_fname = "bg_00.shp" # BG_00: Census Blockgroups 2000
+bk_2000_fname = "bk_00.shp" # BK_00: Census Blocks 2000
+
+census_table_fname = "census.csv" #contains data from census to be linked
+soil_PB_table_fname = "Soil_PB.csv" #same as census table
+tgr_shp_fname = "tgr36067lkA.shp" #contains data from census to be linked
+
+metals_table_fname = "SYR_metals.xlsx" #contains metals data to be linked
 
 ################# START SCRIPT ###############################
 
@@ -96,3 +100,56 @@ if create_out_dir==True:
     os.chdir(out_dir)        #set working directory
 else:
     os.chdir(create_out_dir) #use working dir defined earlier
+    
+    
+#######################################
+### PART 1: Read in DATA #######
+
+#ct_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(ct_2000_fname)))
+#bg_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(bg_2000_fname)))
+#bk_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(bk_2000_fname)))
+
+## Counties for Syracuse in 2000
+ct_2000_filename = os.path.join(in_dir,ct_2000_fname)
+## block groups for Syracuse in 2000
+bg_2000_filename = os.path.join(in_dir,bg_2000_fname)
+## block for Syracuse in 200
+bk_2000_filename = os.path.join(in_dir,bk_2000_fname)
+
+#dem_baltimore_filename = os.path.join(in_dir,ct_2000_fname)
+#lc_baltimore_filename = os.path.join(in_dir,lc_baltimore_filename)
+#reg_outline_filename = os.path.join(in_dir,reg_outline_filename)
+
+ct_2000_gpd = gpd.
+reg_gpd = gpd.read_file(reg_outline_filename)
+reg_gpd.describe()
+reg_gpd.plot(column="mde8name")
+reg_gpd.head()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
