@@ -116,18 +116,43 @@ bg_2000_filename = os.path.join(in_dir,bg_2000_fname)
 ## block for Syracuse in 200
 bk_2000_filename = os.path.join(in_dir,bk_2000_fname)
 
-#dem_baltimore_filename = os.path.join(in_dir,ct_2000_fname)
-#lc_baltimore_filename = os.path.join(in_dir,lc_baltimore_filename)
-#reg_outline_filename = os.path.join(in_dir,reg_outline_filename)
+ 
+ct_2000_gpd = gpd.read_file(ct_2000_filename)
+bg_2000_gpd = gpd.read_file(bg_2000_filename)
+bk_2000_gpd = gpd.read_file(bk_2000_filename)
 
-ct_2000_gpd = gpd.
-reg_gpd = gpd.read_file(reg_outline_filename)
-reg_gpd.describe()
-reg_gpd.plot(column="mde8name")
-reg_gpd.head()
+ct_2000_gpd.describe()
+ct_2000_gpd.plot(column="CNTY_FIPS")
+ct_2000_gpd.head()
 
+metals_df = pd.read_excel(os.path.join(in_dir,metals_table_fname))
+census_syr_df = pd.read_csv(os.path.join(in_dir,census_table_fname),sep=",",header=0)
 
+#Soil lead samples: UTM z18 coordinates
+soil_PB_df = pd.read_csv(os.path.join(in_dir,soil_PB_table_fname),sep=",",header=0) #point locations
 
+census_syr_df.shape #47 spatial entities
+ct_2000_gpd.shape #47 spatial entities
+metals_df.shape #47 entities
+bg_2000_gpd.shape #147 spatial entities
+
+######## PRODUCE MAPS OF 2000 Population #########
+
+#First need to link it.
+
+bg_2000_gdp.columns
+census_syr_df.columns
+#key is "TRACT" but with a different format.
+#First fix the format
+bg_2000_gdp.head()
+census_syr_df.BKG_KEY.head()
+
+#as.numeric(as.character(ct_2000_sp$TRACT))
+ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT))
+
+bg_2000_sp <- merge(bg_2000_sp,census_syr_df,by="BKG_KEY")
+
+spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
 
 
 
