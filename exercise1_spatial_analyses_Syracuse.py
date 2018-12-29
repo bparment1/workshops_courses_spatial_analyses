@@ -148,9 +148,22 @@ bg_2000_gdp.head()
 census_syr_df.BKG_KEY.head()
 
 #as.numeric(as.character(ct_2000_sp$TRACT))
+ct_2000_gpd.TRACT.dtype
+bg_2000_gpd.BKG_KEY.dtypes
+census_syr_df.dtypes
+census_syr_df.BKG_KEY.dtypes
+
+
+bg_2000_gpd['BKG_KEY'].astype(census_syr_df.BKG_KEY.dtypes)
+bg_2000_gpd['BKG_KEY']=bg_2000_gpd['BKG_KEY'].astype('int64')
+bg_2000_gpd['BKG_KEY'].astype('|S')
+
+>>> df['purchase'].astype(int)
 ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT))
 
-bg_2000_sp <- merge(bg_2000_sp,census_syr_df,by="BKG_KEY")
+bg_2000_sp = merge(bg_2000_sp,census_syr_df,by="BKG_KEY")
+bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
+# country_shapes = country_shapes.merge(country_names, on='iso_a3')
 
 spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
 
