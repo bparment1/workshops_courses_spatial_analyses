@@ -9,7 +9,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 12/29/2018 
-#DATE MODIFIED: 12/29/2018
+#DATE MODIFIED: 12/30/2018
 #Version: 1
 #PROJECT: AAG 2019 workshop preparation
 #TO DO:
@@ -31,6 +31,7 @@ import os, glob
 from rasterio import plot
 import geopandas as gpd
 import descartes
+import pysal as ps
 
 ################ NOW FUNCTIONS  ###################
 
@@ -163,16 +164,29 @@ bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
 # country_shapes = country_shapes.merge(country_names, on='iso_a3')
 
 spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
-bg_2000_gpd.plot(column='POP2000',cmap="OrRd")
+bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
+                 scheme='quantiles')
 #plt.title('POP2000')
 
-
+### Let's use more option with matplotlib
+fig, ax = plt.subplots()
+bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
+                 scheme='quantiles',
+                 ax=ax)
+ax.set_title('POP2000')
 ##Now change the classes!
 
 ### Summarize by census track
 #census_2000_sp <- aggregate(bg_2000_sp , 
 #                            by="TRACT",FUN=sum)
-census_2000_gpd = bg_2000_gpd.groupby(['TRACT']).sum()
+census_2000_df = bg_2000_gpd.groupby(['TRACT']).sum()
+type(census_2000_df)
+#To keep geometry, we must use dissolve method from geopanda
+census_2000_gpd = bg_2000_gpd.dissolve(by='TRACT',aggfunc='sum')
+type(census_2000_gpd)
+## Sum is 57!!!
+sum(census_2000_gpd.POP2000==census_2000_df.POP2000)
+census_2000_gpd.shape == census_2000_df.shape
 ##compare to sp!!
 #df_test <- aggregate(POP2000 ~ TRACT, bg_2000_sp , 
 #                     FUN=sum)
@@ -185,16 +199,11 @@ fig, ax = plt.subplots()
 # when using *geopandas* plot on it's own, but not when
 # working with pyplot directly.
 ax.set_aspect('equal')
-census_2000_gpd.plot(column='POP2000',ax=ax, cmap='Greys')
-cities.plot(ax=ax, marker='o', color='red', markersize=5)
+census_2000_gpd.plot(column='POP2000',ax=ax, cmap='OrRd')
 
-plt.show()
-
-fig, ax = plt.subplots()
-lst_plot = ax.plot(census_2000_gpd, 
-                       cmap='Greys')
-ax.set_title("Long term mean for January land surface temperature", fontsize= 20)
-fig.colorbar(lst_plot)
+#plt.show()
+ax.set_title("Population", fontsize= 20)
+fig.colorbar(ax) #add palette
 
 plot(census_2000_sp)
 plot(ct_2000_sp,border="red",add=T)
