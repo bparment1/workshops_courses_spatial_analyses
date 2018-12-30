@@ -153,20 +153,83 @@ bg_2000_gpd.BKG_KEY.dtypes
 census_syr_df.dtypes
 census_syr_df.BKG_KEY.dtypes
 
-
 #bg_2000_gpd['BKG_KEY'].astype(census_syr_df.BKG_KEY.dtypes)
 bg_2000_gpd['BKG_KEY']=bg_2000_gpd['BKG_KEY'].astype('int64')
-3bg_2000_gpd['BKG_KEY'].astype('|S')
 
->>> df['purchase'].astype(int)
 ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT))
 
-bg_2000_sp = merge(bg_2000_sp,census_syr_df,by="BKG_KEY")
+#bg_2000_sp = merge(bg_2000_sp,census_syr_df,by="BKG_KEY")
 bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
 # country_shapes = country_shapes.merge(country_names, on='iso_a3')
 
 spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
+bg_2000_gpd.plot(column='POP2000',cmap="OrRd")
+#plt.title('POP2000')
 
+
+##Now change the classes!
+
+### Summarize by census track
+#census_2000_sp <- aggregate(bg_2000_sp , 
+#                            by="TRACT",FUN=sum)
+census_2000_gpd = bg_2000_gpd.groupby(['TRACT']).sum()
+##compare to sp!!
+#df_test <- aggregate(POP2000 ~ TRACT, bg_2000_sp , 
+#                     FUN=sum)
+
+### Check if the new geometry of entities is the same as census
+
+fig, ax = plt.subplots()
+
+# set aspect to equal. This is done automatically
+# when using *geopandas* plot on it's own, but not when
+# working with pyplot directly.
+ax.set_aspect('equal')
+census_2000_gpd.plot(column='POP2000',ax=ax, cmap='Greys')
+cities.plot(ax=ax, marker='o', color='red', markersize=5)
+
+plt.show()
+
+fig, ax = plt.subplots()
+lst_plot = ax.plot(census_2000_gpd, 
+                       cmap='Greys')
+ax.set_title("Long term mean for January land surface temperature", fontsize= 20)
+fig.colorbar(lst_plot)
+
+plot(census_2000_sp)
+plot(ct_2000_sp,border="red",add=T)
+nrow(census_2000_sp)==nrow(ct_2000_sp)
+
+df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sp , FUN=sum) #aggregate all variables from the data.frame
+
+##Join by key table id:
+dim(ct_2000_sp)
+ct_2000_sp <- merge(ct_2000_sp,df_summary_by_census,by="TRACT")
+dim(ct_2000_sp)
+
+#save as sp and text table
+#write.table(file.path(out_dir,)
+
+### Do another map with different class intervals: 
+
+title_str <- "Population by census tract in 2000"
+range(ct_2000_sp$POP2000)
+col_palette <- matlab.like(256)
+
+## 9 classes with fixed and constant break
+break_seq <- seq(0,9000,1000)
+breaks.qt <- classIntervals(ct_2000_sp$POP2000, n=length(break_seq), 
+                            style="fixed", fixedBreaks=break_seq, intervalClosure='right')
+
+## Color for each class
+#colcode = findColours(breaks.qt , c('darkblue', 'blue', 'lightblue', 'palegreen','yellow','lightpink', 'pink','brown3',"red","darkred"))
+p_plot_pop2000_ct <- spplot(ct_2000_sp,
+                            "POP2000",
+                            col="transparent", #transprent color boundaries for polygons
+                            col.regions = col_palette ,
+                            main=title_str,
+                            at = breaks.qt$brks)
+print(p_plot_pop2000_ct)
 
 
 
