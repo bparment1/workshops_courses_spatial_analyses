@@ -154,9 +154,9 @@ census_syr_df.dtypes
 census_syr_df.BKG_KEY.dtypes
 
 
-bg_2000_gpd['BKG_KEY'].astype(census_syr_df.BKG_KEY.dtypes)
+#bg_2000_gpd['BKG_KEY'].astype(census_syr_df.BKG_KEY.dtypes)
 bg_2000_gpd['BKG_KEY']=bg_2000_gpd['BKG_KEY'].astype('int64')
-bg_2000_gpd['BKG_KEY'].astype('|S')
+3bg_2000_gpd['BKG_KEY'].astype('|S')
 
 >>> df['purchase'].astype(int)
 ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT))
