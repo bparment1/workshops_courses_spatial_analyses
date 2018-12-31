@@ -32,6 +32,9 @@ from rasterio import plot
 import geopandas as gpd
 import descartes
 import pysal as ps
+from cartopy import crs as ccrs
+from pyproj import Proj
+from osgeo import osr
 
 ################ NOW FUNCTIONS  ###################
 
@@ -130,12 +133,14 @@ metals_df = pd.read_excel(os.path.join(in_dir,metals_table_fname))
 census_syr_df = pd.read_csv(os.path.join(in_dir,census_table_fname),sep=",",header=0)
 
 #Soil lead samples: UTM z18 coordinates
-soil_PB_df = pd.read_csv(os.path.join(in_dir,soil_PB_table_fname),sep=",",header=0) #point locations
+soil_PB_df = pd.read_csv(os.path.join(in_dir,soil_PB_table_fname),sep=",",header=None) #point locations
 
 census_syr_df.shape #47 spatial entities
 ct_2000_gpd.shape #47 spatial entities
 metals_df.shape #47 entities
 bg_2000_gpd.shape #147 spatial entities
+
+#chekc the crs
 
 ######## PRODUCE MAPS OF 2000 Population #########
 
@@ -267,18 +272,25 @@ metals_df.dtypes
 ct_2000_gpd.dtypes
 ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
 census_metals_gpd = ct_2000_gpd.merge(metals_df,left_on='TRACT',right_on='ID')
+
 ########processing lead data
 ### Now let's plot lead data 
 #Soil lead samples: UTM z18 coordinates
-soil_PB_df <- read.table(file.path(in_dir_var,soil_PB_table_fname),sep=",",header=T) #point locations
+#soil_PB_df <- read.table(file.path(in_dir_var,soil_PB_table_fname),sep=",",header=T) #point locations
+census_metals_gpd.crs
+#proj4string(census_metals_sp) #
+soil_PB_df.columns = ["x","y","ID","ppm"]
+#names(soil_PB_df)
+soil_PB_df.head()
+#names(soil_PB_df) <- c("x","y","ID","ppm") 
 
-proj4string(census_metals_sp) #
-names(soil_PB_df)
-names(soil_PB_df) <- c("x","y","ID","ppm") 
-soil_PB_sp <- soil_PB_df
-class(soil_PB_df)
+soil_PB_gpd = soil_PB_df.copy()
+type(soil_PB_df)
 coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
-class(soil_PB_sp)
+coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
+type(soil_PB_gpd)
+
+
 proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
 dim(soil_PB_sp)
 soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
