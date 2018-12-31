@@ -35,6 +35,7 @@ import pysal as ps
 from cartopy import crs as ccrs
 from pyproj import Proj
 from osgeo import osr
+from shapely.geometry import Point
 
 ################ NOW FUNCTIONS  ###################
 
@@ -286,12 +287,24 @@ soil_PB_df.head()
 
 soil_PB_gpd = soil_PB_df.copy()
 type(soil_PB_df)
-coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
-coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
+soil_PB_gpd['Coordinates']=list(zip(soil_PB_gpd.x,soil_PB_gpd.y))
+#coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
+#coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
 type(soil_PB_gpd)
+soil_PB_gpd['Coordinates']= soil_PB_gpd.Coordinates.apply(Point)
+soil_PB_gpd = gpd.GeoDataFrame(soil_PB_gpd,geometry='Coordinates')
 
+#### Check the coordinates reference system
+type(census_metals_gpd.crs) #dictionary
+epsg_code = census_metals_gpd.crs.get('init').split(:)[1]
 
-proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
+inproj = osr.SpatialReference()
+inproj.ImportFromEPSG(32618)
+inproj.ExportToProj4()
+
+soil_PB_gpd.crs= census_metals_gpd.crs
+### Assign a projection system
+#proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
 dim(soil_PB_sp)
 soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
 View(soil_PB_sp)
