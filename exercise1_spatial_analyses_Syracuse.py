@@ -157,13 +157,13 @@ census_syr_df.BKG_KEY.dtypes
 #bg_2000_gpd['BKG_KEY'].astype(census_syr_df.BKG_KEY.dtypes)
 bg_2000_gpd['BKG_KEY']=bg_2000_gpd['BKG_KEY'].astype('int64')
 
-ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT))
+#ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT))
 
 #bg_2000_sp = merge(bg_2000_sp,census_syr_df,by="BKG_KEY")
 bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
 # country_shapes = country_shapes.merge(country_names, on='iso_a3')
 
-spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
+#spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
 bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  scheme='quantiles')
 #plt.title('POP2000')
@@ -193,23 +193,26 @@ census_2000_gpd.shape == census_2000_df.shape
 
 ### Check if the new geometry of entities is the same as census
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(12,8))
 
 # set aspect to equal. This is done automatically
 # when using *geopandas* plot on it's own, but not when
 # working with pyplot directly.
 ax.set_aspect('equal')
-census_2000_gpd.plot(column='POP2000',ax=ax, cmap='OrRd')
+census_2000_gpd.plot(ax=ax,column='POP2000',cmap='OrRd')
+ct_2000_gpd.plot(ax=ax,color=None,edgecolor="red")
 
-#plt.show()
 ax.set_title("Population", fontsize= 20)
-fig.colorbar(ax) #add palette
+fig.colorbar(ax) #add palette later
+ax.set_axis_off()
+plt.show()
 
-plot(census_2000_sp)
-plot(ct_2000_sp,border="red",add=T)
-nrow(census_2000_sp)==nrow(ct_2000_sp)
+#plot(census_2000_sp)
+#plot(ct_2000_sp,border="red",add=T)
+#nrow(census_2000_sp)==nrow(ct_2000_sp)
 
-df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sp , FUN=sum) #aggregate all variables from the data.frame
+df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sp 
+                                  , FUN=sum) #aggregate all variables from the data.frame
 
 ##Join by key table id:
 dim(ct_2000_sp)
@@ -240,9 +243,72 @@ p_plot_pop2000_ct <- spplot(ct_2000_sp,
                             at = breaks.qt$brks)
 print(p_plot_pop2000_ct)
 
+##### PART II: SPATIAL QUERY #############
 
+## Join metals to census track 
+## Join lead (pb) measurements to census tracks
 
+#soil_PB_df <- read.table(file.path(in_dir_var,census_table_fname),sep=",",header=T)
+#metals_df= pd.read_xls(os.path.join(in_dir,metals_table_fname))
+#metals_df <- read.xls(file.path(in_dir_var,metals_table_fname),sep=",",header=T)
 
+#View(soil_PB_df)
+metals_df.head()
+
+##This suggests matching to the following spatial entities
+#nrow(metals_df)==nrow(ct_2000_sp)
+metals_df.shape[0]== ct_2000_gpd.shape[0]
+#nrow(soil_PB_df)==nrow(bg_2000_sp)
+
+#dim(bg_2000_sp)
+#census_metals_sp <- merge(ct_2000_sp,metals_df,by.x="TRACT",by.y="ID")
+#Check data types before joining tables with "merge"
+metals_df.dtypes
+ct_2000_gpd.dtypes
+ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
+census_metals_gpd = ct_2000_gpd.merge(metals_df,left_on='TRACT',right_on='ID')
+########processing lead data
+### Now let's plot lead data 
+#Soil lead samples: UTM z18 coordinates
+soil_PB_df <- read.table(file.path(in_dir_var,soil_PB_table_fname),sep=",",header=T) #point locations
+
+proj4string(census_metals_sp) #
+names(soil_PB_df)
+names(soil_PB_df) <- c("x","y","ID","ppm") 
+soil_PB_sp <- soil_PB_df
+class(soil_PB_df)
+coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
+class(soil_PB_sp)
+proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
+dim(soil_PB_sp)
+soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
+View(soil_PB_sp)
+
+plot(census_metals_sp)
+plot(soil_PB_sp,add=T)
+
+###### Spatial query: associate points of pb measurements to each census tract
+### Get the ID and 
+soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
+soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
+#test4 <- gIntersection(soil_PB_sp,census_2000_sp,byid=T)
+head(soil_PB_sp$ID)==head(soil_PB_sp$ID)
+names(soil_PB_sp)
+soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
+
+census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),FUN=mean)
+census_pb_avg <- rename(census_pb_avg,c("ppm"="pb_ppm"))
+
+##Now join
+census_metals_pb_sp <- merge(census_metals_sp,census_pb_avg,by="TRACT")
+### write out final table and shapefile
+
+outfile<-paste("census_metals_pb_sp","_",
+               out_suffix,sep="")
+writeOGR(census_metals_pb_sp,dsn= out_dir,layer= outfile, driver="ESRI Shapefile",overwrite_layer=TRUE)
+
+outfile_df_name <- file.path(out_dir,paste0(outfile,".txt"))
+write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
 
 
 
