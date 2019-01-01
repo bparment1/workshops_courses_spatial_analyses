@@ -9,7 +9,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 12/29/2018 
-#DATE MODIFIED: 12/30/2018
+#DATE MODIFIED: 01/01/2019
 #Version: 1
 #PROJECT: AAG 2019 workshop preparation
 #TO DO:
@@ -296,26 +296,41 @@ soil_PB_gpd = gpd.GeoDataFrame(soil_PB_gpd,geometry='Coordinates')
 
 #### Check the coordinates reference system
 type(census_metals_gpd.crs) #dictionary
-epsg_code = census_metals_gpd.crs.get('init').split(:)[1]
+epsg_code = census_metals_gpd.crs.get('init').split(':')[1]
 
 inproj = osr.SpatialReference()
-inproj.ImportFromEPSG(32618)
+inproj.ImportFromEPSG(int(epsg_code))
 inproj.ExportToProj4()
 
+#Assign projection system
 soil_PB_gpd.crs= census_metals_gpd.crs
-### Assign a projection system
 #proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
-dim(soil_PB_sp)
-soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
-View(soil_PB_sp)
+#dim(soil_PB_sp)
 
-plot(census_metals_sp)
-plot(soil_PB_sp,add=T)
+#
+#soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
+#View(soil_PB_sp)
+soil_PB_gpd.head()
+
+fig, ax = plt.subplots()
+
+census_metals_gpd.plot(ax=ax,color='white',edgecolor='red')
+soil_PB_gpd.plot(ax=ax,marker='*',
+                 color='black',
+                 markersize=2)
+                 
+#plot(census_metals_sp)
+#plot(soil_PB_sp,add=T)
 
 ###### Spatial query: associate points of pb measurements to each census tract
 ### Get the ID and 
+#Use sjoin
+gdp.sjoin
+census_2000
 soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
 soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
+
+
 #test4 <- gIntersection(soil_PB_sp,census_2000_sp,byid=T)
 head(soil_PB_sp$ID)==head(soil_PB_sp$ID)
 names(soil_PB_sp)
@@ -335,7 +350,8 @@ writeOGR(census_metals_pb_sp,dsn= out_dir,layer= outfile, driver="ESRI Shapefile
 outfile_df_name <- file.path(out_dir,paste0(outfile,".txt"))
 write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
 
-
+## For kriging use scipy.interpolate
+#https://stackoverflow.com/questions/45175201/how-can-i-interpolate-station-data-with-kriging-in-python
 
 
 
