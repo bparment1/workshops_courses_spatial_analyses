@@ -140,15 +140,15 @@ census_syr_df.shape #57 spatial entities
 ct_2000_gpd.shape #57 spatial entities
 metals_df.shape #57 entities
 bg_2000_gpd.shape #147 spatial entities
+bk_2000_gpd.shape #2025 spatial entities
 
-#chekc the crs
 
 ######## PRODUCE MAPS OF 2000 Population #########
 
 #First need to link it.
 
-bg_2000_gpd.columns
-census_syr_df.columns
+bg_2000_gpd.columns # check columns' name for the data frame
+census_syr_df.columns #contains census variables
 #key is "TRACT" but with a different format.
 #First fix the format
 bg_2000_gpd.head()
@@ -172,6 +172,7 @@ bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
 #spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
 bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  scheme='quantiles')
+plt.title('POPULATION 2000')
 #plt.title('POP2000')
 
 ### Let's use more option with matplotlib
@@ -185,14 +186,31 @@ ax.set_title('POP2000')
 ### Summarize by census track
 #census_2000_sp <- aggregate(bg_2000_sp , 
 #                            by="TRACT",FUN=sum)
-census_2000_df = bg_2000_gpd.groupby(['TRACT']).sum()
+##Note losing TRACT field
+census_2000_df = bg_2000_gpd.groupby('TRACT',as_index=False).sum()
 type(census_2000_df)
 #To keep geometry, we must use dissolve method from geopanda
-census_2000_gpd = bg_2000_gpd.dissolve(by='TRACT',aggfunc='sum')
+census_2000_gpd = bg_2000_gpd.dissolve(by='TRACT',
+                                       aggfunc='sum')
 type(census_2000_gpd)
+census_2000_gpd.index
+#note that the TRACT field has become the index
+#census_2000_gpd['TRACT']=census_2000_gpd.index
+#census_2000_gpd.set_index(list(np.arange(0,census_2000_df.shape[0])))
+census_2000_gpd=census_2000_gpd.reset_index()
+
 ## Sum is 57!!!
 sum(census_2000_gpd.POP2000==census_2000_df.POP2000)
-census_2000_gpd.shape == census_2000_df.shape
+census_2000_df.POP2000[0:2]
+census_2000_gpd.POP2000[0:2]
+
+##Index don't match
+#census_2000_df.index['TRACT']
+census_2000_gpd.shape[0] == census_2000_df.shape[0]
+## Add back the tract ID Using sjoin??
+#test3=gpd.tools.sjoin(census_2000_gpd,ct_2000_gpd,
+#                      how='left')
+
 ##compare to sp!!
 #df_test <- aggregate(POP2000 ~ TRACT, bg_2000_sp , 
 #                     FUN=sum)
@@ -206,7 +224,7 @@ fig, ax = plt.subplots(figsize=(12,8))
 # working with pyplot directly.
 ax.set_aspect('equal')
 census_2000_gpd.plot(ax=ax,column='POP2000',cmap='OrRd')
-ct_2000_gpd.plot(ax=ax,color=None,edgecolor="red")
+ct_2000_gpd.plot(ax=ax,color='white',edgecolor="red",alpha=0.7)
 
 ax.set_title("Population", fontsize= 20)
 fig.colorbar(ax) #add palette later
@@ -217,20 +235,23 @@ plt.show()
 #plot(ct_2000_sp,border="red",add=T)
 #nrow(census_2000_sp)==nrow(ct_2000_sp)
 
-df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sp 
-                                  , FUN=sum) #aggregate all variables from the data.frame
+#df_summary_by_census <- aggregate(. ~ TRACT, 
+#                                  bg_2000_sp 
+#                                  ,FUN=sum) #aggregate all variables from the data.frame
 
 ##Join by key table id:
-dim(ct_2000_sp)
-ct_2000_sp <- merge(ct_2000_sp,df_summary_by_census,by="TRACT")
-dim(ct_2000_sp)
-
+#dim(ct_2000_sp)
+#ct_2000_sp <- merge(ct_2000_sp,df_summary_by_census,by="TRACT")
+#dim(ct_2000_sp)
+ct_2000_gpd.shape
+ct_2000_gpd = ct_2000_gpd.merge(census_2000_df, on='TRACT')
+ct_2000_gpd.shape
 #save as sp and text table
 #write.table(file.path(out_dir,)
 
 ### Do another map with different class intervals: 
 
-title_str <- "Population by census tract in 2000"
+title_str = "Population by census tract in 2000"
 range(ct_2000_sp$POP2000)
 col_palette <- matlab.like(256)
 
@@ -317,7 +338,7 @@ fig, ax = plt.subplots()
 census_metals_gpd.plot(ax=ax,color='white',edgecolor='red')
 soil_PB_gpd.plot(ax=ax,marker='*',
                  color='black',
-                 markersize=2)
+                 markersize=0.8)
                  
 #plot(census_metals_sp)
 #plot(soil_PB_sp,add=T)
@@ -325,22 +346,33 @@ soil_PB_gpd.plot(ax=ax,marker='*',
 ###### Spatial query: associate points of pb measurements to each census tract
 ### Get the ID and 
 #Use sjoin
-test=gpd.tools.sjoin(soil_PB_gpd,census_2000_gpd,how="left")
+test=gpd.tools.sjoin(soil_PB_gpd,census_2000_gpd,
+                     how="left")
+test2=gpd.tools.sjoin(test,ct_2000_gpd,"left")
 len(test.BKG_KEY.value_counts()) #associated BKG Key to points
 len(test.index_right.value_counts())
 test.columns
 grouped = test.groupby(['index_right']).mean()
+grouped = grouped.reset_index()
 #soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
 #soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
 #test4 <- gIntersection(soil_PB_sp,census_2000_sp,byid=T)
 #names(soil_PB_sp)
-soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
+grouped = grouped.rename(columns={'index_right': 'TRACT',
+                            'ppm': 'pb_ppm' })
+#soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
 
-census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),FUN=mean)
-census_pb_avg <- rename(census_pb_avg,c("ppm"="pb_ppm"))
+#census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),
+#                           FUN=mean)
+#census_pb_avg <- rename(census_pb_avg,c("ppm"="pb_ppm"))
 
 ##Now join
-census_metals_pb_sp <- merge(census_metals_sp,census_pb_avg,by="TRACT")
+census_metals_pb_sp <- merge(census_metals_sp,
+                             census_pb_avg,by="TRACT")
+
+census_metals_pb_gpd.merge(census_metals_gpd,
+                             grouped,by="TRACT")
+
 ### write out final table and shapefile
 
 outfile<-paste("census_metals_pb_sp","_",
@@ -353,6 +385,57 @@ write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
 ## For kriging use scipy.interpolate
 #https://stackoverflow.com/questions/45175201/how-can-i-interpolate-station-data-with-kriging-in-python
 
+
+##### PART IV: Vulnerability to metals #############
+#Examine the relationship between metals, Pb and vulnerable populations in Syracuse
+
+#P2- SPATIAL AND NON SPATIAL QUERIES (cannot use spatial join)
+#GOAL: Answer a set of questions using spatial and attribute queries and their combinations
+
+#Produce:
+#  a) two different maps based on two different definitions that answer the question:  which areas have high levels of children and are predominantly minority AND are at risk of heavy metal exposure using at least three variables. Use only tabular operations
+#b) Same question as a) but using both spatial and tabular operations
+
+#Note: In both cases include the method, variables used and your definition of risk areas in each 4 maps. The definition of risk is your own, you can also follow an established standard that would make sense or is official.  
+#From these products, the layman should be able to answer the following questions:
+#  a. Where are the areas of high heavy metal exposure that also have high levels of children population that belong to a demographic minority(s)? 
+#b. Is there a different outcome in using tabular methods only vs combining tabular and spatial query methods?
+
+#lm(,data=census_metals_pb_sp)
+#moran(x, listw, n, S0, zero.policy=NULL, NAOK=FALSE)
+
+list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
+summary(list_nb)
+plot(census_lead_sp,border="blue")
+plot.nb(list_nb,coordinates(census_lead_sp),add=T)
+
+#generate weights
+#nb2listw
+list_w <- nb2listw(list_nb, glist=NULL, style="W", zero.policy=NULL) #use row standardized
+can.be.simmed(list_w)
+summary(list_w)
+#plot(as.matrix(list_w))
+moran(census_lead_sp$pb_ppm,list_w,n=nrow(census_lead_sp), Szero(list_w))
+moran.plot(census_lead_sp$pb_ppm, list_w,
+           labels=as.character(census_lead_sp$TRACT), pch=19)
+
+##### Now do a spatial regression
+
+#replace explicative variable later! 
+mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
+mod_lag <- lagsarlm(pb_ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
+
+moran.test(mod_lm$residuals,list_w)
+moran.test(mod_lag$residuals,list_w)
+
+#### Compare Moran's I from raster to Moran's I from polygon sp
+# Rook's case
+f <- matrix(c(0,1,0,1,0,1,0,1,0), nrow=3)
+Moran(r_lead, f)
+
+#http://rspatial.org/analysis/rst/7-spregression.html
+
+###################### END OF SCRIPT #####################
 
 
 
