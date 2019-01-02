@@ -9,7 +9,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 12/29/2018 
-#DATE MODIFIED: 01/01/2019
+#DATE MODIFIED: 01/02/2019
 #Version: 1
 #PROJECT: AAG 2019 workshop preparation
 #TO DO:
@@ -136,9 +136,9 @@ census_syr_df = pd.read_csv(os.path.join(in_dir,census_table_fname),sep=",",head
 #Soil lead samples: UTM z18 coordinates
 soil_PB_df = pd.read_csv(os.path.join(in_dir,soil_PB_table_fname),sep=",",header=None) #point locations
 
-census_syr_df.shape #47 spatial entities
-ct_2000_gpd.shape #47 spatial entities
-metals_df.shape #47 entities
+census_syr_df.shape #57 spatial entities
+ct_2000_gpd.shape #57 spatial entities
+metals_df.shape #57 entities
 bg_2000_gpd.shape #147 spatial entities
 
 #chekc the crs
@@ -147,11 +147,11 @@ bg_2000_gpd.shape #147 spatial entities
 
 #First need to link it.
 
-bg_2000_gdp.columns
+bg_2000_gpd.columns
 census_syr_df.columns
 #key is "TRACT" but with a different format.
 #First fix the format
-bg_2000_gdp.head()
+bg_2000_gpd.head()
 census_syr_df.BKG_KEY.head()
 
 #as.numeric(as.character(ct_2000_sp$TRACT))
@@ -325,15 +325,15 @@ soil_PB_gpd.plot(ax=ax,marker='*',
 ###### Spatial query: associate points of pb measurements to each census tract
 ### Get the ID and 
 #Use sjoin
-gdp.sjoin
-census_2000
-soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
-soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
-
-
+test=gpd.tools.sjoin(soil_PB_gpd,census_2000_gpd,how="left")
+len(test.BKG_KEY.value_counts()) #associated BKG Key to points
+len(test.index_right.value_counts())
+test.columns
+grouped = test.groupby(['index_right']).mean()
+#soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
+#soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
 #test4 <- gIntersection(soil_PB_sp,census_2000_sp,byid=T)
-head(soil_PB_sp$ID)==head(soil_PB_sp$ID)
-names(soil_PB_sp)
+#names(soil_PB_sp)
 soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
 
 census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),FUN=mean)
