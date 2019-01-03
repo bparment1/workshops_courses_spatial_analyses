@@ -227,9 +227,9 @@ census_2000_gpd.plot(ax=ax,column='POP2000',cmap='OrRd')
 ct_2000_gpd.plot(ax=ax,color='white',edgecolor="red",alpha=0.7)
 
 ax.set_title("Population", fontsize= 20)
-fig.colorbar(ax) #add palette later
-ax.set_axis_off()
-plt.show()
+#fig.colorbar(ax) #add palette later
+#ax.set_axis_off()
+#plt.show()
 
 #plot(census_2000_sp)
 #plot(ct_2000_sp,border="red",add=T)
@@ -243,6 +243,10 @@ plt.show()
 #dim(ct_2000_sp)
 #ct_2000_sp <- merge(ct_2000_sp,df_summary_by_census,by="TRACT")
 #dim(ct_2000_sp)
+metals_df.dtypes
+ct_2000_gpd.dtypes
+ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
+
 ct_2000_gpd.shape
 ct_2000_gpd = ct_2000_gpd.merge(census_2000_df, on='TRACT')
 ct_2000_gpd.shape
@@ -252,23 +256,23 @@ ct_2000_gpd.shape
 ### Do another map with different class intervals: 
 
 title_str = "Population by census tract in 2000"
-range(ct_2000_sp$POP2000)
-col_palette <- matlab.like(256)
+#range(ct_2000_sp$POP2000)
+#col_palette <- matlab.like(256)
 
 ## 9 classes with fixed and constant break
-break_seq <- seq(0,9000,1000)
-breaks.qt <- classIntervals(ct_2000_sp$POP2000, n=length(break_seq), 
-                            style="fixed", fixedBreaks=break_seq, intervalClosure='right')
+#break_seq <- seq(0,9000,1000)
+#breaks.qt <- classIntervals(ct_2000_sp$POP2000, n=length(break_seq), 
+#                            style="fixed", fixedBreaks=break_seq, intervalClosure='right')
 
 ## Color for each class
 #colcode = findColours(breaks.qt , c('darkblue', 'blue', 'lightblue', 'palegreen','yellow','lightpink', 'pink','brown3',"red","darkred"))
-p_plot_pop2000_ct <- spplot(ct_2000_sp,
-                            "POP2000",
-                            col="transparent", #transprent color boundaries for polygons
-                            col.regions = col_palette ,
-                            main=title_str,
-                            at = breaks.qt$brks)
-print(p_plot_pop2000_ct)
+#p_plot_pop2000_ct <- spplot(ct_2000_sp,
+#                            "POP2000",
+#                            col="transparent", #transprent color boundaries for polygons
+#                            col.regions = col_palette ,
+#                            main=title_str,
+#                            at = breaks.qt$brks)
+#print(p_plot_pop2000_ct)
 
 ##### PART II: SPATIAL QUERY #############
 
@@ -290,9 +294,9 @@ metals_df.shape[0]== ct_2000_gpd.shape[0]
 #dim(bg_2000_sp)
 #census_metals_sp <- merge(ct_2000_sp,metals_df,by.x="TRACT",by.y="ID")
 #Check data types before joining tables with "merge"
-metals_df.dtypes
-ct_2000_gpd.dtypes
-ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
+#metals_df.dtypes
+#ct_2000_gpd.dtypes
+#ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
 census_metals_gpd = ct_2000_gpd.merge(metals_df,left_on='TRACT',right_on='ID')
 
 ########processing lead data
@@ -346,6 +350,7 @@ soil_PB_gpd.plot(ax=ax,marker='*',
 ###### Spatial query: associate points of pb measurements to each census tract
 ### Get the ID and 
 #Use sjoin
+##### Problem here ********************
 test=gpd.tools.sjoin(soil_PB_gpd,census_2000_gpd,
                      how="left")
 test2=gpd.tools.sjoin(test,ct_2000_gpd,"left")
@@ -367,20 +372,22 @@ grouped = grouped.rename(columns={'index_right': 'TRACT',
 #census_pb_avg <- rename(census_pb_avg,c("ppm"="pb_ppm"))
 
 ##Now join
-census_metals_pb_sp <- merge(census_metals_sp,
-                             census_pb_avg,by="TRACT")
+#census_metals_pb_sp <- merge(census_metals_sp,
+#                             census_pb_avg,by="TRACT")
 
-census_metals_pb_gpd.merge(census_metals_gpd,
-                             grouped,by="TRACT")
+census_metals_gpd.merge(grouped,on="TRACT")
 
 ### write out final table and shapefile
 
-outfile<-paste("census_metals_pb_sp","_",
-               out_suffix,sep="")
-writeOGR(census_metals_pb_sp,dsn= out_dir,layer= outfile, driver="ESRI Shapefile",overwrite_layer=TRUE)
+#outfile<-paste("census_metals_pb_sp","_",
+#               out_suffix,sep="")
+#writeOGR(census_metals_pb_sp,dsn= out_dir,layer= outfile, driver="ESRI Shapefile",overwrite_layer=TRUE)
 
-outfile_df_name <- file.path(out_dir,paste0(outfile,".txt"))
-write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
+outfile = "census_metals_pb_"+'_'+out_suffix+'.shp'
+census_metals_gpd.to_file(outfile)
+
+#outfile_df_name <- file.path(out_dir,paste0(outfile,".txt"))
+#write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
 
 ## For kriging use scipy.interpolate
 #https://stackoverflow.com/questions/45175201/how-can-i-interpolate-station-data-with-kriging-in-python
@@ -403,6 +410,11 @@ write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
 
 #lm(,data=census_metals_pb_sp)
 #moran(x, listw, n, S0, zero.policy=NULL, NAOK=FALSE)
+
+census_metals_gpd.index
+census_metals_gpd.index = census_metals_gpd.set_index('TRACT')
+
+ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
 
 list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
 summary(list_nb)
