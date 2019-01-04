@@ -353,7 +353,7 @@ soil_PB_gpd.plot(ax=ax,marker='*',
 ##### Problem here ********************
 test=gpd.tools.sjoin(soil_PB_gpd,census_2000_gpd,
                      how="left")
-test2=gpd.tools.sjoin(test,ct_2000_gpd,"left")
+#test2=gpd.tools.sjoin(test,ct_2000_gpd,"left")
 len(test.BKG_KEY.value_counts()) #associated BKG Key to points
 len(test.index_right.value_counts())
 test.columns
@@ -363,8 +363,10 @@ grouped = grouped.reset_index()
 #soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
 #test4 <- gIntersection(soil_PB_sp,census_2000_sp,byid=T)
 #names(soil_PB_sp)
-grouped = grouped.rename(columns={'index_right': 'TRACT',
-                            'ppm': 'pb_ppm' })
+#grouped = grouped.rename(columns={'index_right': 'TRACT',
+#                            'ppm': 'pb_ppm' })
+grouped = grouped.rename(columns={'ppm': 'pb_ppm' })
+
 #soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
 
 #census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),
@@ -412,9 +414,12 @@ census_metals_gpd.to_file(outfile)
 #moran(x, listw, n, S0, zero.policy=NULL, NAOK=FALSE)
 
 census_metals_gpd.index
-census_metals_gpd.index = census_metals_gpd.set_index('TRACT')
+#census_metals_gpd.reset_index(drop=True)
+census_metals_gpd = census_metals_gpd.set_index('TRACT')
 
-ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
+w_queen = ps.weights.queen_from_shapefile(outfile,idVariable='TRACT')
+#q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
+w_queen.transform = 'R'
 
 list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
 summary(list_nb)
