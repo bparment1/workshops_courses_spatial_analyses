@@ -377,7 +377,7 @@ grouped = grouped.rename(columns={'ppm': 'pb_ppm' })
 #census_metals_pb_sp <- merge(census_metals_sp,
 #                             census_pb_avg,by="TRACT")
 
-census_metals_gpd.merge(grouped,on="TRACT")
+census_metals_gpd = census_metals_gpd.merge(grouped,on="TRACT")
 
 ### write out final table and shapefile
 
@@ -418,9 +418,25 @@ census_metals_gpd.index
 census_metals_gpd = census_metals_gpd.set_index('TRACT')
 
 w_queen = ps.weights.queen_from_shapefile(outfile,idVariable='TRACT')
+
 #q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
 w_queen.transform = 'R'
+w_queen.neighbors
+w_queen.n # number of observations (spatia features)
+w_queen.mean_neighbors
 
+y = census_metals_gpd.pb_ppm_x
+
+m_I = ps.Moran(y,w_queen)
+
+m_I.I
+m_I.EI
+
+y_lag = ps.lag_spatial(w_queen,y)
+census_metals_gpd['y'] = census_metals_gpd.pb_ppm_x
+census_metals_gpd['y_lag'] = y_lag
+
+sns.regplot()
 list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
 summary(list_nb)
 plot(census_lead_sp,border="blue")
