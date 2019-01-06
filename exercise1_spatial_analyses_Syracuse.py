@@ -432,7 +432,7 @@ m_I = ps.Moran(y,w_queen)
 m_I.I
 m_I.EI
 
-y_lag = ps.lag_spatial(w_queen,y)
+y_lag = ps.lag_spatial(w_queen,y) #this is a numpy array
 census_metals_gpd['y'] = census_metals_gpd.pb_ppm_x
 census_metals_gpd['y_lag'] = y_lag
 
@@ -454,9 +454,16 @@ sns.regplot(x=y,y=y_lag,data=census_metals_gpd)
 #           labels=as.character(census_lead_sp$TRACT), pch=19)
 
 ##### Now do a spatial regression
+#Use numpy array so convert with values
+y.values.shape #not the right dimension
+y = y.values.reshape(len(y),1)
+y_lag = y_lag.reshape(len(y_lag),1)
 
+mod_ols = ps.spreg.OLS(y,y_lag)
+mod_ml_lag = ps.spreg.ml_lag()
 
 #replace explicative variable later! 
+
 mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
 mod_lag <- lagsarlm(pb_ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
 
