@@ -436,23 +436,25 @@ y_lag = ps.lag_spatial(w_queen,y)
 census_metals_gpd['y'] = census_metals_gpd.pb_ppm_x
 census_metals_gpd['y_lag'] = y_lag
 
-sns.regplot()
-list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
-summary(list_nb)
-plot(census_lead_sp,border="blue")
-plot.nb(list_nb,coordinates(census_lead_sp),add=T)
+sns.regplot(x=y,y=y_lag,data=census_metals_gpd)
+
+#list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
+#summary(list_nb)
+#plot(census_lead_sp,border="blue")
+#plot.nb(list_nb,coordinates(census_lead_sp),add=T)
 
 #generate weights
 #nb2listw
-list_w <- nb2listw(list_nb, glist=NULL, style="W", zero.policy=NULL) #use row standardized
-can.be.simmed(list_w)
-summary(list_w)
+#list_w <- nb2listw(list_nb, glist=NULL, style="W", zero.policy=NULL) #use row standardized
+#can.be.simmed(list_w)
+#summary(list_w)
 #plot(as.matrix(list_w))
-moran(census_lead_sp$pb_ppm,list_w,n=nrow(census_lead_sp), Szero(list_w))
-moran.plot(census_lead_sp$pb_ppm, list_w,
-           labels=as.character(census_lead_sp$TRACT), pch=19)
+#moran(census_lead_sp$pb_ppm,list_w,n=nrow(census_lead_sp), Szero(list_w))
+#moran.plot(census_lead_sp$pb_ppm, list_w,
+#           labels=as.character(census_lead_sp$TRACT), pch=19)
 
 ##### Now do a spatial regression
+
 
 #replace explicative variable later! 
 mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
