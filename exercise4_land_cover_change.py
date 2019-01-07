@@ -83,22 +83,22 @@ NA_value = -9999 # number of cores
 file_format = ".tif"
 
 #NLCD coordinate reference system: we will use this projection rather than TX.
-CRS_reg <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-method_proj_val <- "bilinear" # method option for the reprojection and resampling
-gdal_installed <- TRUE #if TRUE, GDAL is used to generate distance files
+CRS_reg = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+method_proj_val = "bilinear" # method option for the reprojection and resampling
+gdal_installed = True #if TRUE, GDAL is used to generate distance files
 		
 ### Input data files
-rastername_county_harris <- "harris_county_mask.tif" #Region of interest: extent of Harris County
-elevation_fname <- "srtm_Houston_area_90m.tif" #SRTM elevation
-roads_fname <- "r_roads_Harris.tif" #Road count for Harris county
+rastername_county_harris = "harris_county_mask.tif" #Region of interest: extent of Harris County
+elevation_fname = "srtm_Houston_area_90m.tif" #SRTM elevation
+roads_fname = "r_roads_Harris.tif" #Road count for Harris county
 	
 ### Aggreagate NLCD input files
-infile_land_cover_date1 <- "agg_3_r_nlcd2001_Houston.tif"
-infile_land_cover_date2 <- "agg_3_r_nlcd2006_Houston.tif"
-infile_land_cover_date3 <- "agg_3_r_nlcd2011_Houston.tif"
+infile_land_cover_date1 = "agg_3_r_nlcd2001_Houston.tif"
+infile_land_cover_date2 = "agg_3_r_nlcd2006_Houston.tif"
+infile_land_cover_date3 = "agg_3_r_nlcd2011_Houston.tif"
 	
-infile_name_nlcd_legend <- "nlcd_legend.txt"
-infile_name_nlcd_classification_system <- "classification_system_nlcd_legend.xlsx"
+infile_name_nlcd_legend = "nlcd_legend.txt"
+infile_name_nlcd_classification_system = "classification_system_nlcd_legend.xlsx"
 	
 ######################### START SCRIPT ###############################
 ################# START SCRIPT ###############################
