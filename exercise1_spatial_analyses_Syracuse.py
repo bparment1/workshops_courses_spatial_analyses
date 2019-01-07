@@ -9,7 +9,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 12/29/2018 
-#DATE MODIFIED: 01/02/2019
+#DATE MODIFIED: 01/07/2019
 #Version: 1
 #PROJECT: AAG 2019 workshop preparation
 #TO DO:
@@ -459,16 +459,26 @@ y.values.shape #not the right dimension
 y = y.values.reshape(len(y),1)
 y_lag = y_lag.reshape(len(y_lag),1)
 
-mod_ols = ps.spreg.OLS(y,y_lag)
-mod_ml_lag = ps.spreg.ml_lag()
+x = census_metals_gpd['perc_hispa']
+x = x.values.reshape(len(x),1)
+
+mod_ols = ps.spreg.OLS(y,x)
+mod_ols.u 
+m_I_residuals = ps.Moran(mod_ols.u,w_queen)
+#take into account autocorr in spreg
+mod_ols.summary
+mod_ols_test = ps.spreg.OLS(y,x,w_queen)
+mod_ols_test.summary
+
+mod_ml_lag = ps.spreg.ML_Lag(y,x,w_queen)
 
 #replace explicative variable later! 
 
-mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
-mod_lag <- lagsarlm(pb_ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
+#mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
+#mod_lag <- lagsarlm(pb_ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
 
-moran.test(mod_lm$residuals,list_w)
-moran.test(mod_lag$residuals,list_w)
+#moran.test(mod_lm$residuals,list_w)
+#moran.test(mod_lag$residuals,list_w)
 
 #### Compare Moran's I from raster to Moran's I from polygon sp
 # Rook's case
