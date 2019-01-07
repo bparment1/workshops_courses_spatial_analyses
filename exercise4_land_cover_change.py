@@ -84,17 +84,23 @@ file_format = ".tif"
 
 #NLCD coordinate reference system: we will use this projection rather than TX.
 CRS_reg <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+method_proj_val <- "bilinear" # method option for the reprojection and resampling
+gdal_installed <- TRUE #if TRUE, GDAL is used to generate distance files
+		
+### Input data files
+rastername_county_harris <- "harris_county_mask.tif" #Region of interest: extent of Harris County
+elevation_fname <- "srtm_Houston_area_90m.tif" #SRTM elevation
+roads_fname <- "r_roads_Harris.tif" #Road count for Harris county
 	
-ct_2000_fname = "ct_00.shp" # CT_00: Cencus Tracts 2000
-bg_2000_fname = "bg_00.shp" # BG_00: Census Blockgroups 2000
-bk_2000_fname = "bk_00.shp" # BK_00: Census Blocks 2000
-
-census_table_fname = "census.csv" #contains data from census to be linked
-soil_PB_table_fname = "Soil_PB.csv" #same as census table
-tgr_shp_fname = "tgr36067lkA.shp" #contains data from census to be linked
-
-metals_table_fname = "SYR_metals.xlsx" #contains metals data to be linked
-
+### Aggreagate NLCD input files
+infile_land_cover_date1 <- "agg_3_r_nlcd2001_Houston.tif"
+infile_land_cover_date2 <- "agg_3_r_nlcd2006_Houston.tif"
+infile_land_cover_date3 <- "agg_3_r_nlcd2011_Houston.tif"
+	
+infile_name_nlcd_legend <- "nlcd_legend.txt"
+infile_name_nlcd_classification_system <- "classification_system_nlcd_legend.xlsx"
+	
+######################### START SCRIPT ###############################
 ################# START SCRIPT ###############################
 
 ######### PART 0: Set up the output dir ################
@@ -115,10 +121,69 @@ else:
 #######################################
 ### PART 1: Read in DATA #######
 
-#ct_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(ct_2000_fname)))
-#bg_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(bg_2000_fname)))
-#bk_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(bk_2000_fname)))
-
+###########################################
+### PART I: READ AND VISUALIZE DATA #######
+	
+r_lc_date1 <- os.path.join(in_dir,infile_land_cover_date1) #NLCD 2001
+r_lc_date2 <- os.path.join(in_dir,infile_land_cover_date2) #NLCD 2006
+r_lc_date3 <- os.path.join(in_dir,infile_land_cover_date2) #NLCD 2011
+	
+	lc_legend_df <- read.table(file.path(in_dir_var,infile_name_nlcd_legend),
+	stringsAsFactors = F,
+	sep=",")
+	
+	head(lc_legend_df) # Inspect data
+	
+	plot(r_lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
+	
+	### Let's add legend and examine existing land cover categories
+	
+	freq_tb_date2 <- freq(r_lc_date2)
+	head(freq_tb_date2) #view first 5 rows, note this is a matrix object.
+	
+	### Let's generate a palette from the NLCD legend information to view the existing land cover for 2006.
+	names(lc_legend_df)
+	dim(lc_legend_df) #contains a lot of empty rows
+	
+	lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured rows
+	### Generate a palette color from the input Red, Green and Blue information using RGB encoding:
+	
+	
+	lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
+	
+	### row 2 correspond to the "open water" category
+	color_val_water <- rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
+	color_val_developed_high <- rgb(lc_legend_df$Red[7],lc_legend_df$Green[7],lc_legend_df$Blue[7],maxColorValue = 255)
+	
+	lc_col_palette <- c(color_val_water,color_val_developed_high)
+	
+	barplot(c(1,1),
+	col=lc_col_palette,
+	main="Visualization of color palette for NLCD land cover",
+	names.arg=c("Open water", "Developed, High Intensity"),las=1)
+	
+	### Let's generate a color for all the land cover categories by using lapply and function
+	n_cat <- nrow(lc_legend_df)
+	lc_col_palette <- lapply(1:n_cat,
+	FUN=function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
+	lc_col_palette <- unlist(lc_col_palette)
+	
+	lc_legend_df$palette <- lc_col_palette
+	
+	r_lc_date2 <- ratify(r_lc_date2) # create a raster layer with categorical information
+	rat <- levels(r_lc_date2)[[1]] #This is a data.frame with the categories present in the raster
+	
+	lc_legend_df_date2 <- subset(lc_legend_df,lc_legend_df$ID%in% (rat[,1])) #find the land cover types present in date 2 (2006)
+	rat$legend <- lc_legend_df_date2$NLCD.2006.Land.Cover.Class #assign it back in case it is missing
+	levels(r_lc_date2) <- rat #add the information to the raster layer
+	
+	### Now generate a plot of land cover with the NLCD legend and palette
+	levelplot(r_lc_date2,
+	col.regions = lc_legend_df_date2$palette,
+	scales=list(draw=FALSE),
+	main = "NLCD 2006")
+	
+	
 ## Counties for Syracuse in 2000
 ct_2000_filename = os.path.join(in_dir,ct_2000_fname)
 ## block groups for Syracuse in 2000
