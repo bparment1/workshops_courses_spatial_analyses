@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 01/07/2019
+#DATE MODIFIED: 01/08/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
@@ -100,7 +100,6 @@ infile_land_cover_date3 = "agg_3_r_nlcd2011_Houston.tif"
 infile_name_nlcd_legend = "nlcd_legend.txt"
 infile_name_nlcd_classification_system = "classification_system_nlcd_legend.xlsx"
 	
-######################### START SCRIPT ###############################
 ################# START SCRIPT ###############################
 
 ######### PART 0: Set up the output dir ################
@@ -124,13 +123,11 @@ else:
 ###########################################
 ### PART I: READ AND VISUALIZE DATA #######
 	
-r_lc_date1 <- os.path.join(in_dir,infile_land_cover_date1) #NLCD 2001
-r_lc_date2 <- os.path.join(in_dir,infile_land_cover_date2) #NLCD 2006
-r_lc_date3 <- os.path.join(in_dir,infile_land_cover_date2) #NLCD 2011
+r_lc_date1 = os.path.join(in_dir,infile_land_cover_date1) #NLCD 2001
+r_lc_date2 = os.path.join(in_dir,infile_land_cover_date2) #NLCD 2006
+r_lc_date3 = os.path.join(in_dir,infile_land_cover_date2) #NLCD 2011
 	
-	lc_legend_df <- read.table(file.path(in_dir_var,infile_name_nlcd_legend),
-	stringsAsFactors = F,
-	sep=",")
+lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",")
 	
 	head(lc_legend_df) # Inspect data
 	
