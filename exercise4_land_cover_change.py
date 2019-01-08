@@ -129,35 +129,35 @@ r_lc_date3 = os.path.join(in_dir,infile_land_cover_date2) #NLCD 2011
 	
 lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",")
 	
-	head(lc_legend_df) # Inspect data
+lc_legend_df.head() # Inspect data
 	
-	plot(r_lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
+plot(r_lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
 	
-	### Let's add legend and examine existing land cover categories
+### Let's add legend and examine existing land cover categories
 	
-	freq_tb_date2 <- freq(r_lc_date2)
-	head(freq_tb_date2) #view first 5 rows, note this is a matrix object.
+freq_tb_date2 <- freq(r_lc_date2)
+head(freq_tb_date2) #view first 5 rows, note this is a matrix object.
 	
-	### Let's generate a palette from the NLCD legend information to view the existing land cover for 2006.
-	names(lc_legend_df)
-	dim(lc_legend_df) #contains a lot of empty rows
+### Let's generate a palette from the NLCD legend information to view the existing land cover for 2006.
+names(lc_legend_df)
+dim(lc_legend_df) #contains a lot of empty rows
 	
-	lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured rows
-	### Generate a palette color from the input Red, Green and Blue information using RGB encoding:
+lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured rows
+### Generate a palette color from the input Red, Green and Blue information using RGB encoding:
 	
 	
-	lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
+lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
 	
-	### row 2 correspond to the "open water" category
-	color_val_water <- rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
-	color_val_developed_high <- rgb(lc_legend_df$Red[7],lc_legend_df$Green[7],lc_legend_df$Blue[7],maxColorValue = 255)
+### row 2 correspond to the "open water" category
+color_val_water <- rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
+color_val_developed_high <- rgb(lc_legend_df$Red[7],lc_legend_df$Green[7],lc_legend_df$Blue[7],maxColorValue = 255)
 	
-	lc_col_palette <- c(color_val_water,color_val_developed_high)
+lc_col_palette <- c(color_val_water,color_val_developed_high)
 	
-	barplot(c(1,1),
-	col=lc_col_palette,
-	main="Visualization of color palette for NLCD land cover",
-	names.arg=c("Open water", "Developed, High Intensity"),las=1)
+barplot(c(1,1),
+col=lc_col_palette,
+main="Visualization of color palette for NLCD land cover",
+names.arg=c("Open water", "Developed, High Intensity"),las=1)
 	
 	### Let's generate a color for all the land cover categories by using lapply and function
 	n_cat <- nrow(lc_legend_df)
@@ -180,379 +180,7 @@ lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",
 	scales=list(draw=FALSE),
 	main = "NLCD 2006")
 	
-	
-## Counties for Syracuse in 2000
-ct_2000_filename = os.path.join(in_dir,ct_2000_fname)
-## block groups for Syracuse in 2000
-bg_2000_filename = os.path.join(in_dir,bg_2000_fname)
-## block for Syracuse in 200
-bk_2000_filename = os.path.join(in_dir,bk_2000_fname)
 
- 
-ct_2000_gpd = gpd.read_file(ct_2000_filename)
-bg_2000_gpd = gpd.read_file(bg_2000_filename)
-bk_2000_gpd = gpd.read_file(bk_2000_filename)
-
-ct_2000_gpd.describe()
-ct_2000_gpd.plot(column="CNTY_FIPS")
-ct_2000_gpd.head()
-
-metals_df = pd.read_excel(os.path.join(in_dir,metals_table_fname))
-census_syr_df = pd.read_csv(os.path.join(in_dir,census_table_fname),sep=",",header=0)
-
-#Soil lead samples: UTM z18 coordinates
-soil_PB_df = pd.read_csv(os.path.join(in_dir,soil_PB_table_fname),sep=",",header=None) #point locations
-
-census_syr_df.shape #57 spatial entities
-ct_2000_gpd.shape #57 spatial entities
-metals_df.shape #57 entities
-bg_2000_gpd.shape #147 spatial entities
-bk_2000_gpd.shape #2025 spatial entities
-
-
-######## PRODUCE MAPS OF 2000 Population #########
-
-#First need to link it.
-
-bg_2000_gpd.columns # check columns' name for the data frame
-census_syr_df.columns #contains census variables
-#key is "TRACT" but with a different format.
-#First fix the format
-bg_2000_gpd.head()
-census_syr_df.BKG_KEY.head()
-
-#as.numeric(as.character(ct_2000_sp$TRACT))
-ct_2000_gpd.TRACT.dtype
-bg_2000_gpd.BKG_KEY.dtypes
-census_syr_df.dtypes
-census_syr_df.BKG_KEY.dtypes
-
-#bg_2000_gpd['BKG_KEY'].astype(census_syr_df.BKG_KEY.dtypes)
-bg_2000_gpd['BKG_KEY']=bg_2000_gpd['BKG_KEY'].astype('int64')
-
-#ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT))
-
-#bg_2000_sp = merge(bg_2000_sp,census_syr_df,by="BKG_KEY")
-bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
-# country_shapes = country_shapes.merge(country_names, on='iso_a3')
-
-#spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
-bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
-                 scheme='quantiles')
-plt.title('POPULATION 2000')
-#plt.title('POP2000')
-
-### Let's use more option with matplotlib
-fig, ax = plt.subplots()
-bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
-                 scheme='quantiles',
-                 ax=ax)
-ax.set_title('POP2000')
-##Now change the classes!
-
-### Summarize by census track
-#census_2000_sp <- aggregate(bg_2000_sp , 
-#                            by="TRACT",FUN=sum)
-##Note losing TRACT field
-census_2000_df = bg_2000_gpd.groupby('TRACT',as_index=False).sum()
-type(census_2000_df)
-#To keep geometry, we must use dissolve method from geopanda
-census_2000_gpd = bg_2000_gpd.dissolve(by='TRACT',
-                                       aggfunc='sum')
-type(census_2000_gpd)
-census_2000_gpd.index
-#note that the TRACT field has become the index
-#census_2000_gpd['TRACT']=census_2000_gpd.index
-#census_2000_gpd.set_index(list(np.arange(0,census_2000_df.shape[0])))
-census_2000_gpd=census_2000_gpd.reset_index()
-
-## Sum is 57!!!
-sum(census_2000_gpd.POP2000==census_2000_df.POP2000)
-census_2000_df.POP2000[0:2]
-census_2000_gpd.POP2000[0:2]
-
-##Index don't match
-#census_2000_df.index['TRACT']
-census_2000_gpd.shape[0] == census_2000_df.shape[0]
-## Add back the tract ID Using sjoin??
-#test3=gpd.tools.sjoin(census_2000_gpd,ct_2000_gpd,
-#                      how='left')
-
-##compare to sp!!
-#df_test <- aggregate(POP2000 ~ TRACT, bg_2000_sp , 
-#                     FUN=sum)
-
-### Check if the new geometry of entities is the same as census
-
-fig, ax = plt.subplots(figsize=(12,8))
-
-# set aspect to equal. This is done automatically
-# when using *geopandas* plot on it's own, but not when
-# working with pyplot directly.
-ax.set_aspect('equal')
-census_2000_gpd.plot(ax=ax,column='POP2000',cmap='OrRd')
-ct_2000_gpd.plot(ax=ax,color='white',edgecolor="red",alpha=0.7)
-
-ax.set_title("Population", fontsize= 20)
-#fig.colorbar(ax) #add palette later
-#ax.set_axis_off()
-#plt.show()
-
-#plot(census_2000_sp)
-#plot(ct_2000_sp,border="red",add=T)
-#nrow(census_2000_sp)==nrow(ct_2000_sp)
-
-#df_summary_by_census <- aggregate(. ~ TRACT, 
-#                                  bg_2000_sp 
-#                                  ,FUN=sum) #aggregate all variables from the data.frame
-
-##Join by key table id:
-#dim(ct_2000_sp)
-#ct_2000_sp <- merge(ct_2000_sp,df_summary_by_census,by="TRACT")
-#dim(ct_2000_sp)
-metals_df.dtypes
-ct_2000_gpd.dtypes
-ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
-
-ct_2000_gpd.shape
-ct_2000_gpd = ct_2000_gpd.merge(census_2000_df, on='TRACT')
-ct_2000_gpd.shape
-#save as sp and text table
-#write.table(file.path(out_dir,)
-
-### Do another map with different class intervals: 
-
-title_str = "Population by census tract in 2000"
-#range(ct_2000_sp$POP2000)
-#col_palette <- matlab.like(256)
-
-## 9 classes with fixed and constant break
-#break_seq <- seq(0,9000,1000)
-#breaks.qt <- classIntervals(ct_2000_sp$POP2000, n=length(break_seq), 
-#                            style="fixed", fixedBreaks=break_seq, intervalClosure='right')
-
-## Color for each class
-#colcode = findColours(breaks.qt , c('darkblue', 'blue', 'lightblue', 'palegreen','yellow','lightpink', 'pink','brown3',"red","darkred"))
-#p_plot_pop2000_ct <- spplot(ct_2000_sp,
-#                            "POP2000",
-#                            col="transparent", #transprent color boundaries for polygons
-#                            col.regions = col_palette ,
-#                            main=title_str,
-#                            at = breaks.qt$brks)
-#print(p_plot_pop2000_ct)
-
-##### PART II: SPATIAL QUERY #############
-
-## Join metals to census track 
-## Join lead (pb) measurements to census tracks
-
-#soil_PB_df <- read.table(file.path(in_dir_var,census_table_fname),sep=",",header=T)
-#metals_df= pd.read_xls(os.path.join(in_dir,metals_table_fname))
-#metals_df <- read.xls(file.path(in_dir_var,metals_table_fname),sep=",",header=T)
-
-#View(soil_PB_df)
-metals_df.head()
-
-##This suggests matching to the following spatial entities
-#nrow(metals_df)==nrow(ct_2000_sp)
-metals_df.shape[0]== ct_2000_gpd.shape[0]
-#nrow(soil_PB_df)==nrow(bg_2000_sp)
-
-#dim(bg_2000_sp)
-#census_metals_sp <- merge(ct_2000_sp,metals_df,by.x="TRACT",by.y="ID")
-#Check data types before joining tables with "merge"
-#metals_df.dtypes
-#ct_2000_gpd.dtypes
-#ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
-census_metals_gpd = ct_2000_gpd.merge(metals_df,left_on='TRACT',right_on='ID')
-
-########processing lead data
-### Now let's plot lead data 
-#Soil lead samples: UTM z18 coordinates
-#soil_PB_df <- read.table(file.path(in_dir_var,soil_PB_table_fname),sep=",",header=T) #point locations
-census_metals_gpd.crs
-#proj4string(census_metals_sp) #
-soil_PB_df.columns = ["x","y","ID","ppm"]
-#names(soil_PB_df)
-soil_PB_df.head()
-#names(soil_PB_df) <- c("x","y","ID","ppm") 
-
-soil_PB_gpd = soil_PB_df.copy()
-type(soil_PB_df)
-soil_PB_gpd['Coordinates']=list(zip(soil_PB_gpd.x,soil_PB_gpd.y))
-#coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
-#coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
-type(soil_PB_gpd)
-soil_PB_gpd['Coordinates']= soil_PB_gpd.Coordinates.apply(Point)
-soil_PB_gpd = gpd.GeoDataFrame(soil_PB_gpd,geometry='Coordinates')
-
-#### Check the coordinates reference system
-type(census_metals_gpd.crs) #dictionary
-epsg_code = census_metals_gpd.crs.get('init').split(':')[1]
-
-inproj = osr.SpatialReference()
-inproj.ImportFromEPSG(int(epsg_code))
-inproj.ExportToProj4()
-
-#Assign projection system
-soil_PB_gpd.crs= census_metals_gpd.crs
-#proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
-#dim(soil_PB_sp)
-
-#
-#soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
-#View(soil_PB_sp)
-soil_PB_gpd.head()
-
-fig, ax = plt.subplots()
-
-census_metals_gpd.plot(ax=ax,color='white',edgecolor='red')
-soil_PB_gpd.plot(ax=ax,marker='*',
-                 color='black',
-                 markersize=0.8)
-                 
-#plot(census_metals_sp)
-#plot(soil_PB_sp,add=T)
-
-###### Spatial query: associate points of pb measurements to each census tract
-### Get the ID and 
-#Use sjoin
-##### Problem here ********************
-test=gpd.tools.sjoin(soil_PB_gpd,census_2000_gpd,
-                     how="left")
-#test2=gpd.tools.sjoin(test,ct_2000_gpd,"left")
-len(test.BKG_KEY.value_counts()) #associated BKG Key to points
-len(test.index_right.value_counts())
-test.columns
-grouped = test.groupby(['index_right']).mean()
-grouped = grouped.reset_index()
-#soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
-#soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
-#test4 <- gIntersection(soil_PB_sp,census_2000_sp,byid=T)
-#names(soil_PB_sp)
-#grouped = grouped.rename(columns={'index_right': 'TRACT',
-#                            'ppm': 'pb_ppm' })
-grouped = grouped.rename(columns={'ppm': 'pb_ppm' })
-
-#soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
-
-#census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),
-#                           FUN=mean)
-#census_pb_avg <- rename(census_pb_avg,c("ppm"="pb_ppm"))
-
-##Now join
-#census_metals_pb_sp <- merge(census_metals_sp,
-#                             census_pb_avg,by="TRACT")
-
-census_metals_gpd = census_metals_gpd.merge(grouped,on="TRACT")
-
-### write out final table and shapefile
-
-#outfile<-paste("census_metals_pb_sp","_",
-#               out_suffix,sep="")
-#writeOGR(census_metals_pb_sp,dsn= out_dir,layer= outfile, driver="ESRI Shapefile",overwrite_layer=TRUE)
-
-outfile = "census_metals_pb_"+'_'+out_suffix+'.shp'
-census_metals_gpd.to_file(outfile)
-
-#outfile_df_name <- file.path(out_dir,paste0(outfile,".txt"))
-#write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
-
-## For kriging use scipy.interpolate
-#https://stackoverflow.com/questions/45175201/how-can-i-interpolate-station-data-with-kriging-in-python
-
-
-##### PART IV: Vulnerability to metals #############
-#Examine the relationship between metals, Pb and vulnerable populations in Syracuse
-
-#P2- SPATIAL AND NON SPATIAL QUERIES (cannot use spatial join)
-#GOAL: Answer a set of questions using spatial and attribute queries and their combinations
-
-#Produce:
-#  a) two different maps based on two different definitions that answer the question:  which areas have high levels of children and are predominantly minority AND are at risk of heavy metal exposure using at least three variables. Use only tabular operations
-#b) Same question as a) but using both spatial and tabular operations
-
-#Note: In both cases include the method, variables used and your definition of risk areas in each 4 maps. The definition of risk is your own, you can also follow an established standard that would make sense or is official.  
-#From these products, the layman should be able to answer the following questions:
-#  a. Where are the areas of high heavy metal exposure that also have high levels of children population that belong to a demographic minority(s)? 
-#b. Is there a different outcome in using tabular methods only vs combining tabular and spatial query methods?
-
-#lm(,data=census_metals_pb_sp)
-#moran(x, listw, n, S0, zero.policy=NULL, NAOK=FALSE)
-
-census_metals_gpd.index
-#census_metals_gpd.reset_index(drop=True)
-census_metals_gpd = census_metals_gpd.set_index('TRACT')
-
-w_queen = ps.weights.queen_from_shapefile(outfile,idVariable='TRACT')
-
-#q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
-w_queen.transform = 'R'
-w_queen.neighbors
-w_queen.n # number of observations (spatia features)
-w_queen.mean_neighbors
-
-y = census_metals_gpd.pb_ppm_x
-
-m_I = ps.Moran(y,w_queen)
-
-m_I.I
-m_I.EI
-
-y_lag = ps.lag_spatial(w_queen,y) #this is a numpy array
-census_metals_gpd['y'] = census_metals_gpd.pb_ppm_x
-census_metals_gpd['y_lag'] = y_lag
-
-sns.regplot(x=y,y=y_lag,data=census_metals_gpd)
-
-#list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
-#summary(list_nb)
-#plot(census_lead_sp,border="blue")
-#plot.nb(list_nb,coordinates(census_lead_sp),add=T)
-
-#generate weights
-#nb2listw
-#list_w <- nb2listw(list_nb, glist=NULL, style="W", zero.policy=NULL) #use row standardized
-#can.be.simmed(list_w)
-#summary(list_w)
-#plot(as.matrix(list_w))
-#moran(census_lead_sp$pb_ppm,list_w,n=nrow(census_lead_sp), Szero(list_w))
-#moran.plot(census_lead_sp$pb_ppm, list_w,
-#           labels=as.character(census_lead_sp$TRACT), pch=19)
-
-##### Now do a spatial regression
-#Use numpy array so convert with values
-y.values.shape #not the right dimension
-y = y.values.reshape(len(y),1)
-y_lag = y_lag.reshape(len(y_lag),1)
-
-x = census_metals_gpd['perc_hispa']
-x = x.values.reshape(len(x),1)
-
-mod_ols = ps.spreg.OLS(y,x)
-mod_ols.u 
-m_I_residuals = ps.Moran(mod_ols.u,w_queen)
-#take into account autocorr in spreg
-mod_ols.summary
-mod_ols_test = ps.spreg.OLS(y,x,w_queen)
-mod_ols_test.summary
-
-mod_ml_lag = ps.spreg.ML_Lag(y,x,w_queen)
-mod_ml_lag.summary
-#replace explicative variable later! 
-
-#mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
-#mod_lag <- lagsarlm(pb_ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
-
-#moran.test(mod_lm$residuals,list_w)
-#moran.test(mod_lag$residuals,list_w)
-
-#### Compare Moran's I from raster to Moran's I from polygon sp
-# Rook's case
-f <- matrix(c(0,1,0,1,0,1,0,1,0), nrow=3)
-Moran(r_lead, f)
-
-#http://rspatial.org/analysis/rst/7-spregression.html
 
 ###################### END OF SCRIPT #####################
 
