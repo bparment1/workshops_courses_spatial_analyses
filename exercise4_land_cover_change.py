@@ -123,9 +123,14 @@ else:
 ###########################################
 ### PART I: READ AND VISUALIZE DATA #######
 	
-r_lc_date1 = os.path.join(in_dir,infile_land_cover_date1) #NLCD 2001
+infile_land_cover_date1 = os.path.join(in_dir,infile_land_cover_date1) #NLCD 2001
 r_lc_date2 = os.path.join(in_dir,infile_land_cover_date2) #NLCD 2006
 r_lc_date3 = os.path.join(in_dir,infile_land_cover_date2) #NLCD 2011
+
+# Read raster bands directly to Numpy arrays.
+with rasterio.open(os.path.join(in_dir,infile)) as src:
+     r_lc_date1 = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
+     spatial_extent = rasterio.plot.plotting_extent(src)
 	
 lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",")
 	
