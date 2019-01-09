@@ -124,19 +124,24 @@ else:
 ### PART I: READ AND VISUALIZE DATA #######
 	
 infile_land_cover_date1 = os.path.join(in_dir,infile_land_cover_date1) #NLCD 2001
-r_lc_date2 = os.path.join(in_dir,infile_land_cover_date2) #NLCD 2006
-r_lc_date3 = os.path.join(in_dir,infile_land_cover_date2) #NLCD 2011
+infile_land_cover_date2 = os.path.join(in_dir,infile_land_cover_date2) #NLCD 2006
+infile_land_cover_date3 = os.path.join(in_dir,infile_land_cover_date3) #NLCD 2011
 
-# Read raster bands directly to Numpy arrays.
-with rasterio.open(os.path.join(in_dir,infile)) as src:
-     r_lc_date1 = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
-     spatial_extent = rasterio.plot.plotting_extent(src)
-	
+lc_date1 = rasterio.open(infile_land_cover_date1) 
+r_lc_date1 = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
+lc_date2 = rasterio.open(infile_land_cover_date2) 
+r_lc_date2 = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
+lc_date3= rasterio.open(infile_land_cover_date2) 
+r_lc_date3 = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
+
+spatial_extent = rasterio.plot.plotting_extent(lc_date1)
+plot.show(r_lc_date1)
+#plot.show(r_lst,cmap='viridis',scheme='quantiles')
+lc_date1.crs # not defined with *.rst
 lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",")
 	
 lc_legend_df.head() # Inspect data
-	
-plot(r_lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
+plot.show(r_lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
 	
 ### Let's add legend and examine existing land cover categories
 	
@@ -149,7 +154,6 @@ dim(lc_legend_df) #contains a lot of empty rows
 	
 lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured rows
 ### Generate a palette color from the input Red, Green and Blue information using RGB encoding:
-	
 	
 lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
 	
@@ -164,23 +168,23 @@ col=lc_col_palette,
 main="Visualization of color palette for NLCD land cover",
 names.arg=c("Open water", "Developed, High Intensity"),las=1)
 	
-	### Let's generate a color for all the land cover categories by using lapply and function
-	n_cat <- nrow(lc_legend_df)
-	lc_col_palette <- lapply(1:n_cat,
-	FUN=function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
-	lc_col_palette <- unlist(lc_col_palette)
+### Let's generate a color for all the land cover categories by using lapply and function
+n_cat <- nrow(lc_legend_df)
+lc_col_palette <- lapply(1:n_cat,
+FUN=function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
+lc_col_palette <- unlist(lc_col_palette)
 	
-	lc_legend_df$palette <- lc_col_palette
+lc_legend_df$palette <- lc_col_palette
 	
-	r_lc_date2 <- ratify(r_lc_date2) # create a raster layer with categorical information
-	rat <- levels(r_lc_date2)[[1]] #This is a data.frame with the categories present in the raster
+r_lc_date2 <- ratify(r_lc_date2) # create a raster layer with categorical information
+rat <- levels(r_lc_date2)[[1]] #This is a data.frame with the categories present in the raster
 	
-	lc_legend_df_date2 <- subset(lc_legend_df,lc_legend_df$ID%in% (rat[,1])) #find the land cover types present in date 2 (2006)
-	rat$legend <- lc_legend_df_date2$NLCD.2006.Land.Cover.Class #assign it back in case it is missing
-	levels(r_lc_date2) <- rat #add the information to the raster layer
+lc_legend_df_date2 <- subset(lc_legend_df,lc_legend_df$ID%in% (rat[,1])) #find the land cover types present in date 2 (2006)
+rat$legend <- lc_legend_df_date2$NLCD.2006.Land.Cover.Class #assign it back in case it is missing
+levels(r_lc_date2) <- rat #add the information to the raster layer
 	
-	### Now generate a plot of land cover with the NLCD legend and palette
-	levelplot(r_lc_date2,
+### Now generate a plot of land cover with the NLCD legend and palette
+levelplot(r_lc_date2,
 	col.regions = lc_legend_df_date2$palette,
 	scales=list(draw=FALSE),
 	main = "NLCD 2006")
