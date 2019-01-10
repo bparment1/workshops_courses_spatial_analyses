@@ -198,20 +198,30 @@ levelplot(r_lc_date2,
 # persistence in land cover will generate a large number of transitions (potential up to 15*15=225 transitions in this case!)
 
 ## To generalize the information, let's aggregate leveraging the hierachical nature of NLCD Anderson Classification system.
+metals_df = pd.read_excel(os.path.join(in_dir,metals_table_fname))
 
-lc_system_nlcd_df <- read_xlsx(file.path(in_dir_var,infile_name_nlcd_classification_system))
-head(lc_system_nlcd_df) #inspect data
+lc_system_nlcd_df = pd.read_excel(os.path.join(in_dir,infile_name_nlcd_classification_system))
+lc_system_nlcd_df.head #inspect data
 
 val, cnts =np.unique(r_lc_date1,return_counts=True)
 
 df = pd.DataFrame(np.ma.filled(val))
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 df_date1 = pd.DataFrame(val,cnts)
-df_date1
+df_date1 = df_date1.reset_index()
+df_date1.columns = ['freq','id']
+
+val, cnts =np.unique(r_lc_date2,return_counts=True)
+df = pd.DataFrame(np.ma.filled(val))
+pd.set_option('display.float_format', lambda x: '%.3f' % x)
+df_date2 = pd.DataFrame(val,cnts)
+df_date2 = df_date2.reset_index()
+df_date2.columns = ['freq','id']
+
 ### Let's identify existing cover and compute change:
-r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
-freq_tb_nlcd <- as.data.frame(freq(r_stack_nlcd,merge=T))
-head(freq_tb_nlcd)
+#r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
+#freq_tb_nlcd <- as.data.frame(freq(r_stack_nlcd,merge=T))
+#head(freq_tb_nlcd)
 
 r_lc_date1
 dim(lc_system_nlcd_df) # We have categories that are not relevant to the study area and time period.
