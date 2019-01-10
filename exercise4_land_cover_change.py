@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 01/08/2019
+#DATE MODIFIED: 01/10/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
@@ -189,6 +189,78 @@ levelplot(r_lc_date2,
 	scales=list(draw=FALSE),
 	main = "NLCD 2006")
 	
+
+#######
+################################################
+###  PART II : Analyze change and transitions
+
+## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain), 
+# persistence in land cover will generate a large number of transitions (potential up to 15*15=225 transitions in this case!)
+
+## To generalize the information, let's aggregate leveraging the hierachical nature of NLCD Anderson Classification system.
+
+lc_system_nlcd_df <- read_xlsx(file.path(in_dir_var,infile_name_nlcd_classification_system))
+head(lc_system_nlcd_df) #inspect data
+
+val, cnts =np.unique(r_lc_date1,return_counts=True)
+
+df = pd.DataFrame(np.ma.filled(val))
+pd.set_option('display.float_format', lambda x: '%.3f' % x)
+df_date1 = pd.DataFrame(val,cnts)
+df_date1
+### Let's identify existing cover and compute change:
+r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
+freq_tb_nlcd <- as.data.frame(freq(r_stack_nlcd,merge=T))
+head(freq_tb_nlcd)
+
+r_lc_date1
+dim(lc_system_nlcd_df) # We have categories that are not relevant to the study area and time period.
+lc_system_nlcd_df <- subset(lc_system_nlcd_df,id_l2%in%freq_tb_nlcd$value ) 
+dim(lc_system_nlcd_df) # Now 15 land categories instead of 20.
+
+### Selectet relevant columns for the reclassification
+rec_df <- lc_system_nlcd_df[,c(2,1)]
+r_date1_rec <- subs(r_lc_date1,rec_df,by="id_l2","id_l1")
+r_date2_rec <- subs(r_lc_date2,rec_df,by="id_l2","id_l1")
+
+plot(r_date1_rec)
+
+rec_xtab_df <- crosstab(r_date1_rec,r_date2_rec,long=T)
+names(rec_xtab_df) <- c("2001","2011","freq")
+
+head(rec_xtab_df)
+dim(rec_xtab_df) #9*9 possible transitions if we include NA values
+print(rec_xtab_df) # View the full table
+
+which.max(rec_xtab_df$freq)
+rec_xtab_df[11,] # Note the most important transition is persistence!!
+
+### Let's rank the transition:
+class(rec_xtab_df)
+is.na(rec_xtab_df$freq)
+rec_xtab_df_ranked <- rec_xtab_df[order(rec_xtab_df$freq,decreasing=T) , ]
+head(rec_xtab_df_ranked) # Unsurprsingly, top transitions are persistence categories
+
+### Let's examine the overall change in categories rather than transitions
+
+label_legend_df <- data.frame(ID=lc_system_nlcd_df$id_l1,name=lc_system_nlcd_df$name_l1)
+r_stack <- stack(r_date1_rec,r_date2_rec)
+
+lc_df <- freq(r_stack,merge=T)
+names(lc_df) <- c("value","date1","date2")
+lc_df$diff <- lc_df$date2 - lc_df$date1 #difference for each land cover categories over the 2001-2011 time period
+head(lc_df) # Quickly examine the output
+
+### Add relevant categories
+lc_df <- merge(lc_df,label_legend_df,by.x="value",by.y="ID",all.y=F)
+lc_df <- lc_df[!duplicated(lc_df),] #remove duplictates
+head(lc_df) # Note the overall cahnge
+#### Now visualize the overall land cover changes
+barplot(lc_df$diff,names.arg=lc_df$name,las=2)
+total_val  <- sum(lc_df$date1)
+lc_df$perc_change <- 100*lc_df$diff/total_val 
+barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
+
 
 
 ###################### END OF SCRIPT #####################
