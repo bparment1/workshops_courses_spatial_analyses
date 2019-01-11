@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 01/10/2019
+#DATE MODIFIED: 01/12/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
@@ -128,11 +128,11 @@ infile_land_cover_date2 = os.path.join(in_dir,infile_land_cover_date2) #NLCD 200
 infile_land_cover_date3 = os.path.join(in_dir,infile_land_cover_date3) #NLCD 2011
 
 lc_date1 = rasterio.open(infile_land_cover_date1) 
-r_lc_date1 = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
+r_lc_date1 = lc_date1.read(1,masked=True) #read first array with masked value, nan are assigned for NA
 lc_date2 = rasterio.open(infile_land_cover_date2) 
-r_lc_date2 = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
+r_lc_date2 = lc_date2.read(1,masked=True) #read first array with masked value, nan are assigned for NA
 lc_date3= rasterio.open(infile_land_cover_date2) 
-r_lc_date3 = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
+r_lc_date3 = lc_date3.read(1,masked=True) #read first array with masked value, nan are assigned for NA
 
 spatial_extent = rasterio.plot.plotting_extent(lc_date1)
 plot.show(r_lc_date1)
@@ -143,20 +143,21 @@ lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",
 lc_legend_df.head() # Inspect data
 plot.show(r_lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
 	
-### Let's add legend and examine existing land cover categories
-	
-freq_tb_date2 <- freq(r_lc_date2)
-head(freq_tb_date2) #view first 5 rows, note this is a matrix object.
-	
 ### Let's generate a palette from the NLCD legend information to view the existing land cover for 2006.
-names(lc_legend_df)
-dim(lc_legend_df) #contains a lot of empty rows
+#names(lc_legend_df)
+lc_legend_df.columns
+lc_legend_df.shape
+#dim(lc_legend_df) #contains a lot of empty rows
 	
-lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured rows
+#lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured rows
+lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0] #subset the data to remove unsured rows
+
 ### Generate a palette color from the input Red, Green and Blue information using RGB encoding:
 	
 lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
-	
+','.join([lc_legend_df.Red,lc_legend_df.Green, lc_legend_df.Blue]) 	
+
+lc_legend_df['rgb'] = lc_legend_df[['Red','Green','Blue']].apply[lambda x:]
 ### row 2 correspond to the "open water" category
 color_val_water <- rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
 color_val_developed_high <- rgb(lc_legend_df$Red[7],lc_legend_df$Green[7],lc_legend_df$Blue[7],maxColorValue = 255)
@@ -216,7 +217,7 @@ df = pd.DataFrame(np.ma.filled(val))
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 df_date2 = pd.DataFrame(val,cnts)
 df_date2 = df_date2.reset_index()
-df_date2.columns = ['freq','id']
+df_date2.columns = ['freq','value']
 
 ### Let's identify existing cover and compute change:
 #r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
