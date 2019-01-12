@@ -38,6 +38,7 @@ from cartopy import crs as ccrs
 from pyproj import Proj
 from osgeo import osr
 from shapely.geometry import Point
+from collections import OrderedDict
 
 ################ NOW FUNCTIONS  ###################
 
@@ -136,13 +137,17 @@ r_lc_date3 = lc_date3.read(1,masked=True) #read first array with masked value, n
 
 spatial_extent = rasterio.plot.plotting_extent(lc_date1)
 plot.show(r_lc_date1)
-#plot.show(r_lst,cmap='viridis',scheme='quantiles')
+
+#Note that you can also plot the raster io data reader
+type(lc_date2)
+plot.show(lc_date2)
+
 lc_date1.crs # not defined with *.rst
 lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",")
 	
 lc_legend_df.head() # Inspect data
-plot.show(r_lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
-	
+plot.show(lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
+plot.show(lc_date2,cmap=plt.cm.get_cmap('cubehelix',16 ))	
 ### Let's generate a palette from the NLCD legend information to view the existing land cover for 2006.
 #names(lc_legend_df)
 lc_legend_df.columns
@@ -151,6 +156,12 @@ lc_legend_df.shape
 	
 #lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured rows
 lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0] #subset the data to remove unsured rows
+
+
+# Generate palette
+colors = ['linen', 'lightgreen', 'darkgreen', 'maroon']
+
+cmap = ListedColormap(colors) # can be used directly
 
 ### Generate a palette color from the input Red, Green and Blue information using RGB encoding:
 	
@@ -199,7 +210,6 @@ levelplot(r_lc_date2,
 # persistence in land cover will generate a large number of transitions (potential up to 15*15=225 transitions in this case!)
 
 ## To generalize the information, let's aggregate leveraging the hierachical nature of NLCD Anderson Classification system.
-metals_df = pd.read_excel(os.path.join(in_dir,metals_table_fname))
 
 lc_system_nlcd_df = pd.read_excel(os.path.join(in_dir,infile_name_nlcd_classification_system))
 lc_system_nlcd_df.head #inspect data
@@ -210,24 +220,30 @@ df = pd.DataFrame(np.ma.filled(val))
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 df_date1 = pd.DataFrame(val,cnts)
 df_date1 = df_date1.reset_index()
-df_date1.columns = ['freq','id']
+df_date1.columns = ['y_2001','value']
 
 val, cnts =np.unique(r_lc_date2,return_counts=True)
 df = pd.DataFrame(np.ma.filled(val))
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 df_date2 = pd.DataFrame(val,cnts)
 df_date2 = df_date2.reset_index()
-df_date2.columns = ['freq','value']
+df_date2.columns = ['y_2006','value']
 
 ### Let's identify existing cover and compute change:
 #r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
 #freq_tb_nlcd <- as.data.frame(freq(r_stack_nlcd,merge=T))
 #head(freq_tb_nlcd)
+freq_tb_nlcd = pd.merge(df_date1,df_date2,on='value')
+#reorder columns 
+freq_tb_nlcd = freq_tb_nlcd[['value','y_2001','y_2006']]
 
-r_lc_date1
-dim(lc_system_nlcd_df) # We have categories that are not relevant to the study area and time period.
-lc_system_nlcd_df <- subset(lc_system_nlcd_df,id_l2%in%freq_tb_nlcd$value ) 
-dim(lc_system_nlcd_df) # Now 15 land categories instead of 20.
+#dim(lc_system_nlcd_df) # We have categories that are not relevant to the study area and time period.
+#lc_system_nlcd_df <- subset(lc_system_nlcd_df,id_l2%in%freq_tb_nlcd$value ) 
+#dim(lc_system_nlcd_df) # Now 15 land categories instead of 20.
+
+lc_system_nlcd_df.shape
+selected_cat = lc_system_nlcd_df.id_l2.isin(freq_tb_nlcd.value)
+lc_system_nlcd_df = lc_system_nlcd_df[selected_cat]
 
 ### Selectet relevant columns for the reclassification
 rec_df <- lc_system_nlcd_df[,c(2,1)]
