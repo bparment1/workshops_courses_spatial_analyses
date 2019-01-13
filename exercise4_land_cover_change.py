@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 01/12/2019
+#DATE MODIFIED: 01/13/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
@@ -39,6 +39,7 @@ from pyproj import Proj
 from osgeo import osr
 from shapely.geometry import Point
 from collections import OrderedDict
+import webcolors
 
 ################ NOW FUNCTIONS  ###################
 
@@ -159,17 +160,30 @@ lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0] #subset the data to remove 
 
 
 # Generate palette
+
 colors = ['linen', 'lightgreen', 'darkgreen', 'maroon']
 
 cmap = ListedColormap(colors) # can be used directly
+ webcolors.rgb_to_name
+webcolors.rgb_to_name((0, 0, 0)) #default is css3 convention
+webcolors.rgb_to_name((255,255,255))
+webcolors.name_to_rgb('navy')
 
 ### Generate a palette color from the input Red, Green and Blue information using RGB encoding:
-	
-lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
-','.join([lc_legend_df.Red,lc_legend_df.Green, lc_legend_df.Blue]) 	
+rgb_col=list(zip(lc_legend_df.Red,lc_legend_df.Green,lc_legend_df.Blue))
+len(rgb_col)
+rgb_col[0]
+#lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
+#','.join([lc_legend_df.Red,lc_legend_df.Green, lc_legend_df.Blue]) 	
 
 lc_legend_df['rgb'] = lc_legend_df[['Red','Green','Blue']].apply[lambda x:]
+lc_legend_df['rgb'] = rgb_col
 ### row 2 correspond to the "open water" category
+webcolors.rgb_to_name(rgb_col[1])
+
+color_val_water = rgb_col[1]
+color_val_developed_high = rgb_col[7]
+
 color_val_water <- rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
 color_val_developed_high <- rgb(lc_legend_df$Red[7],lc_legend_df$Green[7],lc_legend_df$Blue[7],maxColorValue = 255)
 	
