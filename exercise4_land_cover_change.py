@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 01/13/2019
+#DATE MODIFIED: 01/16/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
@@ -25,6 +25,8 @@ Spyder Editor.
 import gdal
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as colors
 import seaborn as sns
 import rasterio
 import subprocess
@@ -161,10 +163,10 @@ lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0] #subset the data to remove 
 
 # Generate palette
 
-colors = ['linen', 'lightgreen', 'darkgreen', 'maroon']
+colors_val = ['linen', 'lightgreen', 'darkgreen', 'maroon']
 
-cmap = ListedColormap(colors) # can be used directly
- webcolors.rgb_to_name
+cmap = colors.ListedColormap(colors_val) # can be used directly
+webcolors.rgb_to_name
 webcolors.rgb_to_name((0, 0, 0)) #default is css3 convention
 webcolors.rgb_to_name((255,255,255))
 webcolors.name_to_rgb('navy')
@@ -176,7 +178,7 @@ rgb_col[0]
 #lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
 #','.join([lc_legend_df.Red,lc_legend_df.Green, lc_legend_df.Blue]) 	
 
-lc_legend_df['rgb'] = lc_legend_df[['Red','Green','Blue']].apply[lambda x:]
+#lc_legend_df['rgb'] = lc_legend_df[['Red','Green','Blue']].apply[lambda x:]
 lc_legend_df['rgb'] = rgb_col
 ### row 2 correspond to the "open water" category
 webcolors.rgb_to_name(rgb_col[1])
@@ -184,36 +186,36 @@ webcolors.rgb_to_name(rgb_col[1])
 color_val_water = rgb_col[1]
 color_val_developed_high = rgb_col[7]
 
-color_val_water <- rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
-color_val_developed_high <- rgb(lc_legend_df$Red[7],lc_legend_df$Green[7],lc_legend_df$Blue[7],maxColorValue = 255)
+#color_val_water <- rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
+#color_val_developed_high <- rgb(lc_legend_df$Red[7],lc_legend_df$Green[7],lc_legend_df$Blue[7],maxColorValue = 255)
 	
-lc_col_palette <- c(color_val_water,color_val_developed_high)
+#lc_col_palette <- c(color_val_water,color_val_developed_high)
 	
-barplot(c(1,1),
-col=lc_col_palette,
-main="Visualization of color palette for NLCD land cover",
-names.arg=c("Open water", "Developed, High Intensity"),las=1)
+#barplot(c(1,1),
+#col=lc_col_palette,
+#main="Visualization of color palette for NLCD land cover",
+#names.arg=c("Open water", "Developed, High Intensity"),las=1)
 	
 ### Let's generate a color for all the land cover categories by using lapply and function
-n_cat <- nrow(lc_legend_df)
-lc_col_palette <- lapply(1:n_cat,
-FUN=function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
-lc_col_palette <- unlist(lc_col_palette)
+#n_cat <- nrow(lc_legend_df)
+#lc_col_palette <- lapply(1:n_cat,
+#FUN=function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
+#lc_col_palette <- unlist(lc_col_palette)
 	
-lc_legend_df$palette <- lc_col_palette
+#lc_legend_df$palette <- lc_col_palette
 	
-r_lc_date2 <- ratify(r_lc_date2) # create a raster layer with categorical information
-rat <- levels(r_lc_date2)[[1]] #This is a data.frame with the categories present in the raster
+#r_lc_date2 <- ratify(r_lc_date2) # create a raster layer with categorical information
+#rat <- levels(r_lc_date2)[[1]] #This is a data.frame with the categories present in the raster
 	
-lc_legend_df_date2 <- subset(lc_legend_df,lc_legend_df$ID%in% (rat[,1])) #find the land cover types present in date 2 (2006)
-rat$legend <- lc_legend_df_date2$NLCD.2006.Land.Cover.Class #assign it back in case it is missing
-levels(r_lc_date2) <- rat #add the information to the raster layer
+#lc_legend_df_date2 <- subset(lc_legend_df,lc_legend_df$ID%in% (rat[,1])) #find the land cover types present in date 2 (2006)
+#rat$legend <- lc_legend_df_date2$NLCD.2006.Land.Cover.Class #assign it back in case it is missing
+#levels(r_lc_date2) <- rat #add the information to the raster layer
 	
 ### Now generate a plot of land cover with the NLCD legend and palette
-levelplot(r_lc_date2,
-	col.regions = lc_legend_df_date2$palette,
-	scales=list(draw=FALSE),
-	main = "NLCD 2006")
+#levelplot(r_lc_date2,
+#	col.regions = lc_legend_df_date2$palette,
+#	scales=list(draw=FALSE),
+#	main = "NLCD 2006")
 	
 
 #######
