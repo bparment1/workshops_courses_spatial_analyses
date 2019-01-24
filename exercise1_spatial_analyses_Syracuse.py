@@ -9,13 +9,15 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 12/29/2018 
-#DATE MODIFIED: 01/07/2019
+#DATE MODIFIED: 01/24/2019
 #Version: 1
 #PROJECT: AAG 2019 workshop preparation
 #TO DO:
 #
 #COMMIT: added Moran'I and spatial regression, AAG workshop
-#
+#Useful links:
+#sudo mount -t vboxsf C_DRIVE ~/c_drive
+
 ##################################################################################################
 
 ###### Library used in this script
@@ -31,7 +33,8 @@ import os, glob
 from rasterio import plot
 import geopandas as gpd
 import descartes
-import pysal as ps
+#import pysal as ps
+import libpysal as lp #new pysal interface
 from cartopy import crs as ccrs
 from pyproj import Proj
 from osgeo import osr
@@ -75,7 +78,7 @@ out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_1/ou
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix = "exercise1_12292018" #output suffix for the files and ouptut folder
+out_suffix = "exercise1_01242019" #output suffix for the files and ouptut folder
 #ARGS 8
 NA_value = -9999 # number of cores
 file_format = ".tif"
@@ -160,12 +163,10 @@ bg_2000_gpd.BKG_KEY.dtypes
 census_syr_df.dtypes
 census_syr_df.BKG_KEY.dtypes
 
-#bg_2000_gpd['BKG_KEY'].astype(census_syr_df.BKG_KEY.dtypes)
+#change data type for BKG_KEY column from object to int
 bg_2000_gpd['BKG_KEY']=bg_2000_gpd['BKG_KEY'].astype('int64')
 
-#ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT))
-
-#bg_2000_sp = merge(bg_2000_sp,census_syr_df,by="BKG_KEY")
+# Now that both data types match we can join tables
 bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
 # country_shapes = country_shapes.merge(country_names, on='iso_a3')
 
@@ -176,11 +177,13 @@ plt.title('POPULATION 2000')
 #plt.title('POP2000')
 
 ### Let's use more option with matplotlib
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(14,6))
 bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
-                 scheme='quantiles',
-                 ax=ax)
+                 scheme='quantiles',k=7,
+                 ax=ax,
+                 legend=True)
 ax.set_title('POP2000')
+#plt.show()
 ##Now change the classes!
 
 ### Summarize by census track
@@ -285,7 +288,7 @@ title_str = "Population by census tract in 2000"
 
 #View(soil_PB_df)
 metals_df.head()
-
+metals_df.describe
 ##This suggests matching to the following spatial entities
 #nrow(metals_df)==nrow(ct_2000_sp)
 metals_df.shape[0]== ct_2000_gpd.shape[0]
