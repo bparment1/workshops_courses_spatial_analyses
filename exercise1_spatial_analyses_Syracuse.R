@@ -8,12 +8,12 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/21/2017 
-#DATE MODIFIED: 02/06/2019
+#DATE MODIFIED: 02/07/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial workshop and Sesync Geopstial Data Analyses course, Geocompuation Yale
 #TO DO:
 #
-#COMMIT: workshop geocomupation Yale
+#COMMIT: Geospatial Data Analysis Course
 #
 #################################################################################################
 
@@ -134,29 +134,49 @@ names(bg_2000_sf) #missing census data
 names(census_syr_df)
 #key is "TRACT" but with a different format.
 #First fix the format
-head(bg_2000_sp)
+#head(bg_2000_sp)
 head(bg_2000_sf)
 
 head(census_syr_df$BKG_KEY)
+class(census_syr_df$BKG_KEY)
+class(bg_2000_sf$BKG_KEY)
+bg_2000_sf$BKG_KEY <- as.numeric(as.character(bg_2000_sf$BKG_KEY)) 
+
 #as.numeric(as.character(ct_2000_sp$TRACT))
-ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT)) 
+class(ct_2000_sf$TRACT)
+class(bg_2000_sf$TRACT)
+
+#ct_2000_sp$TRACT <- as.numeric(as.character(ct_2000_sp$TRACT)) 
+ct_2000_sf$TRACT <- as.numeric(as.character(ct_2000_sf$TRACT)) 
 
 ## Join based on common key id
-bg_2000_sp <- merge(bg_2000_sp,census_syr_df,by="BKG_KEY") #Join 
+#bg_2000_sp <- merge(bg_2000_sp,census_syr_df,by="BKG_KEY") #Join 
+bg_2000_sf <- merge(bg_2000_sf,census_syr_df,by="BKG_KEY") #Join 
+
 #Plot the spatial object
-spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
+#spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
+plot(bg_2000_sf["POP2000"],main="POP2000")
 
 ##Aggregate data from block group to census
 
 ### Summarize by census track
-census_2000_sp <- aggregate(bg_2000_sp , by="TRACT",FUN=sum)
+#census_2000_sp <- aggregate(bg_2000_sp , by="TRACT",FUN=sum)
+bg_2000_sf$TRACT <- as.numeric(as.character(bg_2000_sf$TRACT)) 
+
+## 
+census_2000_sf <- aggregate(bg_2000_sf , by=list(bg_2000_sf$TRACT),FUN=sum)
+dim(census_2000_sf)
+class(census_2000_sf)
 
 ### Check if the new geometry of entities is the same as census
 plot(census_2000_sp)
-plot(ct_2000_sp,border="red",add=T)
-nrow(census_2000_sp)==nrow(ct_2000_sp)
+plot(census_2000_sf$geometry)
+
+plot(ct_2000_sf,border="red",pal=NA,add=T)
+nrow(census_2000_sf)==nrow(ct_2000_sf)
 
 df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sp , FUN=sum) #aggregate all variables from the data.frame
+df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sf , FUN=sum) #aggregate all variables from the data.frame
 
 ##Join by key table id:
 dim(ct_2000_sp)
