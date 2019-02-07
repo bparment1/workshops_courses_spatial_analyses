@@ -1,17 +1,17 @@
 ####################################   Land Use and Land Cover Change   #######################################
 ############################  Analyze Land Cover change in Houston  #######################################
-#This script performs analyses for the Exercise 4 of the Geospatial Short Course using aggregated NLCD values.
+#This script performs analyses for a land cover change model using NLCD aggregated values.
 #The goal is to assess land cover change using two land cover maps in the Houston areas.
 #Additional datasets are provided for the land cover change modeling. A model is built for Harris county.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 03/28/2018
+#DATE MODIFIED: 02/07/2019
 #Version: 1
-#PROJECT: SESYNC and AAG 2018 Geospatial Short Course 
+#PROJECT: AAG 2019 Geospatial Analysis workshop, Geospatial Data Analysis Short Course, Geo-Computation and Environmental Analysis Yale.  
 #TO DO:
 #
-#COMMIT: clean up code for workshop
+#COMMIT: fixing error
 #
 #################################################################################################
 
@@ -45,6 +45,7 @@ library(sf) #spatial objects and functionalities
 library(plotrix) #various graphic functions e.g. draw.circle
 library(TOC) # TOC and ROC for raster images
 library(ROCR) # ROCR general for data.frame
+library(sf)
 
 ###### Functions used in this script
 
@@ -64,8 +65,11 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
 #####  Parameters and argument set up ###########
 
 #Separate inputs and outputs directories
-in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/data/"
-out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_4/outputs"
+#in_dir_var <- "/home/user/ost4sem/exercise/Exercise_4/data/"
+#out_dir <- "/home/user/ost4sem/exercise/Exercise_4/outputs"
+
+in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_4/data"
+out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_4/outputs"
 
 ### General parameters
 
@@ -73,7 +77,7 @@ out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exer
 CRS_reg <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 file_format <- ".tif" #raster output format 
 NA_flag_val <- -9999 # NA value assigned to output raster
-out_suffix <-"exercise4_03282018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise4_02072019" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE # if TRUE, a output dir using output suffix will be created
 method_proj_val <- "bilinear" # method option for the reprojection and resampling 
 gdal_installed <- TRUE #if TRUE, GDAL is used to generate distance files
@@ -197,7 +201,7 @@ r_date2_rec <- subs(r_lc_date2,rec_df,by="id_l2","id_l1")
 plot(r_date1_rec)
 
 rec_xtab_df <- crosstab(r_date1_rec,r_date2_rec,long=T)
-names(rec_xtab_df) <- c("2001","2011","freq")
+names(rec_xtab_df) <- c("2001","2006","freq")
 
 head(rec_xtab_df)
 dim(rec_xtab_df) #9*9 possible transitions if we include NA values
@@ -239,7 +243,7 @@ r_cat2 <- r_date2_rec==2 # developped on date 2
 r_not_cat2 <- r_date1_rec!=2 #remove areas that were already developed in date1, we do not want persistence
 
 r_change <- r_cat2 * r_not_cat2 #mask
-plot(r_change,main="Land transitions to developed over 2001-2011")
+plot(r_change,main="Land transitions to developed over 2001-2006")
 change_tb <- freq(r_change) #Find out how many pixels transitions to developped
 
 #####################################
@@ -314,7 +318,7 @@ if(gdal_installed==TRUE){
   r_developped_distance <- raster(dstfile_developped)
   
 }else{
-  r_developped_distance <- raster(file.path(in_dir,paste("developped_distance_",file_format,sep="")))
+  r_developped_distance <- raster(file.path(in_dir,paste("developped_distance",file_format,sep="")))
   r_roads_distance <- raster(file.path(in_dir_var,paste("roads_bool_distance",file_format,sep="")))
 }
 
@@ -399,20 +403,22 @@ names(r_variables) <- c("change","land_cover","slope","roads_dist","developped_d
 ###############
 ###### Step 2: Fit glm model and generate predictions
 
-variables_df <- na.omit(as.data.frame(r_variables))
+variables_df <- na.omit(as.data.frame(r_variables)) # convert raster stack to data.frame
 dim(variables_df)
-variables_df$land_cover <- as.factor(variables_df$land_cover)
-variables_df$change <- as.factor(variables_df$change)
+variables_df$land_cover <- as.factor(variables_df$land_cover) # convert to categorical variable
+variables_df$change <- as.factor(variables_df$change) # convert to categorical variable
 
 names(variables_df)
 #names(variables_df) <- c("change","land_cover","elevation","roads_dist","developped_dist")
 
+## Now generate the glm model using the logistic specification:
 mod_glm <- glm(change ~ land_cover + slope + roads_dist + developped_dist, 
            data=variables_df , family=binomial())
 
 print(mod_glm)
 summary(mod_glm)
 
+### Genreate probability map from fitted model:
 r_p <- predict(r_variables, mod_glm, type="response")
 plot(r_p)
 histogram(r_p)
@@ -446,3 +452,4 @@ plot(toc_rast)
 slot(toc_rast,"AUC") #this is the AUC from TOC for the logistic modeling
 
 ###############################  End of script  #####################################
+
