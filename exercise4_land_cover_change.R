@@ -423,6 +423,17 @@ r_p <- predict(r_variables, mod_glm, type="response")
 plot(r_p)
 histogram(r_p)
 
+
+### save outputs:
+r_out <- stack(r_variables,r_p)
+names(r_out)[nlayers(r_out)] <- "prob"
+
+out_filename <- paste0("r_variables_harris_county","_",out_suffix,file_format)
+writeRaster(r_out,
+            filename=file.path(out_dir,out_filename),
+            bylayer=T,
+            suffix=names(r_out))
+
 ###############
 ###### Step 3: Model assessment with ROC
 
@@ -450,6 +461,10 @@ toc_rast <- TOC(index=r_p,
 
 plot(toc_rast)
 slot(toc_rast,"AUC") #this is the AUC from TOC for the logistic modeling
+
+##############
+##### Step 4: Prepare model for predictions: Split data into training and testing
+
 
 ###############################  End of script  #####################################
 
