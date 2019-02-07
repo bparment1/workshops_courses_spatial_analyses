@@ -433,6 +433,10 @@ writeRaster(r_out,
             filename=file.path(out_dir,out_filename),
             bylayer=T,
             suffix=names(r_out))
+dim(r_p)
+ncell(r_p)
+dim(variables_df)
+
 
 ###############
 ###### Step 3: Model assessment with ROC
