@@ -432,11 +432,32 @@ out_filename <- paste0("r_variables_harris_county","_",out_suffix,file_format)
 writeRaster(r_out,
             filename=file.path(out_dir,out_filename),
             bylayer=T,
-            suffix=names(r_out))
+            suffix=names(r_out),
+            overwrite=T)
 dim(r_p)
 ncell(r_p)
 dim(variables_df)
 
+###
+r_x <-init(r_out,v="x")
+r_y <-init(r_out,v="y")
+
+r_out <- stack(r_out,r_x,r_y)
+
+n_name<- nlayers((r_out))
+names(r_out)[(n_name-1):n_name] <- c("x","y")
+
+#test <- st_as_sf(r_out)
+variables_out_df <- na.omit(as.data.frame(r_out)) # convert raster stack to data.frame
+dim(variables_out_df)
+names(variables_out_df)
+
+out_filename <- paste0("r_variables_harris_county","_",out_suffix,".txt")
+
+write.table(variables_out_df,
+            file=file.path(out_dir,out_filename),
+            sep=",",
+            row.names=F)
 
 ###############
 ###### Step 3: Model assessment with ROC
