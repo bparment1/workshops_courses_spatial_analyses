@@ -6,12 +6,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 02/07/2019
+#DATE MODIFIED: 02/11/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Analysis workshop, Geospatial Data Analysis Short Course, Geo-Computation and Environmental Analysis Yale.  
 #TO DO:
 #
-#COMMIT: fixing error
+#COMMIT: adding sampling
 #
 #################################################################################################
 
@@ -490,6 +490,65 @@ slot(toc_rast,"AUC") #this is the AUC from TOC for the logistic modeling
 ##############
 ##### Step 4: Prepare model for predictions: Split data into training and testing
 
+if (seed_number>0) {
+  set.seed(seed_number)                        #Using a seed number allow results based on random number to be compared...
+}
+
+variables_df
+#nel<-length(variables_df)
+#dates_list<-vector("list",nel) #list of one row data.frame
+prop <- 0.3
+
+n<- nrow(variables_df)
+#prop<-(sampling_dat$prop[i])/100
+
+ns<-n-round(n*prop)   #Create a sample from the data frame with 70% of the rows
+nv<-n-ns              #create a sample for validation with prop of the rows
+ind.training <- sample(nrow(ghcn.subsets[[i]]), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
+ind.testing <- setdiff(1:nrow(ghcn.subsets[[i]]), ind.training)
+
+for(i in 1:length(dates)){
+  d_tmp<-rep(dates[i],nb_sample*length(prop_range)) #repeating same date
+  s_nb<-rep(1:nb_sample,length(prop_range))         #number of random sample per proportion
+  prop_tmp<-sort(rep(prop_range, nb_sample))
+  tab_run_tmp<-cbind(d_tmp,s_nb,prop_tmp)
+  dates_list[[i]]<-tab_run_tmp
+}
+
+sampling_dat<-as.data.frame(do.call(rbind,dates_list))
+names(sampling_dat)<-c("date","run_samp","prop")
+
+for(i in 2:3){            # start of the for loop #1
+  sampling_dat[,i]<-as.numeric(as.character(sampling_dat[,i]))  
+}
+
+sampling_dat$date<- as.character(sampling_dat[,1])
+#ghcn.subsets <-lapply(dates, function(d) subset(ghcn, date==d)) #this creates a list of 10 or 365 subsets dataset based on dates
+ghcn.subsets <-lapply(as.character(sampling_dat$date), function(d) subset(ghcn, date==d)) #this creates a list of 10 or 365 subsets dataset based on dates
+
+#Make this a function??
+## adding choice of constant sample 
+
+if (seed_number>0) {
+  set.seed(seed_number)                        #Using a seed number allow results based on random number to be compared...
+}
+
+sampling<-vector("list",length(ghcn.subsets))
+sampling_station_id<-vector("list",length(ghcn.subsets))
+for(i in 1:length(ghcn.subsets)){
+  n<-nrow(ghcn.subsets[[i]])
+  prop<-(sampling_dat$prop[i])/100
+  ns<-n-round(n*prop)   #Create a sample from the data frame with 70% of the rows
+  nv<-n-ns              #create a sample for validation with prop of the rows
+  ind.training <- sample(nrow(ghcn.subsets[[i]]), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
+  ind.testing <- setdiff(1:nrow(ghcn.subsets[[i]]), ind.training)
+  #Find the corresponding 
+  data_sampled<-ghcn.subsets[[i]][ind.training,] #selected the randomly sampled stations
+  station_id.training<-data_sampled$station     #selected id for the randomly sampled stations (115)
+  #Save the information
+  sampling[[i]]<-ind.training #index of training sample from data.frame
+  sampling_station_id[[i]]<- station_id.training #station ID for traning samples
+}
 
 ###############################  End of script  #####################################
 
