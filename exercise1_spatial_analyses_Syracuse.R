@@ -8,7 +8,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/21/2017 
-#DATE MODIFIED: 02/07/2019
+#DATE MODIFIED: 02/12/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial workshop and Sesync Geopstial Data Analyses course, Geocompuation Yale
 #TO DO:
@@ -71,7 +71,7 @@ out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_wo
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise1_02062019" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise1_02122019" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 ################################   START SCRIPT   ###################################
@@ -169,16 +169,32 @@ dim(census_2000_sf)
 class(census_2000_sf)
 
 ### Check if the new geometry of entities is the same as census
-plot(census_2000_sp)
+#plot(census_2000_sp)
 plot(census_2000_sf$geometry)
 
 plot(ct_2000_sf,border="red",pal=NA,add=T)
 nrow(census_2000_sf)==nrow(ct_2000_sf)
 
-df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sp , FUN=sum) #aggregate all variables from the data.frame
-df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sf , FUN=sum) #aggregate all variables from the data.frame
+#df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sf , FUN=sum) #aggregate all variables from the data.frame
+#df_summary_by_census <- aggregate(. ~ TRACT, bg_2000_sf , FUN=sum) #aggregate all variables from the data.frame
 
 ##Join by key table id:
+dim(ct_2000_sf)
+dim(census_2000_sf)
+## merge two sf not available
+
+census_2000_df <- as.data.frame(census_2000_sf)
+dim(census_2000_df)
+class(census_2000_df)
+View(census_2000_df)
+nrow(ct_2000_sf)
+
+test <- merge(ct_2000_sf,census_2000_df,by="TRACT")
+
+test <- st_equals(ct_2000_sf,census_2000_sf#by="TRACT"))
+
+dim(ct_2000_sp)
+
 dim(ct_2000_sp)
 ct_2000_sp <- merge(ct_2000_sp,df_summary_by_census,by="TRACT")
 dim(ct_2000_sp)
