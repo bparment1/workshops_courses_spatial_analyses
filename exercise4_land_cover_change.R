@@ -490,65 +490,48 @@ slot(toc_rast,"AUC") #this is the AUC from TOC for the logistic modeling
 ##############
 ##### Step 4: Prepare model for predictions: Split data into training and testing
 
+seed_number <- 100
 if (seed_number>0) {
   set.seed(seed_number)                        #Using a seed number allow results based on random number to be compared...
 }
 
-variables_df
+#variables_df
 #nel<-length(variables_df)
 #dates_list<-vector("list",nel) #list of one row data.frame
 prop <- 0.3
 
 n<- nrow(variables_df)
-#prop<-(sampling_dat$prop[i])/100
 
 ns<-n-round(n*prop)   #Create a sample from the data frame with 70% of the rows
 nv<-n-ns              #create a sample for validation with prop of the rows
-ind.training <- sample(nrow(ghcn.subsets[[i]]), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
-ind.testing <- setdiff(1:nrow(ghcn.subsets[[i]]), ind.training)
+ind.training <- sample(nrow(variables_df), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
+ind.testing <- setdiff(1:nrow(variables_df), ind.training)
 
-for(i in 1:length(dates)){
-  d_tmp<-rep(dates[i],nb_sample*length(prop_range)) #repeating same date
-  s_nb<-rep(1:nb_sample,length(prop_range))         #number of random sample per proportion
-  prop_tmp<-sort(rep(prop_range, nb_sample))
-  tab_run_tmp<-cbind(d_tmp,s_nb,prop_tmp)
-  dates_list[[i]]<-tab_run_tmp
-}
+variables_df$training[ind.training] <-  1
+variables_df$training[ind.testing] <-  0
 
-sampling_dat<-as.data.frame(do.call(rbind,dates_list))
-names(sampling_dat)<-c("date","run_samp","prop")
+sum(variables_df$training)/length(variables_df$training)
 
-for(i in 2:3){            # start of the for loop #1
-  sampling_dat[,i]<-as.numeric(as.character(sampling_dat[,i]))  
-}
+data_training_df <- variables_df[variables_df$training==1,]
+data_testing_df <- variables_df[variables_df$training==1,]
 
-sampling_dat$date<- as.character(sampling_dat[,1])
-#ghcn.subsets <-lapply(dates, function(d) subset(ghcn, date==d)) #this creates a list of 10 or 365 subsets dataset based on dates
-ghcn.subsets <-lapply(as.character(sampling_dat$date), function(d) subset(ghcn, date==d)) #this creates a list of 10 or 365 subsets dataset based on dates
+## Now generate the glm model using the logistic specification:
+mod_glm <- glm(change ~ land_cover + slope + roads_dist + developped_dist, 
+               data=data_training_df , family=binomial())
 
-#Make this a function??
-## adding choice of constant sample 
+print(mod_glm)
+summary(mod_glm)
 
-if (seed_number>0) {
-  set.seed(seed_number)                        #Using a seed number allow results based on random number to be compared...
-}
+r_p <- predict(data_testing, mod_glm, type="response")
 
-sampling<-vector("list",length(ghcn.subsets))
-sampling_station_id<-vector("list",length(ghcn.subsets))
-for(i in 1:length(ghcn.subsets)){
-  n<-nrow(ghcn.subsets[[i]])
-  prop<-(sampling_dat$prop[i])/100
-  ns<-n-round(n*prop)   #Create a sample from the data frame with 70% of the rows
-  nv<-n-ns              #create a sample for validation with prop of the rows
-  ind.training <- sample(nrow(ghcn.subsets[[i]]), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
-  ind.testing <- setdiff(1:nrow(ghcn.subsets[[i]]), ind.training)
-  #Find the corresponding 
-  data_sampled<-ghcn.subsets[[i]][ind.training,] #selected the randomly sampled stations
-  station_id.training<-data_sampled$station     #selected id for the randomly sampled stations (115)
-  #Save the information
-  sampling[[i]]<-ind.training #index of training sample from data.frame
-  sampling_station_id[[i]]<- station_id.training #station ID for traning samples
-}
+r_training <- rasterize(variables_df,y=r_variables,field="training")
+
+### Generate probability map from fitted model:
+r_p <- predict(r_variables, mod_glm, type="response")
+plot(r_p)
+histogram(r_p)
+
+
 
 ###############################  End of script  #####################################
 
