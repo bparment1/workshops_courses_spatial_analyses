@@ -400,64 +400,26 @@ r_variables <- mask(r_variables,r_mask)
 #r_variables <- freq(r_test2,value=NA,merge=T)
 names(r_variables) <- c("change","land_cover","slope","roads_dist","developped_dist")
 
+###
+r_x <-init(r_out,v="x")
+r_y <-init(r_out,v="y")
+
+r_out <- stack(r_variables,r_x,r_y)
+
+n_name<- nlayers((r_out))
+names(r_out)[(n_name-1):n_name] <- c("x","y")
+
+
 ###############
 ###### Step 2: Fit glm model and generate predictions
 
-variables_df <- na.omit(as.data.frame(r_variables)) # convert raster stack to data.frame
+variables_df <- na.omit(as.data.frame(r_out)) # convert raster stack to data.frame
 dim(variables_df)
 variables_df$land_cover <- as.factor(variables_df$land_cover) # convert to categorical variable
 variables_df$change <- as.factor(variables_df$change) # convert to categorical variable
 
 names(variables_df)
-#names(variables_df) <- c("change","land_cover","elevation","roads_dist","developped_dist")
 
-## Now generate the glm model using the logistic specification:
-mod_glm <- glm(change ~ land_cover + slope + roads_dist + developped_dist, 
-           data=variables_df , family=binomial())
-
-print(mod_glm)
-summary(mod_glm)
-
-### Genreate probability map from fitted model:
-r_p <- predict(r_variables, mod_glm, type="response")
-plot(r_p)
-histogram(r_p)
-
-
-### save outputs:
-r_out <- stack(r_variables,r_p)
-names(r_out)[nlayers(r_out)] <- "prob"
-
-out_filename <- paste0("r_variables_harris_county","_",out_suffix,file_format)
-writeRaster(r_out,
-            filename=file.path(out_dir,out_filename),
-            bylayer=T,
-            suffix=names(r_out),
-            overwrite=T)
-dim(r_p)
-ncell(r_p)
-dim(variables_df)
-
-###
-r_x <-init(r_out,v="x")
-r_y <-init(r_out,v="y")
-
-r_out <- stack(r_out,r_x,r_y)
-
-n_name<- nlayers((r_out))
-names(r_out)[(n_name-1):n_name] <- c("x","y")
-
-#test <- st_as_sf(r_out)
-variables_out_df <- na.omit(as.data.frame(r_out)) # convert raster stack to data.frame
-dim(variables_out_df)
-names(variables_out_df)
-
-out_filename <- paste0("r_variables_harris_county","_",out_suffix,".txt")
-
-write.table(variables_out_df,
-            file=file.path(out_dir,out_filename),
-            sep=",",
-            row.names=F)
 
 ###############
 ###### Step 3: Model assessment with ROC
@@ -524,6 +486,7 @@ summary(mod_glm)
 
 r_p <- predict(data_testing, mod_glm, type="response")
 
+variables__out_df
 r_training <- rasterize(variables_df,y=r_variables,field="training")
 
 ### Generate probability map from fitted model:
@@ -532,6 +495,30 @@ plot(r_p)
 histogram(r_p)
 
 
+### save outputs:
+r_out <- stack(r_variables,r_p)
+names(r_out)[nlayers(r_out)] <- "prob"
+
+out_filename <- paste0("r_variables_harris_county","_",out_suffix,file_format)
+writeRaster(r_out,
+            filename=file.path(out_dir,out_filename),
+            bylayer=T,
+            suffix=names(r_out),
+            overwrite=T)
+dim(r_p)
+ncell(r_p)
+dim(variables_df)
+#test <- st_as_sf(r_out)
+variables_out_df <- na.omit(as.data.frame(r_out)) # convert raster stack to data.frame
+dim(variables_out_df)
+names(variables_out_df)
+
+out_filename <- paste0("r_variables_harris_county","_",out_suffix,".txt")
+
+write.table(variables_out_df,
+            file=file.path(out_dir,out_filename),
+            sep=",",
+            row.names=F)
 
 ###############################  End of script  #####################################
 
