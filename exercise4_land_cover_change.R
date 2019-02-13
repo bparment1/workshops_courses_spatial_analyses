@@ -434,6 +434,9 @@ ind.testing <- setdiff(1:nrow(variables_df), ind.training)
 
 variables_df$training[ind.training] <-  1
 variables_df$training[ind.testing] <-  0
+variables_df$testing[ind.testing] <-  1
+variables_df$testing[ind.training] <-  0
+
 
 sum(variables_df$training)/length(variables_df$training)
 
@@ -457,9 +460,11 @@ summary(mod_glm)
 
 pred_test <- predict( mod_glm, data_testing_df, type="response")
 
-r_variables_sp <- r_variables
-
-#r_training <- rasterize(variables_df,y=r_variables,field="training")
+variables_sp <- variables_df
+coordinates(variables_sp) <- variables_sp[c("x","y")]
+  
+r_training <- rasterize(variables_sp,y=r_variables,field="training")
+r_testing <- rasterize(variables_sp,y=r_variables,field="testing")
 
 ### Generate probability map from fitted model:
 r_p <- predict(r_variables, mod_glm, type="response")
@@ -469,6 +474,7 @@ plot(r_p)
 histogram(r_p)
 
 ### save outputs:
+names_rasters <- names(r_out)
 r_out <- stack(r_variables,r_p)
 names(r_out)[nlayers(r_out)] <- "prob"
 
@@ -509,18 +515,36 @@ roc_rast <- ROC(index=r_p,
                   boolean=r_change_harris, 
                   mask=r_mask,
                   nthres=100)
+roc_rast_training <- ROC(index=r_p, 
+                boolean=r_change_harris, 
+                mask=r_training,
+                nthres=100)
 
-plot(roc_rast)
-slot(roc_rast,"AUC") #this is the AUC from ROC for the logistic modeling
+roc_rast_testing <- ROC(index=r_p, 
+                         boolean=r_change_harris, 
+                         mask=r_testing,
+                         nthres=100)
 
-toc_rast <- TOC(index=r_p, 
+plot(roc_rast_training)
+slot(roc_rast_training,"AUC") #this is the AUC from ROC for the logistic modeling
+plot(roc_rast_testing)
+slot(roc_rast_testing,"AUC") #this is the AUC from ROC for the logistic modeling
+
+toc_rast_training <- TOC(index=r_p, 
                   boolean=r_change_harris, 
-                  mask=r_mask,
+                  mask=r_training,
                   nthres=100)
 
-plot(toc_rast)
-slot(toc_rast,"AUC") #this is the AUC from TOC for the logistic modeling
+plot(toc_rast_training)
+slot(toc_rast_training,"AUC") #this is the AUC from TOC for the logistic modeling
 
+toc_rast_testing <- TOC(index=r_p, 
+                         boolean=r_change_harris, 
+                         mask=r_testing,
+                         nthres=100)
+
+plot(toc_rast_testing)
+slot(toc_rast_testing,"AUC") #this is the AUC from TOC for the logistic modeling
 
 
 ###############################  End of script  #####################################
