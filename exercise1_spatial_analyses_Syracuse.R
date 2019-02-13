@@ -187,17 +187,17 @@ census_2000_df <- as.data.frame(census_2000_sf)
 dim(census_2000_df)
 class(census_2000_df)
 View(census_2000_df)
-nrow(ct_2000_sf)
+nrow(census_2000_df)
 
-test <- merge(ct_2000_sf,census_2000_df,by="TRACT")
+#test <- merge(ct_2000_sf,census_2000_df,by="TRACT")
 
-test <- st_equals(ct_2000_sf,census_2000_sf#by="TRACT"))
+#test <- st_equals(ct_2000_sf,census_2000_sf#by="TRACT"))
 
-dim(ct_2000_sp)
+#dim(ct_2000_sp)
 
-dim(ct_2000_sp)
-ct_2000_sp <- merge(ct_2000_sp,df_summary_by_census,by="TRACT")
-dim(ct_2000_sp)
+#dim(ct_2000_sp)
+#ct_2000_sp <- merge(ct_2000_sp,df_summary_by_census,by="TRACT")
+#dim(ct_2000_sp)
 
 #save as sp and text table
 #write.table(file.path(out_dir,)
@@ -205,34 +205,51 @@ dim(ct_2000_sp)
 ### Do another map with different class intervals: 
 
 title_str <- "Population by census tract in 2000"
-range(ct_2000_sp$POP2000)
-col_palette <- matlab.like(256)
+#range(ct_2000_sp$POP2000)
+range(census_2000_sf$POP2000)
+
 
 ## 9 classes with fixed and constant break
 break_seq <- seq(0,9000,1000)
-breaks.qt <- classIntervals(ct_2000_sp$POP2000, n=length(break_seq), 
+#breaks.qt <- classIntervals(ct_2000_sp$POP2000, n=length(break_seq), 
+#                            style="fixed", fixedBreaks=break_seq, intervalClosure='right')
+breaks.qt <- classIntervals(census_2000_sf$POP2000, n=length(break_seq), 
                             style="fixed", fixedBreaks=break_seq, intervalClosure='right')
 
+n_classes <- length(breaks.qt$brks) -1 
+col_palette <- matlab.like(n_classes)
+#col_palette <- matlab.like(256)
+
 ## generate plot using sp function:
-p_plot_pop2000_ct <- spplot(ct_2000_sp,
-                            "POP2000",
-                            col="transparent", #transprent color boundaries for polygons
-                            col.regions = col_palette ,
+#p_plot_pop2000_ct <- spplot(ct_2000_sp,
+#                            "POP2000",
+#                            col="transparent", #transprent color boundaries for polygons
+#                            col.regions = col_palette ,
+#                           main=title_str,
+#                            at = breaks.qt$brks)
+#print(p_plot_pop2000_ct)
+
+plot(census_2000_sf["POP2000"],
+                            #col=col_palette, #transprent color boundaries for polygons
+                            pal = col_palette ,
                             main=title_str,
                             at = breaks.qt$brks)
-print(p_plot_pop2000_ct)
-
 ### Another map with different class intervals
 
-breaks.qt <- classIntervals(ct_2000_sp$POP2000, n = 6, style = "quantile", intervalClosure = "right")
+n_classes <- 5
+#n_breaks <- n_classes+1
+breaks.qt <- classIntervals(census_2000_sf$POP2000, n = n_classes, style = "quantile", intervalClosure = "right")
+col_palette <- matlab.like(n_classes)
+length(breaks.qt$brks)
 
-p_plot_pop2000_ct <- spplot(ct_2000_sp,
-                            "POP2000",
-                            col="transparent", #transprent color boundaries for polygons
-                            col.regions = col_palette,
+plot(census_2000_sf["POP2000"],
+                            #col="transparent", #transprent color boundaries for polygons
+                            pal = col_palette,
                             main=title_str,
                             at = breaks.qt$brks)
-print(p_plot_pop2000_ct)
+length(breaks.qt$brks)
+length(col_palette)
+#print(p_plot_pop2000_ct)
 
 ####### PART II: SPATIAL QUERY #############
 
@@ -246,23 +263,29 @@ head(soil_PB_df)
 head(metals_df)
 
 ##This suggests matching to the following spatial entities
-nrow(metals_df)==nrow(ct_2000_sp)
+nrow(metals_df)==nrow(ct_2000_sf)
 #nrow(soil_PB_df)==nrow(bg_2000_sp)
 
 #dim(bg_2000_sp)
 metals_df$TRACT <- metals_df$ID
-census_metals_sp <- merge(ct_2000_sp,metals_df,by="TRACT")
+#census_metals_sf <- merge(ct_2000_sf,metals_df,by="TRACT")
+census_metals_sf <- merge(census_2000_sf,metals_df,by="TRACT")
+#names(census_2000_sf$TRACT)
+#class(census_2000_sf$TRACT)
 
 ########processing lead data
 ### Now let's plot lead data 
 #Soil lead samples: UTM z18 coordinates
 soil_PB_df <- read.table(file.path(in_dir_var,soil_PB_table_fname),sep=",",header=T) #point locations
 
-proj4string(census_metals_sp) #
+st_crs(census_metals_sf) #
 names(soil_PB_df)
 names(soil_PB_df) <- c("x","y","ID","ppm") 
 soil_PB_sp <- soil_PB_df
 class(soil_PB_df)
+
+###Create a sf from coordinates
+
 coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
 class(soil_PB_sp)
 proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
