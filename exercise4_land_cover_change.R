@@ -409,20 +409,92 @@ r_out <- stack(r_variables,r_x,r_y)
 n_name<- nlayers((r_out))
 names(r_out)[(n_name-1):n_name] <- c("x","y")
 
-
-###############
-###### Step 2: Fit glm model and generate predictions
-
 variables_df <- na.omit(as.data.frame(r_out)) # convert raster stack to data.frame
 dim(variables_df)
+
+##############
+##### Step 2: Prepare model for predictions: Split data into training and testing
+
+seed_number <- 100
+if (seed_number>0) {
+  set.seed(seed_number)                        #Using a seed number allow results based on random number to be compared...
+}
+
+#variables_df
+#nel<-length(variables_df)
+#dates_list<-vector("list",nel) #list of one row data.frame
+prop <- 0.3
+
+n<- nrow(variables_df)
+
+ns<-n-round(n*prop)   #Create a sample from the data frame with 70% of the rows
+nv<-n-ns              #create a sample for validation with prop of the rows
+ind.training <- sample(nrow(variables_df), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
+ind.testing <- setdiff(1:nrow(variables_df), ind.training)
+
+variables_df$training[ind.training] <-  1
+variables_df$training[ind.testing] <-  0
+
+sum(variables_df$training)/length(variables_df$training)
+
+###############
+###### Step 3: Fit glm model and generate predictions
+
 variables_df$land_cover <- as.factor(variables_df$land_cover) # convert to categorical variable
 variables_df$change <- as.factor(variables_df$change) # convert to categorical variable
 
 names(variables_df)
 
+data_training_df <- variables_df[variables_df$training==1,]
+data_testing_df <- variables_df[variables_df$training==0,]
+
+## Now generate the glm model using the logistic specification:
+mod_glm <- glm(change ~ land_cover + slope + roads_dist + developped_dist, 
+               data=data_training_df , family=binomial())
+
+print(mod_glm)
+summary(mod_glm)
+
+pred_test <- predict( mod_glm, data_testing_df, type="response")
+
+r_variables_sp <- r_variables
+
+#r_training <- rasterize(variables_df,y=r_variables,field="training")
+
+### Generate probability map from fitted model:
+r_p <- predict(r_variables, mod_glm, type="response")
+#r_out <- predict(r_variables, mod_glm, type="response")
+
+plot(r_p)
+histogram(r_p)
+
+### save outputs:
+r_out <- stack(r_variables,r_p)
+names(r_out)[nlayers(r_out)] <- "prob"
+
+out_filename <- paste0("r_variables_harris_county","_",out_suffix,file_format)
+writeRaster(r_out,
+            filename=file.path(out_dir,out_filename),
+            bylayer=T,
+            suffix=names(r_out),
+            overwrite=T)
+dim(r_p)
+ncell(r_p)
+dim(variables_df)
+#test <- st_as_sf(r_out)
+variables_out_df <- na.omit(as.data.frame(r_out)) # convert raster stack to data.frame
+dim(variables_out_df)
+names(variables_out_df)
+
+out_filename <- paste0("r_variables_harris_county","_",out_suffix,".txt")
+
+write.table(variables_out_df,
+            file=file.path(out_dir,out_filename),
+            sep=",",
+            row.names=F)
 
 ###############
-###### Step 3: Model assessment with ROC
+###### Step 5: Model assessment with ROC
 
 ## We use the TOC package since it allows for the use of raster layers.
 
@@ -449,76 +521,7 @@ toc_rast <- TOC(index=r_p,
 plot(toc_rast)
 slot(toc_rast,"AUC") #this is the AUC from TOC for the logistic modeling
 
-##############
-##### Step 4: Prepare model for predictions: Split data into training and testing
 
-seed_number <- 100
-if (seed_number>0) {
-  set.seed(seed_number)                        #Using a seed number allow results based on random number to be compared...
-}
-
-#variables_df
-#nel<-length(variables_df)
-#dates_list<-vector("list",nel) #list of one row data.frame
-prop <- 0.3
-
-n<- nrow(variables_df)
-
-ns<-n-round(n*prop)   #Create a sample from the data frame with 70% of the rows
-nv<-n-ns              #create a sample for validation with prop of the rows
-ind.training <- sample(nrow(variables_df), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
-ind.testing <- setdiff(1:nrow(variables_df), ind.training)
-
-variables_df$training[ind.training] <-  1
-variables_df$training[ind.testing] <-  0
-
-sum(variables_df$training)/length(variables_df$training)
-
-data_training_df <- variables_df[variables_df$training==1,]
-data_testing_df <- variables_df[variables_df$training==1,]
-
-## Now generate the glm model using the logistic specification:
-mod_glm <- glm(change ~ land_cover + slope + roads_dist + developped_dist, 
-               data=data_training_df , family=binomial())
-
-print(mod_glm)
-summary(mod_glm)
-
-r_p <- predict(data_testing, mod_glm, type="response")
-
-variables__out_df
-r_training <- rasterize(variables_df,y=r_variables,field="training")
-
-### Generate probability map from fitted model:
-r_p <- predict(r_variables, mod_glm, type="response")
-plot(r_p)
-histogram(r_p)
-
-
-### save outputs:
-r_out <- stack(r_variables,r_p)
-names(r_out)[nlayers(r_out)] <- "prob"
-
-out_filename <- paste0("r_variables_harris_county","_",out_suffix,file_format)
-writeRaster(r_out,
-            filename=file.path(out_dir,out_filename),
-            bylayer=T,
-            suffix=names(r_out),
-            overwrite=T)
-dim(r_p)
-ncell(r_p)
-dim(variables_df)
-#test <- st_as_sf(r_out)
-variables_out_df <- na.omit(as.data.frame(r_out)) # convert raster stack to data.frame
-dim(variables_out_df)
-names(variables_out_df)
-
-out_filename <- paste0("r_variables_harris_county","_",out_suffix,".txt")
-
-write.table(variables_out_df,
-            file=file.path(out_dir,out_filename),
-            sep=",",
-            row.names=F)
 
 ###############################  End of script  #####################################
 
