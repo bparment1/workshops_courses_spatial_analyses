@@ -264,6 +264,9 @@ head(metals_df)
 
 ##This suggests matching to the following spatial entities
 nrow(metals_df)==nrow(ct_2000_sf)
+nrow(metals_df)==nrow(census_2000_sf)
+
+census_2000_sf$TRACT <- census_2000_sf$Group.1
 #nrow(soil_PB_df)==nrow(bg_2000_sp)
 
 #dim(bg_2000_sp)
@@ -272,10 +275,13 @@ metals_df$TRACT <- metals_df$ID
 census_metals_sf <- merge(census_2000_sf,metals_df,by="TRACT")
 #names(census_2000_sf$TRACT)
 #class(census_2000_sf$TRACT)
+plot(census_2000_sf$geometry)
+plot(census_metals_sf$geometry,col="red")
 
 ########processing lead data
 ### Now let's plot lead data 
 #Soil lead samples: UTM z18 coordinates
+
 soil_PB_df <- read.table(file.path(in_dir_var,soil_PB_table_fname),sep=",",header=T) #point locations
 
 st_crs(census_metals_sf) #
@@ -285,15 +291,19 @@ soil_PB_sp <- soil_PB_df
 class(soil_PB_df)
 
 ###Create a sf from coordinates
+epsg_code <- st_crs(census_metals_sf)$epsg
+#df.SP <- st_as_sf(soil_PB_df, coords = c("LONG", "LAT"), crs = 4326)
+soil_PB_sf <- st_as_sf(soil_PB_df, coords = c("x", "y"), crs = epsg_code)
+plot(soil_PB_sf)
 
-coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
-class(soil_PB_sp)
-proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
-dim(soil_PB_sp)
-soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
+#coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
+class(soil_PB_sf)
+#proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
+dim(soil_PB_sf)
+#soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
 
-plot(census_metals_sp)
-plot(soil_PB_sp,add=T)
+plot(census_metals_sf$geometry)
+plot(soil_PB_sf,add=T)
 
 ###### Spatial query: associate points of pb measurements to each census tract
 ### Get the ID and 
