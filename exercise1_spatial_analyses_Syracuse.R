@@ -302,20 +302,20 @@ class(soil_PB_sf)
 dim(soil_PB_sf)
 #soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
 
-plot(census_metals_sf$geometry)
-plot(soil_PB_sf$geometry,add=T)
+plot(census_metals_sf$geometry,border='blue')
+plot(soil_PB_sf$geometry,add=T,pch='+')
 
 ###### Spatial query: associate points of pb measurements to each census tract
 ### Get the ID and 
 
 #soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
-test <- st_join(x=soil_PB_sf, y=census_2000_sf, join = st_within)
+soil_PB_join_sf <- st_join(x=soil_PB_sf, y=census_2000_sf, join = st_within)
 #test <- aggregate(x=soil_PB_sf,by=census_2000_sf,FUN=mean,join=st_within)
 
 #head(test)
 
 #test <- st_intersection(soil_PB_sf,census_2000_sf)
-census_pb_avg <- aggregate(ppm ~ TRACT,test,FUN=mean)
+census_pb_avg <- aggregate(ppm ~ TRACT,soil_PB_join_sf,FUN=mean)
 #census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),FUN=mean)
 #census_pb_avg <- rename(census_pb_avg,c("ppm"="pb_ppm"))
 
@@ -327,7 +327,7 @@ names(census_pb_avg)
 
 ##Now join
 #census_metals_pb_sp <- merge(census_metals_sp,census_pb_avg,by="TRACT")
-census_metals_pb_sf <- merge(census_metals_sp,census_pb_avg,by="TRACT")
+census_metals_pb_sf <- merge(census_metals_sf,census_pb_avg,by="TRACT")
 
 ### write out final table and shapefile
 plot(census_metals_pb_sf['pb_ppm'])
@@ -369,8 +369,8 @@ dim(r)
 values(r) <- 1:ncell(r) # Assign values to raster, ID for each pixel
 #assign projection system
 
-st_crs(census_metals_pb_sf)
-projection(r) <- proj4string(census_metals_pb_sp)
+
+projection(r) <- st_crs(census_metals_pb_sf)$proj4string
 
 ######Visualize the data first
 
@@ -387,7 +387,11 @@ r_sgdf <- as(r, 'SpatialGridDataFrame')
 class(r_sgdf)
 
 ## Generate and plot a sample variogram from lead data
-v_ppm <- variogram(ppm ~ 1,soil_PB_sp)
+#soil_PB_sp <- 
+v_ppm <- variogram(ppm ~ 1,
+    locations = ~ x + y,
+    data = soil_PB_df)
+#v_ppm <- variogram(ppm ~ 1,soil_PB_sp)
 plot(v_ppm)
 
 ## Fit a variogram model from lead data
@@ -396,7 +400,18 @@ v_ppm_fit <- fit.variogram(v_ppm,model=vgm(1,"Sph",900,1))
 plot(v_ppm,v_ppm_fit)
 
 ##Generate a kriging surface using data and modeled variogram: this may take more than 3 minutes
-ppm_lead_spg <- krige(ppm ~ 1, soil_PB_sp, r_sgdf, model=v_ppm_fit)
+soil_PB_sp <- as(soil_PB_sf,"Spatial") # convert to spatial object
+#pred_ppm_xy <- g$krige(
+#  ppm ~ 1,
+#  locations = ~ x + y,
+# data = lead_xy,
+#  newdata = pred_ppm_xy,
+#  model = v_ppm_fit)
+
+ppm_lead_spg <- krige(ppm ~ 1, 
+                      soil_PB_sp, 
+                      r_sgdf, 
+                      model=v_ppm_fit)
 
 class(ppm_lead_spg)
 r_lead <- raster(ppm_lead_spg)
@@ -405,7 +420,7 @@ r_lead #examine new layer
 
 col_palette <- matlab.like(256)
 plot(r_lead,col=col_palette)
-plot(census_metals_pb_sp,border="blue",add=T)
+plot(census_metals_pb_sf$geometry,border="blue",add=T)
 
 ## Save raster layers produced from kriging
 raster_name <- file.path(out_dir,paste0("r_lead",out_suffix,file_format))
@@ -463,6 +478,6 @@ Moran(r_lead, f)
 r_moran <- MoranLocal(r_lead)
 plot(r_moran) # hotspots?
 
-###################### END OF SCRIPT #####################
+######################### END OF SCRIPT ##################################
 
 
