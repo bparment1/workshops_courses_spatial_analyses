@@ -303,34 +303,24 @@ dim(soil_PB_sf)
 #soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
 
 plot(census_metals_sf$geometry)
-plot(soil_PB_sf$geometry,add=T)
+plot(soil_PB_sf,add=T)
 
 ###### Spatial query: associate points of pb measurements to each census tract
 ### Get the ID and 
 
 soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
-test <- st_join(x=soil_PB_sf, y=census_2000_sf, join = st_within)
-#test <- aggregate(x=soil_PB_sf,by=census_2000_sf,FUN=mean,join=st_within)
+soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
+head(soil_PB_sp$ID)==head(soil_PB_sp$ID)
+names(soil_PB_sp)
+soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
 
-#head(test)
-
-#test <- st_intersection(soil_PB_sf,census_2000_sf)
-census_pb_avg <- aggregate(ppm ~ TRACT,test,FUN=mean)
-#census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),FUN=mean)
-#census_pb_avg <- rename(census_pb_avg,c("ppm"="pb_ppm"))
-
-#soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
-#head(soil_PB_sp$ID)==head(soil_PB_sp$ID)
-#names(soil_PB_sp)
-names(census_pb_avg)
-#soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
+census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),FUN=mean)
+census_pb_avg <- rename(census_pb_avg,c("ppm"="pb_ppm"))
 
 ##Now join
 census_metals_pb_sp <- merge(census_metals_sp,census_pb_avg,by="TRACT")
-census_metals_pb_sf <- merge(census_metals_sp,census_pb_avg,by="TRACT")
-
 ### write out final table and shapefile
-plot(cen)
+
 outfile<-paste("census_metals_pb_sp","_",
                out_suffix,sep="")
 writeOGR(census_metals_pb_sp,dsn= out_dir,layer= outfile, driver="ESRI Shapefile",overwrite_layer=TRUE)
@@ -437,7 +427,7 @@ moran.plot(census_lead_sp$pb_ppm, list_w,
 ##### Now do a spatial regression
 
 ## Is there are relationship between minorities and high level of lead?
-# As a way to explore use,  perc_hispa as explanatory variable
+# As a way to explore use, perc_hispa as explanatory variable
 
 #linear model without taking into account spatial autocorrelation
 mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
