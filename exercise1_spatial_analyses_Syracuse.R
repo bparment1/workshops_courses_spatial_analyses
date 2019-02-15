@@ -8,7 +8,7 @@
 
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/21/2017 
-#DATE MODIFIED: 02/12/2019
+#DATE MODIFIED: 02/15/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial workshop and Sesync Geopstial Data Analyses course, Geocompuation Yale
 #TO DO:
