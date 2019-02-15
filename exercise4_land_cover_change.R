@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 02/11/2019
+#DATE MODIFIED: 02/13/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Analysis workshop, Geospatial Data Analysis Short Course, Geo-Computation and Environmental Analysis Yale.  
 #TO DO:
@@ -77,7 +77,7 @@ out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_wo
 CRS_reg <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 file_format <- ".tif" #raster output format 
 NA_flag_val <- -9999 # NA value assigned to output raster
-out_suffix <-"exercise4_02072019" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise4_02132019" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE # if TRUE, a output dir using output suffix will be created
 method_proj_val <- "bilinear" # method option for the reprojection and resampling 
 gdal_installed <- TRUE #if TRUE, GDAL is used to generate distance files
@@ -401,8 +401,8 @@ r_variables <- mask(r_variables,r_mask)
 names(r_variables) <- c("change","land_cover","slope","roads_dist","developped_dist")
 
 ###
-r_x <-init(r_out,v="x")
-r_y <-init(r_out,v="y")
+r_x <-init(r_variables,v="x")
+r_y <-init(r_variables,v="y")
 
 r_out <- stack(r_variables,r_x,r_y)
 
@@ -432,13 +432,13 @@ nv<-n-ns              #create a sample for validation with prop of the rows
 ind.training <- sample(nrow(variables_df), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
 ind.testing <- setdiff(1:nrow(variables_df), ind.training)
 
+variables_df$training <- 0
 variables_df$training[ind.training] <-  1
-variables_df$training[ind.testing] <-  0
+variables_df$testing <-  0
 variables_df$testing[ind.testing] <-  1
-variables_df$testing[ind.training] <-  0
-
 
 sum(variables_df$training)/length(variables_df$training)
+sum(variables_df$testing)/length(variables_df$testing)
 
 ###############
 ###### Step 3: Fit glm model and generate predictions
@@ -475,8 +475,8 @@ histogram(r_p)
 
 ### save outputs:
 names_rasters <- names(r_out)
-r_out <- stack(r_variables,r_p)
-names(r_out)[nlayers(r_out)] <- "prob"
+r_out <- stack(r_out,r_training,r_testing,r_p)
+names(r_out) <- c(names_rasters,"training","testing","prob")
 
 out_filename <- paste0("r_variables_harris_county","_",out_suffix,file_format)
 writeRaster(r_out,
@@ -546,6 +546,7 @@ toc_rast_testing <- TOC(index=r_p,
 plot(toc_rast_testing)
 slot(toc_rast_testing,"AUC") #this is the AUC from TOC for the logistic modeling
 
+### Plot on the same curve
 
 ###############################  End of script  #####################################
 
