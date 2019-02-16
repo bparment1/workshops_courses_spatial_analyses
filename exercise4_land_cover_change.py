@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 02/16/2019
+#DATE MODIFIED: 02/22/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
