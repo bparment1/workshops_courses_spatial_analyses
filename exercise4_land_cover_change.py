@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 01/16/2019
+#DATE MODIFIED: 02/16/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
@@ -81,7 +81,7 @@ out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/ou
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix = "exercise4_01072018" #output suffix for the files and ouptut folder
+out_suffix = "exercise4_02162018" #output suffix for the files and ouptut folder
 #ARGS 8
 NA_value = -9999 # number of cores
 file_format = ".tif"
@@ -143,7 +143,7 @@ plot.show(r_lc_date1)
 
 #Note that you can also plot the raster io data reader
 type(lc_date2)
-plot.show(lc_date2)
+plot.show(lc_date2) #no need to read in memory
 
 lc_date1.crs # not defined with *.rst
 lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",")
@@ -155,10 +155,8 @@ plot.show(lc_date2,cmap=plt.cm.get_cmap('cubehelix',16 ))
 #names(lc_legend_df)
 lc_legend_df.columns
 lc_legend_df.shape
-#dim(lc_legend_df) #contains a lot of empty rows
-	
-#lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured rows
-lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0] #subset the data to remove unsured rows
+#subset the data to remove unsured rows
+lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0] 
 
 
 # Generate palette
@@ -181,7 +179,7 @@ rgb_col[0]
 #lc_legend_df['rgb'] = lc_legend_df[['Red','Green','Blue']].apply[lambda x:]
 lc_legend_df['rgb'] = rgb_col
 ### row 2 correspond to the "open water" category
-webcolors.rgb_to_name(rgb_col[1])
+#webcolors.rgb_to_name(rgb_col[1])
 
 color_val_water = rgb_col[1]
 color_val_developed_high = rgb_col[7]
@@ -202,14 +200,6 @@ color_val_developed_high = rgb_col[7]
 #FUN=function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
 #lc_col_palette <- unlist(lc_col_palette)
 	
-#lc_legend_df$palette <- lc_col_palette
-	
-#r_lc_date2 <- ratify(r_lc_date2) # create a raster layer with categorical information
-#rat <- levels(r_lc_date2)[[1]] #This is a data.frame with the categories present in the raster
-	
-#lc_legend_df_date2 <- subset(lc_legend_df,lc_legend_df$ID%in% (rat[,1])) #find the land cover types present in date 2 (2006)
-#rat$legend <- lc_legend_df_date2$NLCD.2006.Land.Cover.Class #assign it back in case it is missing
-#levels(r_lc_date2) <- rat #add the information to the raster layer
 	
 ### Now generate a plot of land cover with the NLCD legend and palette
 #levelplot(r_lc_date2,
@@ -246,13 +236,10 @@ df_date2 = df_date2.reset_index()
 df_date2.columns = ['y_2006','value']
 
 ### Let's identify existing cover and compute change:
-#r_stack_nlcd <- stack(r_lc_date1,r_lc_date2)
-#freq_tb_nlcd <- as.data.frame(freq(r_stack_nlcd,merge=T))
-#head(freq_tb_nlcd)
 freq_tb_nlcd = pd.merge(df_date1,df_date2,on='value')
 #reorder columns 
 freq_tb_nlcd = freq_tb_nlcd[['value','y_2001','y_2006']]
-
+freq_tb_nlcd.head()
 #dim(lc_system_nlcd_df) # We have categories that are not relevant to the study area and time period.
 #lc_system_nlcd_df <- subset(lc_system_nlcd_df,id_l2%in%freq_tb_nlcd$value ) 
 #dim(lc_system_nlcd_df) # Now 15 land categories instead of 20.
@@ -261,7 +248,7 @@ lc_system_nlcd_df.shape
 selected_cat = lc_system_nlcd_df.id_l2.isin(freq_tb_nlcd.value)
 lc_system_nlcd_df = lc_system_nlcd_df[selected_cat]
 
-### Selectet relevant columns for the reclassification
+### Select relevant columns for the reclassification
 rec_df <- lc_system_nlcd_df[,c(2,1)]
 r_date1_rec <- subs(r_lc_date1,rec_df,by="id_l2","id_l1")
 r_date2_rec <- subs(r_lc_date2,rec_df,by="id_l2","id_l1")
