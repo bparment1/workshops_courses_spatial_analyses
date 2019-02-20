@@ -1,17 +1,17 @@
 ####################################    Fire Alaska Analyses   #######################################
-############################  Analyse using time series and fire locations  #######################################
-#This script performs analyzes for the Exercise 2 of the workshop using NDVI data derived from MODIS.
+############################  Analyses using time series and fire locations  #######################################
+#This script performs analyses for the Exercise 2 of the Geospatial Course using NDVI data derived from MODIS.
 #The overall goal is to explore the impact of fire on surface state variables observed from Remote Sensing.
 #Additional data is provided with location of three fire polygons containing pixels affected by fire. 
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2017 
-#DATE MODIFIED: 03/31/2017
+#DATE MODIFIED: 04/05/2018
 #Version: 1
-#PROJECT: AAG 2017 workshop preparation
+#PROJECT: AAG 2018 workshop and Geospatial Data Analysis course at SESYNC 
 #TO DO:
 #
-#COMMIT: more clean up in the code, AAG workshop
+#COMMIT: updating last year code
 #
 #################################################################################################
 
@@ -38,23 +38,24 @@ library(foreign) # import datasets from SAS, spss, stata and other sources
 library(gdata) #read xls, dbf etc., not recently updated but useful
 library(classInt) #methods to generate class limits
 library(plyr) #data wrangling: various operations for splitting, combining data
-library(gstat) #spatial interpolation and kriging methods
+#library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
+library(sf) #spatial objects and methods
 
 ###### Functions used in this script
 
 function_preprocessing_and_analyses <- "fire_alaska_analyses_preprocessing_functions_03102017.R" #PARAM 1
 function_analyses <- "exercise2_fire_alaska_analyses_functions_03232017.R" #PARAM 1
-script_path <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/R_scripts"
+script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/R_scripts"
 source(file.path(script_path,function_preprocessing_and_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_analyses)) #source all functions used in this script 1.
 
 #####  Parameters and argument set up ###########
 
-in_dir_NDVI <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_2/data/NDVI_alaska_2005"
-in_dir_var <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_2/data"
-out_dir <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_2/outputs"
+in_dir_NDVI <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_2/data/NDVI_alaska_2005"
+in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_2/data"
+out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_2/outputs"
 
 infile_ecoreg <- "wwf_terr_ecos_Alaska_ECOREGIONS_ECOSYS_ALB83.shp" #WWF ecoregions 2001 for Alaska
 fire_poly_shp_fname <- "OVERLAY_ID_83_399_144_TEST_BURNT_83_144_399_reclassed.shp"
@@ -63,9 +64,8 @@ fire_poly_shp_fname <- "OVERLAY_ID_83_399_144_TEST_BURNT_83_144_399_reclassed.sh
 CRS_reg <- "+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 
 file_format <- ".tif" #PARAM5
-NA_value <- -9999 #PARAM6
-NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise_03302017" #output suffix for the files and ouptu folder #PARAM 8
+NA_flag_val <- -9999
+out_suffix <-"exercise2_04052018" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 ################# START SCRIPT ###############################
@@ -121,9 +121,6 @@ proj4string(ecoreg_spdf) <- CRS_reg
 plot(ecoreg_spdf)
 spplot(ecoreg_spdf)
 
-cat_names<-unique(ecoreg_spdf$ECO_NAME)
-
-nb_col<-length(unique(cat_names))
 # Wrong order in terms of the categories of ecoreg so assign them
 cat_names<-c("Alaska Peninsula montane taiga",
              "Alaska St Elias Range tundra",
@@ -144,18 +141,21 @@ cat_names<-c("Alaska Peninsula montane taiga",
              "Rock and Ice")
 
 ecoreg_spdf$ECO_NAME<-cat_names
+
+nb_col <- length(cat_names)
+
 #problem with extent, ecoreg_spdf is not the same extent as raster images!!
 lf_eco<-list.files(pattern="ecoregion_map.rst$")
 
 ecoreg_rast<-rasterize(ecoreg_spdf,r_var,"DATA_VALUE")
 data_name<-paste("ecoregion_map",sep="")
 raster_name<-paste(data_name,file_format, sep="") #Remember file_format ".tif" is set at the beginning
-writeRaster(ecoreg_rast, filename=raster_name,NAflag=-999,overwrite=TRUE)  #Writing the data in a raster file format...
+writeRaster(ecoreg_rast, filename=raster_name,NAflag=NA_flag_val,overwrite=TRUE)  #Writing the data in a raster file format...
 
 ###An example of plottting raster data for publication:
 
 ## Generate a color palette/color ramp
-col_eco<-rainbow(nb_col)
+col_eco <- rainbow(nb_col)
 col_eco[16]<-"brown"
 col_eco[11]<-"darkgreen"
 col_eco[7]<-"lightblue"
@@ -337,8 +337,7 @@ names(pix_fire_poly1_df) <- paste0("pix_",1:ncol(pix_fire_poly1_df))
 NDVI_fire_dat_dz <- zoo(mean_fire_NDVI_ts_df,dates_val) #create zoo object from data.frame and date sequence object
 dim(NDVI_fire_dat_dz)
 
-pix_fire_poly1_dz <- zoo(p
-                          ix_fire_poly1_df,dates_val) #create zoo object from data.frame and date sequence object
+pix_fire_poly1_dz <- zoo(pix_fire_poly1_df,dates_val) #create zoo object from data.frame and date sequence object
 #colnames(pix_fire_poly1_dz) <- names(pix_fire_poly1_df)
 ##Explore Time series
 plot(pix_fire_poly1_dz[,1000:1010])
@@ -353,9 +352,10 @@ cor_mat_layerstats <- layerStats(r_NDVI_ts, 'pearson', na.rm=T)
 cor_matrix <- cor_mat_layerstats$`pearson correlation coefficient`
 class(cor_matrix)
 dim(cor_matrix)
-View(cor_matrix)
+print(cor_matrix) #use View(cor_matrix in Rstudio)
 image(cor_matrix)
 
+#### Carry out a PCA using principal from psych package
 pca_mod <-principal(cor_matrix,nfactors=3,rotate="none")
 class(pca_mod$loadings)
 str(pca_mod$loadings)
@@ -395,13 +395,14 @@ plot(pca_mod$values,main="Scree plot: Variance explained",type="b")
 
 #By converting data and working with matrix:
 df_NDVI_ts <- as(r_NDVI_ts,"SpatialPointsDataFrame")
-df_NDVI_ts <- as.data.frame(df_NDVI_ts)[,1:23] #drop x, y column
-names(df_NDVI_ts) <- paste0("pc_",seq(1,23,1))
+df_NDVI_ts <- as.data.frame(df_NDVI_ts) #convert to data.frame because predict works on data.frame
+names(df_NDVI_ts) <- c(paste0("pc_",seq(1,23,1)),"x","y")
 names(df_NDVI_ts)
 
-pca_all <- as.data.frame(predict(pca_mod,df_NDVI_ts)) ## Apply model object on the data.frame
+pca_all <- as.data.frame(predict(pca_mod,df_NDVI_ts[,1:23])) ## Apply model object on the data.frame
+#pca_all <-predict(pca_mod,df_NDVI_ts) ## Apply model object on the data.frame
 
-coordinates(pca_all) <- coordinates(df_test) #Assign coordinates
+coordinates(pca_all) <- df_NDVI_ts[,c("x","y")] #Assign coordinates
 class(pca_all) #Check type of class
 
 raster_name <- paste0("pc1_NDVI_2005.tif") #output raster name for component 1
@@ -430,4 +431,4 @@ plot(r_pc2)
 #Plot averages in the PC1-PC2. Are these variables useful to separate the various ecoregions?
 #Correlate average times series for PC2 to the loadings. What does it tell you?
 
-################### End of Script #########################
+################################ End of Script ######################################
