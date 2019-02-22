@@ -144,6 +144,60 @@ src.crs # not defined with *.rst
 #Note that you can also plot the raster io data reader
 type(r_lst)
 
+r_lst.size
+#r_lst.ndim #array dimension
+src.height
+#src.profile
+type(r_lst)
+
+#Can also use the regular matplotlib library function to plot images
+#plt.imshow(subset)
+plt.imshow(r_lst)
+#plt.hist(r_lst)
+
+#see: https://matplotlib.org/users/image_tutorial.html
+plt.imshow(r_lst, clim=(259.0, 287.0))
+plt.hist(r_lst.ravel(),bins=256,range=(259.0,287.0))
+
+data_gpd.plot(marker="*",color="green",markersize=5)
+station_or = data_gpd.to_crs({'init': 'epsg:2991'})
+
+#https://www.earthdatascience.org/courses/earth-analytics-python/lidar-raster-data/customize-matplotlib-raster-maps/
+
+fig, ax = plt.subplots()
+with rasterio.open(os.path.join(in_dir,infile)) as src:
+        rasterio.plot.show((src,1),ax=ax,
+                          clim=(259.0,287.0),)
+
+#plot.show(r_lst, clim=(259.0, 287.0),ax=ax)
+#with rasterio.plot.show((src,1),ax=ax)
+station_or.plot(ax=ax,marker="*",
+              color="red",
+               markersize=10)
+
+fig, ax = plt.subplots(figsize = (8,3))
+lst_plot = ax.imshow(r_lst, 
+                       cmap='Greys', 
+                       extent=spatial_extent)
+ax.set_title("Long term mean for January land surface temperature", fontsize= 20)
+fig.colorbar(lst_plot)
+# turn off the x and y axes for prettier plotting
+#ax.set_axis_off(); #this removes coordinates on the plot
+
+#raster = './data/slope.tif'
+data=gr.from_file(os.path.join(in_dir,infile))
+# Plot data
+data.plot()
+
+x_coord = station_or.geometry.x # pands.core.series.Series
+y_coord = station_or.geometry.y
+
+# Find value at point (x,y) or at vectors (X,Y)
+values = data.map_pixel(x_coord,y_coord)
+list(station_or) #get names of col
+station_or['year'].value_counts()
+station_or.groupby(['month'])['value'].mean()
+              
 #######
 ################################################
 ###  PART II : Analyze change and transitions
