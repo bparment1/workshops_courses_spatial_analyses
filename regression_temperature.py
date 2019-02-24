@@ -197,11 +197,42 @@ values = data.map_pixel(x_coord,y_coord)
 list(station_or) #get names of col
 station_or['year'].value_counts()
 station_or.groupby(['month'])['value'].mean()
-              
+     
+print("number of rows:",station_or.station.count(),"number of stations:",len(station_or.station.unique()))
+station_or['LST1'] = value-273.15
+station_or_jan = station_or.loc[(station_or['month']==1) & (station_or['value']!=-9999)]
+station_or_jan.head()
+#avg_df = station_or.groupby(['station'])['value'].mean())
+avg_df = station_or_jan.groupby(['station'])['value','LST1'].mean()
+avg_df['value']= avg_df['value']/10
+avg_df.head()
+         
 #######
 ################################################
 ###  PART II : Analyze change and transitions
 
+from sklearn.linear_model import LinearRegression
+x=avg_df.LST1.values
+y=avg_df.value.values
+x = x.reshape(len(x), 1)
+y = y.reshape(len(y), 1)
+regr = LinearRegression().fit(x,y)
+
+#regr = linear_model.LinearRegression()
+regr.fit(x, y)
+
+# plot it as in the example at http://scikit-learn.org/
+plt.scatter(x, y,  color='black')
+plt.plot(x, regr.predict(x), color='blue', linewidth=3)
+plt.xticks(())
+plt.yticks(())
+plt.show()
+
+print('reg coef',regr.coef_)
+print('reg intercept',regr.intercept_)
+
+reg.predict(x) # Note this is a fit!
+reg.score(x, y)
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain),
 # persistence in land cover will generate a large number of transitions (potential up to 15*15=225 transitions in this case!)
 
