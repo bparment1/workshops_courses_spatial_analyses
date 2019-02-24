@@ -3,16 +3,16 @@
 Spyder Editor.
 """
 #################################### Regression Temperature #######################################
-############################ Analyze and predict air temperature with Earth Observation data #######################################
-#This script performs analyses for the Exercise 4 of the AAG Course using aggregated NLCD values.
-#The goal is to assess land cover change using two land cover maps in the Houston areas.
-#Additional datasets are provided for the land cover change modeling. A model is built for Harris county.
+######################## Analyze and predict air temperature with Earth Observation data #######################################
+#This script performs analyses to predict air temperature using several coveriates.
+#The goal is to predict air temperature using Remotely Sensing data as well as compare measurements
+# from the ground station to the remotely sensed measurements.
 #
 #AUTHORS: Benoit Parmentier
-#DATE CREATED: 01/07/2019
-#DATE MODIFIED: 02/16/2019
+#DATE CREATED: 09/07/2018
+#DATE MODIFIED: 02/24/2019
 #Version: 1
-#PROJECT: AAG 2019 Geospatial Short Course
+#PROJECT: SESYNC Geospatial Course and AAG 2019 Python Geospatial Course
 #TO DO:
 #
 #COMMIT: clean up code for workshop
