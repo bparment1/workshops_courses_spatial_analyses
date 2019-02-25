@@ -9,9 +9,9 @@
 #DATE MODIFIED: 02/25/2019
 #Version: 1
 #PROJECT: AAG 2019 workshop and Geospatial Data Analysis course at SESYNC 
-#TO DO:
+#TO DO: Update to include sf
 #
-#COMMIT: Update to include sf
+#COMMIT: Fixing and adding change with reclassify
 #
 #################################################################################################
 
@@ -38,7 +38,6 @@ library(foreign) # import datasets from SAS, spss, stata and other sources
 library(gdata) #read xls, dbf etc., not recently updated but useful
 library(classInt) #methods to generate class limits
 library(plyr) #data wrangling: various operations for splitting, combining data
-#library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf) #spatial objects and methods
@@ -47,7 +46,7 @@ library(sf) #spatial objects and methods
 
 function_preprocessing_and_analyses <- "fire_alaska_analyses_preprocessing_functions_03102017.R" #PARAM 1
 function_analyses <- "exercise2_fire_alaska_analyses_functions_03232017.R" #PARAM 1
-script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/R_scripts"
+script_path <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_2/scripts" #this must be changed to local path
 source(file.path(script_path,function_preprocessing_and_analyses)) #source all functions used in this script 1.
 source(file.path(script_path,function_analyses)) #source all functions used in this script 1.
 
@@ -115,7 +114,7 @@ tb_freq <- freq(subset(r_var,6)) #  count of pixels by burn scars
 projection(r_var) #note that there is no projection assigned
 projection(r_var) <- CRS_reg
 
-ecoreg_spdf<-readOGR(dsn=in_dir_var,sub(".shp","",infile_ecoreg))
+ecoreg_spdf <-readOGR(dsn=in_dir_var,sub(".shp","",infile_ecoreg))
 proj4string(ecoreg_spdf)
 proj4string(ecoreg_spdf) <- CRS_reg
 plot(ecoreg_spdf)
@@ -249,13 +248,24 @@ plot(r_change_NDVI_neg,main='Change: decreases in NDVI',
 legend("topright",legend=cat_names,title="NDVI change",
        pt.cex=1.1,cex=1.1,fill=col_palette,bty="n")
 
-#combine change:
-#r_change_NDVI <- 
-  
+#Use reclassify to combine change or on larger raster images
+rec_val <- c(-10000, -1.96, 1, #if  
+                -1.96, 1.96, 0,  
+                 1.96, 10000, 1)
+rclmat <- matrix(rec_val, ncol=3, byrow=TRUE)
+r_change_NDVI <- reclassify(r_diff_NDVI_standardized, 
+                            rclmat)
+plot(r_change_NDVI,main='Change in NDVI',
+     legend=FALSE,axes="FALSE",col=col_palette)
+legend("topright",legend=cat_names,title="NDVI change",
+       pt.cex=1.1,cex=1.1,fill=col_palette,bty="n")
+
 writeRaster(r_change_NDVI_pos,"r_change_NDVI_pos_196.tif",overwrite=T)
 writeRaster(r_change_NDVI_neg,"r_change_NDVI_neg_196.tif",overwrite=T)
 
-out__filename <- paste0("r_change_NDVI_",out_suffix,file_format)
+# Better way: use names with output suffix to take changes into account
+out_filename <- paste0("r_change_NDVI_",out_suffix,file_format)
+writeRaster(r_change_NDVI,out_filename,overwrite=T)
 
 ####### PART III: Change analyses by comparing averages in fire polygons ##########
 
@@ -335,12 +345,12 @@ labeltext <- c("background","fire1","fire2","fire3")
 
 spplot(poly_fire_spdf,"fire_id",        
         main="Pixel count in small area",
-        col.regions=c("white","blue","yellow","red"),
-        colorkey = list(width=1,
-                        space="right",
-                        tick.number=5,
-                        labels = list(at = labelat,labeltext)
-                       )
+        col.regions=c("white","blue","yellow","red")#,
+        #colorkey = list(width=1,
+        #                space="right",
+        #                tick.number=5,
+        #                labels = list(at = labelat,labeltext)
+        #               )
 )
 
 #let's plot polygons one since it has a variety of pixels and was heavily affected
