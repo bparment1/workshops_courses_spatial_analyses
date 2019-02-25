@@ -62,17 +62,14 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
 
 #####  Parameters and argument set up ###########
 
-#in_dir_var <- "/home/user/ost4sem/exercise/Exercise_1/data"
-#out_dir <- "/home/user/ost4sem/exercise/Exercise_1/outputs"
-
+##Change path to your location where you downlaoded the material
 in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_1/data"
 out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_1/outputs"
 
-file_format <- ".tif" #PARAM5
-NA_value <- -9999 #PARAM6
-NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise1_02122019" #output suffix for the files and ouptu folder #PARAM 8
-create_out_dir_param=TRUE #PARAM9
+file_format <- ".tif" # raster file format extension
+NA_flag_val <- -9999 #NA value, default 
+out_suffix <-"exercise1_02122019" #output suffix for the files and output folder #PARAM 8
+create_out_dir_param=TRUE #if true, a new output directory is generated
 
 ################################   START SCRIPT   ###################################
 
@@ -105,20 +102,12 @@ ct_2000_sf <- st_read(file.path(in_dir_var,ct_2000_fname)) #read in shapefile
 bg_2000_sf <- st_read(file.path(in_dir_var,bg_2000_fname))
 bk_2000_sf <- st_read(file.path(in_dir_var,bk_2000_fname))
 
-#ct_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(ct_2000_fname))) #read in shapefile
-#bg_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(bg_2000_fname)))
-#bk_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(bk_2000_fname)))
-
 census_syr_df <- read.table(file.path(in_dir_var,census_table_fname),sep=",",header=T) #read in textfile
 metals_df <-read_excel( file.path(in_dir_var,metals_table_fname),1) #use function from readxl
 
 #Soil lead samples: UTM z18 coordinates
 soil_PB_df <- read.table(file.path(in_dir_var,soil_PB_table_fname),sep=",",header=T) #point locations
 
-#dim(census_syr_df) #147 spatial entities
-#dim(ct_2000_sp) #47 spatial entities
-#dim(metals_df) #47 entities
-#dim(bg_2000_sp) #147 spatial entities
 dim(ct_2000_sf) #57 spatial entities corresponding to census tracks
 dim(metals_df) #57 entities
 dim(bg_2000_sf) #147 spatial entities corresponding to blockgroups
@@ -186,7 +175,7 @@ dim(census_2000_sf)
 census_2000_df <- as.data.frame(census_2000_sf)
 dim(census_2000_df)
 class(census_2000_df)
-View(census_2000_df)
+head(census_2000_df)
 nrow(census_2000_df)
 
 #test <- merge(ct_2000_sf,census_2000_df,by="TRACT")
@@ -242,13 +231,14 @@ breaks.qt <- classIntervals(census_2000_sf$POP2000, n = n_classes, style = "quan
 col_palette <- matlab.like(n_classes)
 length(breaks.qt$brks)
 
-plot(census_2000_sf["POP2000"],
-                            #col="transparent", #transprent color boundaries for polygons
-                            pal = col_palette,
-                            main=title_str,
-                            at = breaks.qt$brks)
-length(breaks.qt$brks)
-length(col_palette)
+#Fix error here
+#plot(census_2000_sf["POP2000"],
+#                            #col="transparent", #transprent color boundaries for polygons
+#                            pal = col_palette,
+#                            main=title_str,
+#                            at = breaks.qt$brks)
+#length(breaks.qt$brks)
+#length(col_palette)
 #print(p_plot_pop2000_ct)
 
 ####### PART II: SPATIAL QUERY #############
