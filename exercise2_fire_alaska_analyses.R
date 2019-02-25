@@ -235,11 +235,27 @@ hist(r_diff_NDVI_standardized, main='Standardized NDVI Difference')
 ##Generate change map using thesholding of standardized NDVI
 r_change_NDVI_pos <-  r_diff_NDVI_standardized > 1.96
 r_change_NDVI_neg <-  r_diff_NDVI_standardized < -1.96
-plot(r_change_NDVI_pos,main='Change: increases in NDVI')
-plot(r_change_NDVI_neg,main='Change: decreases in NDVI')
 
+cat_names=c("No Change","Change")
+col_palette <- c("black","red")
+
+plot(r_change_NDVI_pos,main='Change: increases in NDVI',
+     legend=FALSE,axes="FALSE",col=col_palette)
+legend("topright",legend=cat_names,title="NDVI change",
+            pt.cex=1.1,cex=1.1,fill=col_palette,bty="n")
+
+plot(r_change_NDVI_neg,main='Change: decreases in NDVI',
+     legend=FALSE,axes="FALSE",col=col_palette)
+legend("topright",legend=cat_names,title="NDVI change",
+       pt.cex=1.1,cex=1.1,fill=col_palette,bty="n")
+
+#combine change:
+#r_change_NDVI <- 
+  
 writeRaster(r_change_NDVI_pos,"r_change_NDVI_pos_196.tif",overwrite=T)
 writeRaster(r_change_NDVI_neg,"r_change_NDVI_neg_196.tif",overwrite=T)
+
+out__filename <- paste0("r_change_NDVI_",out_suffix,file_format)
 
 ####### PART III: Change analyses by comparing averages in fire polygons ##########
 
@@ -319,12 +335,12 @@ labeltext <- c("background","fire1","fire2","fire3")
 
 spplot(poly_fire_spdf,"fire_id",        
         main="Pixel count in small area",
-        col.regions=c("white","blue","yellow","red")#,
-        #colorkey = list(width=1,
-        #                space="right",
-        #                tick.number=5,
-        #                labels = list(at = labelat,labeltext)
-        #               )
+        col.regions=c("white","blue","yellow","red"),
+        colorkey = list(width=1,
+                        space="right",
+                        tick.number=5,
+                        labels = list(at = labelat,labeltext)
+                       )
 )
 
 #let's plot polygons one since it has a variety of pixels and was heavily affected
@@ -386,7 +402,11 @@ legend("topright",legend=names_vals,
        lwd=c(1,1),bty="n")
 
 ## Add scree plot
-plot(pca_mod$values,main="Scree plot: Variance explained",type="b")
+plot(pca_mod$values,
+     main="Scree plot: Variance explained",
+     type="b",
+     xlab="Principal Components",
+     ylab="Eigen values")
 
 ### Generate scores from eigenvectors
 ## Do it two different ways:
@@ -398,7 +418,6 @@ names(df_NDVI_ts) <- c(paste0("pc_",seq(1,23,1)),"x","y")
 names(df_NDVI_ts)
 
 pca_all <- as.data.frame(predict(pca_mod,df_NDVI_ts[,1:23])) ## Apply model object on the data.frame
-#pca_all <-predict(pca_mod,df_NDVI_ts) ## Apply model object on the data.frame
 
 coordinates(pca_all) <- df_NDVI_ts[,c("x","y")] #Assign coordinates
 class(pca_all) #Check type of class
