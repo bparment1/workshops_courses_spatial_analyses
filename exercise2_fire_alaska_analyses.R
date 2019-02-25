@@ -6,12 +6,12 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/15/2017 
-#DATE MODIFIED: 04/05/2018
+#DATE MODIFIED: 02/25/2019
 #Version: 1
-#PROJECT: AAG 2018 workshop and Geospatial Data Analysis course at SESYNC 
+#PROJECT: AAG 2019 workshop and Geospatial Data Analysis course at SESYNC 
 #TO DO:
 #
-#COMMIT: updating last year code
+#COMMIT: Update to include sf
 #
 #################################################################################################
 
@@ -53,9 +53,9 @@ source(file.path(script_path,function_analyses)) #source all functions used in t
 
 #####  Parameters and argument set up ###########
 
-in_dir_NDVI <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_2/data/NDVI_alaska_2005"
-in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_2/data"
-out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_2/outputs"
+in_dir_NDVI <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_2/data/NDVI_alaska_2005"
+in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_2/data"
+out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_2/outputs"
 
 infile_ecoreg <- "wwf_terr_ecos_Alaska_ECOREGIONS_ECOSYS_ALB83.shp" #WWF ecoregions 2001 for Alaska
 fire_poly_shp_fname <- "OVERLAY_ID_83_399_144_TEST_BURNT_83_144_399_reclassed.shp"
@@ -65,7 +65,7 @@ CRS_reg <- "+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +e
 
 file_format <- ".tif" #PARAM5
 NA_flag_val <- -9999
-out_suffix <-"exercise2_04052018" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise2_02252019" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 ################# START SCRIPT ###############################
@@ -110,7 +110,7 @@ r_var <- stack(lf_var) # create a raster stack, this is not directly stored in m
 dim(r_var) #dimension of the stack with 
 plot(r_var)
 
-##### 
+##### For now using sp, could use sf too
 tb_freq <- freq(subset(r_var,6)) #  count of pixels by burn scars
 projection(r_var) #note that there is no projection assigned
 projection(r_var) <- CRS_reg
@@ -219,26 +219,24 @@ plot(r_diff_NDVI < -0.1)
 plot(r_diff_NDVI > 0.1)
 
 ##Standardize images and define change
-#r <- as.data.frame(cellStats(x,mean))
 val_diff_mean <- cellStats(r_diff_NDVI,mean)
 val_diff_sd <- cellStats(r_diff_NDVI,sd)
 
 r_diff_NDVI_standardized <- (r_diff_NDVI - val_diff_mean)/val_diff_sd
-plot(r_diff_NDVI_standardized,col=matlab.like(255))#
-plot(r_diff_NDVI_standardized,col=matlab.like(255),zlim=c(-10,5))#
+plot(r_diff_NDVI_standardized,col=matlab.like(255),main='Standardized NDVI Difference')#
+plot(r_diff_NDVI_standardized,col=matlab.like(255),zlim=c(-10,5),main='Standardized NDVI Difference')#
 
 hist_bins <- seq(-15,15,by=0.5)
-hist(r_diff_NDVI_standardized,breaks=hist_bins)
-hist(r_diff_NDVI_standardized,breaks=hist_bins,xlim=c(-5,5)) # zoom in
+hist(r_diff_NDVI_standardized,breaks=hist_bins,main='Standardized NDVI Difference')
+hist(r_diff_NDVI_standardized,breaks=hist_bins,xlim=c(-5,5),main='Standardized NDVI Difference') # zoom in
 
-hist(r_diff_NDVI_standardized)
-#shapiro.test(values(r_diff_NDVI_standardized))
-#qqnorm(values(r_diff_NDVI_standardized))
+hist(r_diff_NDVI_standardized, main='Standardized NDVI Difference')
 
+##Generate change map using thesholding of standardized NDVI
 r_change_NDVI_pos <-  r_diff_NDVI_standardized > 1.96
 r_change_NDVI_neg <-  r_diff_NDVI_standardized < -1.96
-plot(r_change_NDVI_pos)
-plot(r_change_NDVI_neg)
+plot(r_change_NDVI_pos,main='Change: increases in NDVI')
+plot(r_change_NDVI_neg,main='Change: decreases in NDVI')
 
 writeRaster(r_change_NDVI_pos,"r_change_NDVI_pos_196.tif",overwrite=T)
 writeRaster(r_change_NDVI_neg,"r_change_NDVI_neg_196.tif",overwrite=T)
