@@ -44,7 +44,6 @@ library(sf) #spatial objects and functionalities
 library(plotrix) #various graphic functions e.g. draw.circle
 library(TOC) # TOC and ROC for raster images
 library(ROCR) # ROCR general for data.frame
-library(sf)
 
 ###### Functions used in this script
 
@@ -505,10 +504,6 @@ plot(r_change_harris) # boolean reference variable
 plot(r_mask) # mask for relevant observation
 plot(r_p) # index variable to assess
 
-roc_rast <- ROC(index=r_p, 
-                  boolean=r_change_harris, 
-                  mask=r_mask,
-                  nthres=100)
 roc_rast_training <- ROC(index=r_p, 
                 boolean=r_change_harris, 
                 mask=r_training,
@@ -523,6 +518,9 @@ plot(roc_rast_training)
 slot(roc_rast_training,"AUC") #this is the AUC from ROC for the logistic modeling
 plot(roc_rast_testing)
 slot(roc_rast_testing,"AUC") #this is the AUC from ROC for the logistic modeling
+
+##ROC AUC Difference between training and testing:
+slot(roc_rast_training,"AUC") - slot(roc_rast_testing,"AUC") #this is the AUC from ROC for the logistic modeling
 
 toc_rast_training <- TOC(index=r_p, 
                   boolean=r_change_harris, 
@@ -539,6 +537,9 @@ toc_rast_testing <- TOC(index=r_p,
 
 plot(toc_rast_testing)
 slot(toc_rast_testing,"AUC") #this is the AUC from TOC for the logistic modeling
+
+##TOC AUC Difference between training and testing:
+slot(toc_rast_training,"AUC") - slot(toc_rast_testing,"AUC") #this is the AUC from ROC for the logistic modeling
 
 ### Plot on the same curve
 
