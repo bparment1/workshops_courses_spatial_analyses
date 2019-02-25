@@ -330,7 +330,7 @@ names(census_pb_avg)
 census_metals_pb_sf <- merge(census_metals_sf,census_pb_avg,by="TRACT")
 
 ### write out final table and shapefile
-plot(census_metals_pb_sf['pb_ppm'])
+plot(census_metals_pb_sf['ppm'])
 outfile <-paste("census_metals_pb_sp","_",
                out_suffix,".shp",sep="")
 
@@ -342,15 +342,16 @@ st_write(census_metals_pb_sf,
          delete_dsn=TRUE)
 
 outfile_df_name <- file.path(out_dir,paste0(outfile,".txt"))
-write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
+write.table(as.data.frame(census_metals_pb_sf),file=outfile_df_name,sep=",")
 
-########### PART III: RASTER FROM KRIGING                 ######################
+####################  PART III: RASTER FROM KRIGING   ######################
 #Generating raster lead surface from point and comparing aggregation ###################
 
 #Now generate a raster image to create grid of cell for kriging
-extent_reg <- extent(census_metals_pb_sp)
+extent_reg <- extent(census_metals_pb_sf)
 plot(extent_reg)
-plot(census_metals_pb_sp,add=T)
+#plot(census_metals_pb_sp,add=T)
+plot(census_metals_pb_sf$geometry,add=T)
 
 extent_matrix <- as.matrix(extent_reg)
 extent_matrix
@@ -378,7 +379,7 @@ plot(r)
 #generate grid from raster as poly for visualization
 r_poly<- rasterToPolygons(r)
 plot(extent_reg,add=T,col="red")
-plot(census_metals_pb_sp,border="blue",add=T)
+plot(census_metals_pb_sf['ppm'],border="blue",add=T)
 ### Let's show the grid first
 plot(r_poly,add=T)
 
@@ -429,6 +430,7 @@ writeRaster(r_lead,filename = raster_name,overwrite=T)
 #### Comparison of aggregations ###
 ## Compare values from averages from kriging surface and averages from block groups
 
+as(census_metals_pb_sf,'Spatial')
 census_lead_sp <- extract(r_lead,census_metals_pb_sp,sp=T,fun=mean) #extract average values by census track
 spplot(census_metals_pb_sp,"pb_ppm",col.regions=col_palette,main="Averaged from blockgroups") #
 spplot(census_lead_sp,"var1.pred",col.regions=col_palette,main="Averaged from kriging ") 
