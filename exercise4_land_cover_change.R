@@ -6,7 +6,7 @@
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/16/2018 
-#DATE MODIFIED: 02/13/2019
+#DATE MODIFIED: 02/25/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Analysis workshop, Geospatial Data Analysis Short Course, Geo-Computation and Environmental Analysis Yale.  
 #TO DO:
@@ -38,7 +38,6 @@ library(foreign) # import datasets from SAS, spss, stata and other sources
 library(gdata) #read xls, dbf etc., not recently updated but useful
 library(classInt) #methods to generate class limits
 library(plyr) #data wrangling: various operations for splitting, combining data
-#library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
 library(psych) #pca/eigenvector decomposition functionalities
 library(sf) #spatial objects and functionalities
@@ -49,6 +48,7 @@ library(sf)
 
 ###### Functions used in this script
 
+#This function creates an output directory
 create_dir_fun <- function(outDir,out_suffix=NULL){
   #if out_suffix is not null then append out_suffix string
   if(!is.null(out_suffix)){
@@ -64,9 +64,7 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
 
 #####  Parameters and argument set up ###########
 
-#Separate inputs and outputs directories
-#in_dir_var <- "/home/user/ost4sem/exercise/Exercise_4/data/"
-#out_dir <- "/home/user/ost4sem/exercise/Exercise_4/outputs"
+#Separate inputs and outputs directories, change paths to your local disk
 
 in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_4/data"
 out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_4/outputs"
@@ -77,7 +75,7 @@ out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_wo
 CRS_reg <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 file_format <- ".tif" #raster output format 
 NA_flag_val <- -9999 # NA value assigned to output raster
-out_suffix <-"exercise4_02132019" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"exercise4_02132019" #output suffix for the files and output folder
 create_out_dir_param=TRUE # if TRUE, a output dir using output suffix will be created
 method_proj_val <- "bilinear" # method option for the reprojection and resampling 
 gdal_installed <- TRUE #if TRUE, GDAL is used to generate distance files
@@ -88,9 +86,9 @@ elevation_fname <- "srtm_Houston_area_90m.tif" #SRTM elevation
 roads_fname <- "r_roads_Harris.tif" #Road count for Harris county
 
 ### Aggreagate NLCD input files
-infile_land_cover_date1 <- "agg_3_r_nlcd2001_Houston.tif"
-infile_land_cover_date2 <- "agg_3_r_nlcd2006_Houston.tif"
-infile_land_cover_date3 <- "agg_3_r_nlcd2011_Houston.tif"
+infile_land_cover_date1 <- "agg_3_r_nlcd2001_Houston.tif" # land cover map in 2001
+infile_land_cover_date2 <- "agg_3_r_nlcd2006_Houston.tif" # land cover map in 2006
+infile_land_cover_date3 <- "agg_3_r_nlcd2011_Houston.tif" # land cover map in 2011
 
 infile_name_nlcd_legend <- "nlcd_legend.txt"
 infile_name_nlcd_classification_system <- "classification_system_nlcd_legend.xlsx"
@@ -137,7 +135,6 @@ dim(lc_legend_df) #contains a lot of empty rows
 
 lc_legend_df<- subset(lc_legend_df,COUNT>0) #subset the data to remove unsured rows
 ### Generate a palette color from the input Red, Green and Blue information using RGB encoding:
-
 
 lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
 
@@ -193,7 +190,7 @@ dim(lc_system_nlcd_df) # We have categories that are not relevant to the study a
 lc_system_nlcd_df <- subset(lc_system_nlcd_df,id_l2%in%freq_tb_nlcd$value ) 
 dim(lc_system_nlcd_df) # Now 15 land categories instead of 20.
 
-### Selectet relevant columns for the reclassification
+### Select relevant columns for the reclassification
 rec_df <- lc_system_nlcd_df[,c(2,1)]
 r_date1_rec <- subs(r_lc_date1,rec_df,by="id_l2","id_l1")
 r_date2_rec <- subs(r_lc_date2,rec_df,by="id_l2","id_l1")
@@ -348,7 +345,7 @@ r_slope <- terrain(r_elevation_reg,unit="degrees")
 ## 3) Generate var4 : past land cover state
 
 ### reclass Land cover
-r_mask <- r_date1_rec==2 #Remove developed land from  
+r_mask <- r_date1_rec==2 #Remove developed land in date 1 from the analysis because it cannot change to developed 
 r_date1_rec_masked <- mask(r_date1_rec,r_mask,maskvalue=1)
 plot(r_date1_rec_masked)
 
@@ -358,7 +355,6 @@ plot(r_date1_rec_masked)
 ##############
 ###### Step 1: Consistent masking and generate mask removing water (1) and developped (2) in 2001
 
-#r_mask <- (r_date1_rec!=2)*(r_date1_rec!=1)*r_county_harris
 r_mask <- (r_date1_rec!=2)*(r_date1_rec!=1)
 plot(r_mask)
 NAvalue(r_mask) <- 0 
@@ -409,6 +405,7 @@ r_out <- stack(r_variables,r_x,r_y)
 n_name<- nlayers((r_out))
 names(r_out)[(n_name-1):n_name] <- c("x","y")
 
+## Convert to data.frame, only advisable when small dataset
 variables_df <- na.omit(as.data.frame(r_out)) # convert raster stack to data.frame
 dim(variables_df)
 
@@ -420,9 +417,6 @@ if (seed_number>0) {
   set.seed(seed_number)                        #Using a seed number allow results based on random number to be compared...
 }
 
-#variables_df
-#nel<-length(variables_df)
-#dates_list<-vector("list",nel) #list of one row data.frame
 prop <- 0.3
 
 n<- nrow(variables_df)
