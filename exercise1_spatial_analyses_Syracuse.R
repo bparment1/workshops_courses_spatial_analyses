@@ -430,16 +430,16 @@ writeRaster(r_lead,filename = raster_name,overwrite=T)
 #### Comparison of aggregations ###
 ## Compare values from averages from kriging surface and averages from block groups
 
-as(census_metals_pb_sf,'Spatial')
+census_metals_pb_sp <- as(census_metals_pb_sf,'Spatial') #convert sf to sp object
 census_lead_sp <- extract(r_lead,census_metals_pb_sp,sp=T,fun=mean) #extract average values by census track
-spplot(census_metals_pb_sp,"pb_ppm",col.regions=col_palette,main="Averaged from blockgroups") #
+spplot(census_metals_pb_sp,"ppm",col.regions=col_palette,main="Averaged from blockgroups") #
 spplot(census_lead_sp,"var1.pred",col.regions=col_palette,main="Averaged from kriging ") 
 
-census_lead_sp$diff <- census_metals_pb_sp$pb_ppm - census_lead_sp$var1.pred #comparing the averages
+census_lead_sp$diff <- census_metals_pb_sp$ppm - census_lead_sp$var1.pred #comparing the averages
 hist(census_lead_sp$diff)
 spplot(census_lead_sp,"diff",col.regions=col_palette,main="Difference in averages")
 
-##### PART IV: Spatial autocrrelation and regression #############
+##### PART IV: Spatial autocorrelation and regression #############
 ## Examine spatial autocorrelation
 #Examine the relationship between metals, Pb and vulnerable populations in Syracuse
 
@@ -455,8 +455,8 @@ can.be.simmed(list_w)
 summary(list_w)
 
 ## Compute Moran's I and display it
-moran(census_lead_sp$pb_ppm,list_w,n=nrow(census_lead_sp), Szero(list_w))
-moran.plot(census_lead_sp$pb_ppm, list_w,
+moran(census_lead_sp$ppm,list_w,n=nrow(census_lead_sp), Szero(list_w))
+moran.plot(census_lead_sp$ppm, list_w,
            labels=as.character(census_lead_sp$TRACT), pch=19)
 
 ##### Now do a spatial regression
@@ -465,9 +465,9 @@ moran.plot(census_lead_sp$pb_ppm, list_w,
 # As a way to explore use,  perc_hispa as explanatory variable
 
 #linear model without taking into account spatial autocorrelation
-mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
+mod_lm <- lm(ppm ~ perc_hispa, data=census_lead_sp)
 #autoregressive model
-mod_lag <- lagsarlm(pb_ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
+mod_lag <- lagsarlm(ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
 
 ### Checking for autocorrelation in residuals
 moran.test(mod_lm$residuals,list_w)
