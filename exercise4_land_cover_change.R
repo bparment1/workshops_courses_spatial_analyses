@@ -11,7 +11,7 @@
 #PROJECT: AAG 2019 Geospatial Analysis workshop, Geospatial Data Analysis Short Course, Geo-Computation and Environmental Analysis Yale.  
 #TO DO:
 #
-#COMMIT: adding sampling
+#COMMIT: clean up and fixing sampling
 #
 #################################################################################################
 
@@ -92,6 +92,9 @@ infile_land_cover_date3 <- "agg_3_r_nlcd2011_Houston.tif" # land cover map in 20
 
 infile_name_nlcd_legend <- "nlcd_legend.txt"
 infile_name_nlcd_classification_system <- "classification_system_nlcd_legend.xlsx"
+
+seed_number <- 100 #random seed number used for reproducibility of results
+prop <- 0.3 # proportion retained for testing of accuracy results
 
 ######################### START SCRIPT ###############################
 
@@ -412,18 +415,15 @@ dim(variables_df)
 ##############
 ##### Step 2: Prepare model for predictions: Split data into training and testing
 
-seed_number <- 100
 if (seed_number>0) {
   set.seed(seed_number)                        #Using a seed number allow results based on random number to be compared...
 }
 
-prop <- 0.3
+n<- nrow(variables_df) # number of observations 
 
-n<- nrow(variables_df)
-
-ns<-n-round(n*prop)   #Create a sample from the data frame with 70% of the rows
+ns<-n-round(n*prop)   #Create a sample from the data frame with for example 70% of the rows
 nv<-n-ns              #create a sample for validation with prop of the rows
-ind.training <- sample(nrow(variables_df), size=ns, replace=FALSE) #This selects the index position for 70% of the rows taken randomly
+ind.training <- sample(nrow(variables_df), size=ns, replace=FALSE) #This selects the index position for x% of the rows taken randomly
 ind.testing <- setdiff(1:nrow(variables_df), ind.training)
 
 variables_df$training <- 0
@@ -452,7 +452,7 @@ mod_glm <- glm(change ~ land_cover + slope + roads_dist + developped_dist,
 print(mod_glm)
 summary(mod_glm)
 
-pred_test <- predict( mod_glm, data_testing_df, type="response")
+pred_test <- predict( mod_glm, data_testing_df, type="response") #predict on testing 
 
 variables_sp <- variables_df
 coordinates(variables_sp) <- variables_sp[c("x","y")]
