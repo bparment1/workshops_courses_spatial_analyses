@@ -165,17 +165,23 @@ plot(r_strat_hab, main="strategic habitat")
 
 ## Crop r_strat_hab
 r_ref <- crop(r_strat_hab,clay_county_sp) #make a reference image for use in the processing
-r_ref_test <- crop(r_strat_hab,extent(clay_county_sf)) #make a reference image for use in the processing
-r_ref_test <- crop(r_strat_hab,test) #make a reference image for use in the processing
+r_ref_test <- crop(r_strat_hab,as.vector(st_bbox(clay_county_sf))[c(1, 3, 2, 4)]) #make a reference image for use in the processing
+#r_ref_test <- crop(r_strat_hab,test) #make a reference image for use in the processing
+tt <- r_ref_test - r_ref
 
+#You don't want as.vector(st_bbox(pnt_buf)) but rather as.vector(st_bbox(pnt_buf))[c(1, 3, 2, 4)], 
+#because crop expects c(xmin, xmax, ymin, ymax) – jsta Jul 15 '17 at 21:12 
+
+class(tt)
 test = extent(clay_county_sf) 
 class(test)
 
-extent(clay_county_sf)
-extent(clay_county_sp)
+#extent(clay_county_sf)
+#extent(clay_county_sp)
 
 plot(r_ref)
-plot(clay_county_sp,border="red",add=T)
+#plot(clay_county_sp,border="red",add=T)
+plot(clay_county_sf$geometry,border="red",add=T)
 
 r_clay <- rasterize(clay_county_sp,r_ref) #this can be used as mask for the study area
 freq(r_clay) #check the distribution of values: 1 and NA 
