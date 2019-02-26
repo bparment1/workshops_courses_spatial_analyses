@@ -1,17 +1,27 @@
 #################################### An Introduction to R #######################################
-
-#Script by Benoit Parmentier on March 31, 2018 
-#for AAG2018 workshop and SESYNC Geospatial Data Analysis Short Course.
+#This script provides a gentle introduction to some basic commands and tools for geospatial analyses, geospatial processing
+#and geovisualization.
+#
 #Original script from spatial filtering workshop substantially modified.
+#
+#AUTHORS: Benoit Parmentier                                             
+#DATE CREATED: 03/15/2017 
+#DATE MODIFIED: 02/26/2019
+#
+#Version: 2
+#PROJECT: AAG 2019 workshop  
+#TO DO: 
+#
+#COMMIT: 
+#
+#################################################################################################
 
 ########################### PART 1: R BASICS ################
-
-### We use the basic package in R rather than specialized dplyr here.
 
 ####################
 ## Numeric vectors
 
-x <- c(10,11,12) #assigning values to x (numeric vector)
+x <- c(7,13,20) #assigning values to x (numeric vector)
 x #displaying the value of x
 mean(x) #mean function works on vectors
 y <- x-mean(x)
@@ -22,21 +32,27 @@ z             # logical
 ####################
 ## Character vectors
 
-landuse <- c("Developed high intensity","Evergreen Forest","Water")
+landuse <- c("urban","forest","water")
 landuse
 landuse[1]
-lu.char <- sample(landuse,7,replace=T)
+lu.char <- sample(landuse,7,replace=T) #use this to draw randomly values
 lu.char
-lu.fact <- factor(lu.char) # declare a factor for categorical variables
+lu.fact <- factor(lu.char) # create a factor/categorical variable
 class(lu.fact)
 lu.fact
 
 ####################
 ## matricies
 
-mat <- matrix(c(1,2,3,4,5,6), nrow=3, ncol=2)
-mat <- matrix(1:6, nrow=2, ncol=3)
-mdat <- matrix(seq(1,9,1), nrow=3)
+mat <- matrix(c(1,2,3,4,5,6), 
+              nrow=3, 
+              ncol=2)
+
+mat <- matrix(1:6, 
+              nrow=2, 
+              ncol=3)
+mdat <- matrix(seq(1,9,1), 
+               nrow=3)
 mdat
 mdat %*% mdat #matrix multiplication
 mdat[1:2,]
@@ -46,7 +62,7 @@ image(mdat) #visualize matrix as an image
 ####################
 ## lists
 
-my.cats <- c("Henry","Lily","Charlie") 
+my.cats <- c("Loulou","Lily","Charlie") 
 age.cats <- c(5,15,4)
 my.list <- list(catname=my.cats, age=age.cats)
 my.list
@@ -65,12 +81,12 @@ my.data[,2] #select column 2
 my.data[,"age"] #select by name
 
 # attach/detach
-#age #not found
+age #not found
 attach(my.data) #not advised!! 
 age
 name
 detach(my.data)
-#age #not found
+age #not found
 searchpaths()      # Search paths will be displayed
 rm(my.data)
 
