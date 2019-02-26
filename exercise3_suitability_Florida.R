@@ -1,18 +1,21 @@
-#This script performs basic analyses for the Exercise 3 of the workshop using Florida data.
-# The overall goal is to perform a multi-criteria/sustainabiltiy analysis to select areas suitable 
-#for conservation.     
+####################################   Suitability Analysis   #######################################
+############################  Selection of parcels for conservation   #######################################
+# This script performs basic analyses for the Exercise 3 of the AGG and SESYNC Geospatial Analysis course.
+# We are using data from the state of Florida.The overall goal is to perform a analysis with 
+# multi-criteria/sustainabiltiy analysis to select areas suitable 
+# for conservation.     
 #
 #Goal: Determine the ten (10) parcels of land within Clay County in the focus zone most suitable for purchase
 #towards conversion to land conservation.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 03/17/2017 
-#DATE MODIFIED: 03/30/2017
-#Version: 1
-#PROJECT: AAG 2017 workshop preparation
+#DATE MODIFIED: 02/26/2019
+#Version: 2
+#PROJECT: SESYNC and AAG 2019 workshop/Short Course preparation
 #TO DO:
 #
-#COMMIT: clean up and modifications, AAG workshop
+#COMMIT: general modif and adding sf
 #
 #################################################################################################
 
@@ -36,22 +39,32 @@ library(sphet) #contains spreg, spatial regression modeling
 library(BMS) #contains hex2bin and bin2hex, Bayesian methods
 library(bitops) # function for bitwise operations
 library(foreign) # import datasets from SAS, spss, stata and other sources
-library(gdata) #read xls, dbf etc., not recently updated but useful
+#library(gdata) #read xls, dbf etc., not recently updated but useful
 library(classInt) #methods to generate class limits
 library(plyr) #data wrangling: various operations for splitting, combining data
-library(gstat) #spatial interpolation and kriging methods
+#library(gstat) #spatial interpolation and kriging methods
 library(readxl) #functionalities to read in excel type data
+library(sf)
 
 ###### Functions used in this script
 
-function_preprocessing_and_analyses <- "fire_alaska_analyses_preprocessing_functions_03102017.R" #PARAM 1
-script_path <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/R_scripts"
-source(file.path(script_path,function_preprocessing_and_analyses)) #source all functions used in this script 1.
+create_dir_fun <- function(outDir,out_suffix=NULL){
+  #if out_suffix is not null then append out_suffix string
+  if(!is.null(out_suffix)){
+    out_name <- paste("output_",out_suffix,sep="")
+    outDir <- file.path(outDir,out_name)
+  }
+  #create if does not exists
+  if(!file.exists(outDir)){
+    dir.create(outDir)
+  }
+  return(outDir)
+}
 
 #####  Parameters and argument set up ###########
 
-in_dir_var <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_3/data"
-out_dir <- "/home/bparmentier/Google Drive/Data/Seminars_talks_workshops/workshops/AAG2017_spatial_temporal_analysis_R/Exercise_3/outputs"
+in_dir_var <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_3/data"
+out_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_3/outputs"
 
 strat_hab_fname <- "Strat_hab_con_areas1.tif" #1)Strategic Habitat conservation areas raster file
 regional_counties_fname <- "Regional_Counties.shp" #2) County shapefile
@@ -63,11 +76,14 @@ biodiversity_hotspot_fname <- "Biodiversity_Hot_Spots1.tif" #7) Biodiversity hot
 florida_managed_areas_fname <- "flma_jun13.shp" #8) Florida managed areas shapefile
 focus_zone1_filename <- "focus_zone1.tif" #9) focus zone as raster file
 
-gdal_installed <- TRUE #if true use the system/shell command else use the distance layer provided
+##Additional data: 
+#roads_distance_exercise3.tif: distance to roads
+#r_flma_clay_bool_distance_exercise3.tif: distance to Florida Mangement Areas
+
+gdal_installed <- FALSE #if true use the system/shell command else use the distance layer provided
 file_format <- ".tif" #PARAM5
-NA_value <- -9999 #PARAM6
-NA_flag_val <- NA_value #PARAM7
-out_suffix <-"exercise3_03292017" #output suffix for the files and ouptu folder #PARAM 8
+NA_flag_val <- -9999 #PARAM7
+out_suffix <-"exercise3_02262019" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 
 ################# START SCRIPT ###############################
@@ -86,12 +102,12 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
-####  PART I READ AND DISPLAY INPUTS #######
+####  PART I: EXPLORE DATA READ AND DISPLAY INPUTS #######
 
 ##Inputs:
 #1) Strategic Habitat conservation areas raster file
 #2) County shapefile
-#3) Roads shapefil
+#3) Roads shapefile
 #4) Priority Wetlands Habitat raster file
 #5) Clay County parcel shapefile
 #6) General Habitat raster file
@@ -102,20 +118,28 @@ if(create_out_dir_param==TRUE){
 ## Read in the datasets
 r_strat_hab <- raster(file.path(in_dir_var,strat_hab_fname))
 reg_counties_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(regional_counties_fname))) 
+reg_counties_sf <- st_read(file.path(in_dir_var,regional_counties_fname)) 
+
 r_roads <- raster(file.path(in_dir_var,roads_fname))
 r_priority_wet_hab <- raster(file.path(in_dir_var,priority_wet_habitats_fname))
-clay_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(clay_parcels_fname))) 
+
+clay_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(clay_parcels_fname))) #large file
+clay_sf <- st_read(file.path(in_dir_var,clay_parcels_fname)) #large file
+
 r_habitat <- raster(file.path(in_dir_var,habitat_fname))
 r_bio_hotspot <- raster(file.path(in_dir_var,biodiversity_hotspot_fname))
-fma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname))) 
+
+flma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname))) 
+flma_sf <- st_read(file.path(in_dir_var,florida_managed_areas_fname)) 
+
 r_focus_zone1 <- raster(file.path(in_dir_var,focus_zone1_filename))
 
 ## Visualize a few datasets
 plot(r_strat_hab, main="strategic habitat")
 plot(reg_counties_sp,add=T)
+
 plot(r_priority_wet_hab, main="Priority wetland habitat")
 #plot(r_habitat,add=T)
-plot(roads_sp,add=T)
 
 ##### Before starting the production of the sustainability factor let's check the projection, 
 #resolution for each layer relevant to the calculation
@@ -135,12 +159,21 @@ lapply(list_raster,function(x){extent(x)}) #extent of rasters
 # for this study. The focus region provides the extent for the final step.
 ## Select clay county
 clay_county_sp <- subset(reg_counties_sp,NAME=="CLAY")
+clay_county_sf <- subset(reg_counties_sf,NAME=="CLAY")
 
 plot(r_strat_hab, main="strategic habitat")
-plot(clay_county_sp,border="red",add=T)
 
 ## Crop r_strat_hab
 r_ref <- crop(r_strat_hab,clay_county_sp) #make a reference image for use in the processing
+r_ref_test <- crop(r_strat_hab,extent(clay_county_sf)) #make a reference image for use in the processing
+r_ref_test <- crop(r_strat_hab,test) #make a reference image for use in the processing
+
+test = extent(clay_county_sf) 
+class(test)
+
+extent(clay_county_sf)
+extent(clay_county_sp)
+
 plot(r_ref)
 plot(clay_county_sp,border="red",add=T)
 
@@ -151,7 +184,7 @@ plot(r_clay)
 dim(r_clay) #number of rows and columns as well as number of layers/bands
 
 ####  PART II :  HIGH BIODIVERSITY SUITABILITY LAYERS #######
-## P1- PRIORITY1- IDENTIFY LANDS WITH HIGH NATIVE BIODIVERSITY
+## IDENTIFY LANDS WITH HIGH NATIVE BIODIVERSITY
 
 ### STEP 1: Strategic Habitat conservation areas
 
@@ -185,7 +218,7 @@ plot(rc_strat_hab_reg,main="Reclassified Strategic Habit in Clay County")
 ### STEP 2: Identify Lands With High Native Biodiversity based on species count 
 
 ## Crop bio raster
-r_bio_hotspot_w <- crop(r_bio_hotspot,clay_county_sp)wetlan
+r_bio_hotspot_w <- crop(r_bio_hotspot,clay_county_sp)
 plot(r_bio_hotspot_w)
 plot(clay_county_sp,border="red",add=T)
 
@@ -203,7 +236,6 @@ plot(r_bio_hotspot_reg,main="Resampled biodiversity layer to 55m")
 
 ### Reclassify using instructions/information given to us:
  
-
 m <- c(9, 1000, 9,  
        5, 8, 8,  
        3, 4, 7,  
@@ -278,7 +310,7 @@ writeRaster(r_bio_factor,filename="r_bio_factor_clay.tif",
 
 ####  PART III : SUITABILITY LAYERS #######
 
-#P2- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION WITH DISTANCE TO ROADS AND EXISTING MANAGED LANDS
+#IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION WITH DISTANCE TO ROADS AND EXISTING MANAGED LANDS
 #GOAL: Create two raster maps showing lands in Clay County, 
 #Florida that have would have higher conservation potential based on 
 #local road density and distance from existing managed lands using a combination 
@@ -337,8 +369,8 @@ if(gdal_installed==TRUE){
   r_roads_distance <- raster(dstfile_roads)
   
 }else{
-  r_roads_distance <- raster(file.path(in_dir,paste("roads_bool_distance_",file_format,sep="")))
-  r_flma_distance <- raster(file.path(in_dir_var,paste("r_flma_clay_bool_distance",file_format,sep="")))
+  r_roads_distance <- raster(file.path(in_dir_var,"additional_data",paste("roads_distance_exercise3",file_format,sep="")))
+  r_flma_distance <- raster(file.path(in_dir_var,"additional_data",paste("r_flma_clay_bool_distance_exercise3",file_format,sep="")))
 }
 
 #Now rescale the distance...
@@ -360,11 +392,10 @@ a = (9 - 0) /(max_val - min_val) #linear rescaling factor
 r_flma_dist <- r_flma_distance * a
 
 ####  PART IV : COMBINE FACTORS AND DETERMINE MOST SUITABLE PARCELS #######
-####
-#P3- IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION TO PARCEL SUITABILITY
+#IDENTIFY POTENTIAL CONSERVATION LANDS IN RELATION TO PARCEL SUITABILITY
 #GOAL: Create two raster maps showing parcels in Clay County, Florida that have would 
 #have higher conservation potential based on parcel values.
-#First, factors must be combined to generate a suitability index.
+#First, factors must be combin  ed to generate a suitability index.
 
 ### Step 1:  Combine distance factors with weights...
 f_weights <- c(1,1)/2 #factor weights for distance to roads
@@ -390,6 +421,7 @@ writeRaster(r_suitability_factor,filename="r_suitability_factor_clay.tif",
 projection(r_focus_zone1)<- projection(r_clay)
 
 clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
+
 parcels_focus_zone1_sp <- intersect(clay_sp_parcels_reg,r_focus_zone1)
 
 parcels_avg_suitability <- extract(r_suitability_factor,parcels_focus_zone1_sp,fun=mean,sp=T)
@@ -402,4 +434,8 @@ plot(parcels_avg_suitability$suitability1,main="Suitability index by parcel in f
 p<- spplot(parcels_avg_suitability[1:10,],"suitability1",main="Selected top 10 parcels for possible conservation")
 print(p)
 
-###################### END OF SCRIPT #####################
+##Figure of selected parcels
+plot(clay_county_sp,border="red",main="Selected parcels")
+plot(parcels_avg_suitability[1:10,],add=T)
+
+##############################   END OF SCRIPT    ##########################################
