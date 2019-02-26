@@ -81,18 +81,20 @@ my.data[,2] #select column 2
 my.data[,"age"] #select by name
 
 # attach/detach
-age #not found
+#age #not found
 attach(my.data) #not advised!! 
 age
 name
 detach(my.data)
-age #not found
+#age #not found
 searchpaths()      # Search paths will be displayed
 rm(my.data)
 
 ####################
-## read data
-in_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2018_workshop/Exercise_0/data"
+## read data and dealing with paths
+
+in_dir <- "/nfs/bparmentier-data/Data/workshop_spatial/sesync2019_geospatial_workshop/Exercise_0/data"
+
 #setwd("c:\\workspace") #Windows style...
 setwd(in_dir) 
 getwd() #Get the current workind directory
@@ -107,7 +109,7 @@ head(columbus) #view first six rows of data.frame
 write.table(columbus,"columbus.csv",sep=",",row.names=F)
 columbus <- read.csv("columbus.csv", header=T)
 colnames(columbus)
-library(foreign)
+library(foreign) # to read a variety of data types
 concord_data <- read.spss("Concord1.sav", to.data.frame = TRUE)
 concord_data[1:2,c(3,8)]
 
@@ -123,6 +125,12 @@ colnames(tr.sub)
 tr.sub <- tr.sub[,-2] #drop column 2
 colnames(tr.sub)
 tr.sub$log_GDPCAP <- NULL #remove column
+
+## Other common solutions: select and filter with dplyr
+library(dplyr)
+tr.sub2 <- select(tr,c("FID_1","GDPCAP","TURNOUT01","REGIONE")) #subset a data.frame
+class(tr.sub2)
+tr.sub2 <- filter(tr.sub2,REGIONE=='Veneto')
 
 ##########################
 ## descriptive statistics
@@ -150,7 +158,7 @@ boxplot(GDPCAP~SOUTH,main="GDP PER REGION")    #box plot
 detach(tr)
 
 ##########################
-## linear model
+## Generate a linear model
 
 # linear regression
 mod_lm <- lm(TURNOUT01 ~ GDPCAP, data=tr)
@@ -188,13 +196,10 @@ help(rnorm)
 args(rnorm)
 example(lm)
 
-#history()
-#savehistory(file="IntroR.Rhistory")
-
 ################### PART 2: Spatial R ##########
 
 #to install a new package use:
-#install.package("package_name") eg install.package("colorRamps")
+#install.packages("package_name") eg install.packages("colorRamps")
 
 ##########################
 #create a raster image:
@@ -228,11 +233,13 @@ freq(r_outliers_neg)
 in_dir <- getwd() #this should be ../data
 infile_shp <- file.path(in_dir,"turnout.shp") #joint path and name of input file
 
+## Use sp spatial objects
 library(rgdal)
 layer_path <- dirname(infile_shp) #extract path from string
 layer_name <- gsub(".shp","",basename(infile_shp)) #extract layer name, remove extension ".shp"
 tr_sp <- readOGR(layer_path,layer_name) # read in the shapefile
 
+## Use sf spatial objects
 library(sf)
 ## use sf functionality:
 tr_sf <- st_read(infile_shp) # read directly in the shapefile
@@ -242,28 +249,15 @@ tr_sf
 spplot(tr_sp,"TURNOUT01",col.regions=matlab.like(25),
        main="TURNOUT") #plot turnout using specific color ramp
 ### Plotting with sf:
-plot(tr_sf["TURNOUT01"],col.regions=matlab.like(25),
+plot(tr_sf["TURNOUT01"],
        main="TURNOUT") #plot turnout using specific color ramp
 
 ### save figure in png format
-out_suffix <- "workshop_03312018"
+out_suffix <- "workshop_04032019"
 png(filename=paste("Figure_turnout_Italy","_",out_suffix,".png",sep=""))
-plot(tr_sf["TURNOUT01"],col.regions=matlab.like(25),
+plot(tr_sf["TURNOUT01"],
      main="TURNOUT") #plot turnout using specific color ramp
 dev.off()
 
-##### 
-
-library(dismo) # you may need to install this library!!!
-#install.packages("dismo")
-mymap <- gmap("Belgium")  # choose whatever country
-plot(mymap) #google map background
-mymap <- gmap("Maryland")  # choose whatever country
-plot(mymap)
-class(mymap) #this is a raster image
-projection(mymap)
-
-mymap <- gmap("Maryland",type="satellite",lonlat = T)  # choose whatever country
-plot(mymap)
 
 ################ END OF SCRIPT ###################
