@@ -275,6 +275,8 @@ projection(r_priority_wet_hab)
 
 ## Crop Wetland priority raster
 r_priority_wet_hab_w <- crop(r_priority_wet_hab,clay_county_sp)
+#as.vector(st_bbox(clay_county_sf))[c(1, 3, 2, 4)]
+r_priority_wet_hab_w <- crop(r_priority_wet_hab,as.vector(st_bbox(clay_county_sf))[c(1, 3, 2, 4)])
 
 #r_priority_wet_hab_reg <- mask(r_priority_wet_hab_w,r_clay) ## Does not work!! because resolution don't match
 #match resolution:
@@ -282,7 +284,8 @@ r_priority_wet_hab_reg <- raster::resample(r_priority_wet_hab_w,r_clay, method='
 
 #r_priority_wet_hab_reg <- mask(r_priority_wet_hab_reg,r_clay) ## Does not work!! because resolution don't match
 plot(r_priority_wet_hab_reg,main="Priority Wetland Habitat resampled")
-plot(clay_county_sp,border="red",add=T)
+#plot(clay_county_sp,border="red",add=T)
+plot(clay_county_sf$geometry,border="red",add=T)
 
 ### Now reclass
 #The value of 9 was assigned to 10–12 wetland focal species, 8 was assigned to 7–9 wetland focal
@@ -301,7 +304,8 @@ rc_priority_wet_hab_reg <- reclassify(r_priority_wet_hab_reg, rclmat)
 freq_tb <- freq(rc_priority_wet_hab_reg)
 freq_tb
 plot(rc_priority_wet_hab_reg,main="Priority Wetland Habitat reclassified")
-plot(clay_county_sp,border="red",add=T)
+#plot(clay_county_sp,border="red",add=T)
+plot(clay_county_sf$geometry,border="red",add=T)
 
 ### STEP 4: Combine all the three input criteria layers with weigthed/unweighted sum
 
@@ -335,6 +339,7 @@ writeRaster(r_bio_factor,filename="r_bio_factor_clay.tif",
 ### Processs roads first
 plot(r_roads,main="Roads_count in Clay county")
 r_roads_bool <- r_roads > 0
+plot(clay_county_sf$geometry,border="red",add=T)
 NAvalue(r_roads_bool ) <- 0 
 roads_bool_fname <- file.path(out_dir,paste0("roads_bool_",out_suffix,file_format))
 r_roads_bool <- writeRaster(r_roads_bool,filename=roads_bool_fname,overwrite=T)
@@ -342,12 +347,15 @@ r_roads_bool <- writeRaster(r_roads_bool,filename=roads_bool_fname,overwrite=T)
 #setp 2: prepare files to create a distance to existing managed land
 
 r_flma_clay <- rasterize(flma_sp,r_clay,"OBJECTID_1",fun="max")
+r_flma_clay_test <- rasterize(flma_sf,r_clay,"OBJECTID_1",fun="max")
+test = r_flma_clay -r_flma_clay_test
+
 r_flma_clay_bool <- r_flma_clay > 0
 NAvalue(r_flma_clay_bool) <- 0 
 r_flma_clay_bool_fname <- file.path(out_dir,paste0("r_flma_clay_bool_",out_suffix,file_format))
 r_flma_clay_bool <- writeRaster(r_flma_clay_bool,filename=r_flma_clay_bool_fname,overwrite=T)
 plot(r_flma_clay_bool,"Management areas in Clay County")
-plot(clay_county_sp,border="red",add=T)
+plot(clay_county_sf$geometry,border="red",add=T)
 
 if(gdal_installed==TRUE){
   
