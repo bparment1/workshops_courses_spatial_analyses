@@ -443,6 +443,7 @@ writeRaster(r_suitability_factor,filename="r_suitability_factor_clay.tif",
 projection(r_focus_zone1)<- projection(r_clay)
 
 clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
+clay_sp_parcels_reg_test <- st_transform(clay_sf,projection(r_clay))
 
 parcels_focus_zone1_sp <- intersect(clay_sp_parcels_reg,r_focus_zone1)
 
