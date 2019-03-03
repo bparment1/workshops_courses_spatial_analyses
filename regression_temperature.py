@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 09/07/2018
-#DATE MODIFIED: 02/24/2019
+#DATE MODIFIED: 03/04/2019
 #Version: 1
 #PROJECT: SESYNC Geospatial Course and AAG 2019 Python Geospatial Course
 #TO DO:
@@ -23,6 +23,8 @@ Spyder Editor.
 ###### Library used in this script
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as colors
 import seaborn as sns
 import rasterio
 import subprocess
@@ -31,8 +33,17 @@ import os, glob
 from rasterio import plot
 import geopandas as gpd
 import georasters as gr
-
-
+import gdal
+import rasterio
+import descartes
+import pysal as ps
+from cartopy import crs as ccrs
+from pyproj import Proj
+from osgeo import osr
+from shapely.geometry import Point
+from collections import OrderedDict
+import webcolors
+import sklearn
 
 ################ NOW FUNCTIONS  ###################
 
@@ -66,15 +77,19 @@ def open_image(url):
 #####  Parameters and argument set up ###########
 
 #ARGS 1
-in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/data"
+in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/climate_regression/data/Oregon_covariates"
 #ARGS 2
-out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/outputs"
+out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/climate_regression/outputs"
+
+#in_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/data/Oregon_covariates"
+#out_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/outputs"
+
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix = "exercise4_02162018" #output suffix for the files and ouptut folder
+out_suffix = "exercise4_03032019" #output suffix for the files and ouptut folder
 #ARGS 8
-NA_value = -9999 # number of cores
+NA_value = -9999 # NA flag balue
 file_format = ".tif"
 
 #NLCD coordinate reference system: we will use this projection rather than TX.
@@ -82,18 +97,13 @@ CRS_reg = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 
 method_proj_val = "bilinear" # method option for the reprojection and resampling
 gdal_installed = True #if TRUE, GDAL is used to generate distance files
 
-in_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/data/Oregon_covariates"
-out_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/outputs"
 
 #epsg 2991
 crs_reg = "+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 
-infile = "mean_month1_rescaled.rst"
+infile = "mean_month1_rescaled.rst" # mean LST for January
 infile_forest_perc =""
-#infile = "mean_month1_rescaled.tif"
-#infile = "lst_mean_month1_rescaled.tif"
-
-ghcn_filename = "ghcn_or_tmax_covariates_06262012_OR83M.shp"
+ghcn_filename = "ghcn_or_tmax_covariates_06262012_OR83M.shp" # climate stations
 
 
 ################# START SCRIPT ###############################
@@ -121,7 +131,7 @@ else:
 
 data_gpd = gpd.read_file(os.path.join(in_dir,ghcn_filename))
 
-data_gpd 
+data_gpd.head() 
 
 # -12 layers from land cover concensus (Jetz lab)
 fileglob = "*.rst"
@@ -131,7 +141,6 @@ l_f.sort() #order input by decade
 l_dir = map(lambda x: os.path.splitext(x)[0],l_f) #remmove extension
 l_dir = map(lambda x: os.path.join(out_dir,os.path.basename(x)),l_dir) #set the directory output
  
-
 # Read raster bands directly to Numpy arrays.
 with rasterio.open(os.path.join(in_dir,infile)) as src:
         r_lst = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
