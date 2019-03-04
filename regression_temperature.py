@@ -106,6 +106,8 @@ infile = "lst_mean_month1_rescaled.tif"
 infile_forest_perc =""
 ghcn_filename = "ghcn_or_tmax_covariates_06262012_OR83M.shp" # climate stations
 
+prop = 0.3
+random_seed= 100
 
 ################# START SCRIPT ###############################
 
@@ -201,7 +203,6 @@ x_coord = station_or.geometry.x # pands.core.series.Series
 y_coord = station_or.geometry.y
 # Find value at point (x,y) or at vectors (X,Y)
 values = data.map_pixel(x_coord,y_coord)
-list(station_or) #get names of col
 station_or.columns #get names of col
 
 station_or['year'].value_counts()
@@ -232,13 +233,6 @@ selected_target_names = ['value']
 
 from sklearn.model_selection import train_test_split
 
-prop = 0.3
-random_seed= 100
-
-#X_train, X_test, y_train, y_test = train_test_split(data_df[selected_covariates_names], 
-#                                                    data_df[selected_target_names], 
-#                                                    test_size=prop, 
-#                                                    random_state=random_seed)
 X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_covariates_names_updated], 
                                                     avg_df[selected_target_names], 
                                                     test_size=prop, 
@@ -247,22 +241,10 @@ X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_covariates_n
 X_train.shape
 
 from sklearn.linear_model import LinearRegression
-#x=avg_df.LST1.values
-#y=avg_df.value.values
-#x = x.reshape(len(x), 1)
-#y = y.reshape(len(y), 1)
-#regr = LinearRegression().fit(x,y)
 regr = LinearRegression().fit(X_train,y_train)
 
 #regr = linear_model.LinearRegression()
 regr.fit(x, y)
-
-# plot it as in the example at http://scikit-learn.org/
-#plt.scatter(x, y,  color='black')
-#plt.plot(x, regr.predict(x), color='blue', linewidth=3)
-#plt.xticks(())
-#plt.yticks(())
-#plt.show()
 
 plt.scatter(X_train, y_train,  color='black')
 plt.plot(X_train, regr.predict(X_train), color='blue', linewidth=3)
@@ -279,7 +261,13 @@ print('reg intercept',regr.intercept_)
 regr.predict(X_train) # Note this is a fit!
 regr.score(X_train, y_train)
 
+X_test.shape
+regr.predict(X_test) # Note this is a fit!
+regr.score(X_test, y_test)
+
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain),
+### Do models for January,July with LST and with/without land cover % of forest
+## Calculate MAE,RMSE,R2,etc. inspire yourself from paper. Save this into a CSV file.
 
 ############################# END OF SCRIPT ###################################
 
