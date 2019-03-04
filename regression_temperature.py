@@ -101,7 +101,8 @@ gdal_installed = True #if TRUE, GDAL is used to generate distance files
 #epsg 2991
 crs_reg = "+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 
-infile = "mean_month1_rescaled.rst" # mean LST for January
+#infile = "mean_month1_rescaled.rst" # mean LST for January
+infile = "lst_mean_month1_rescaled.tif" 
 infile_forest_perc =""
 ghcn_filename = "ghcn_or_tmax_covariates_06262012_OR83M.shp" # climate stations
 
@@ -122,10 +123,6 @@ if create_out_dir==True:
 else:
     os.chdir(create_out_dir) #use working dir defined earlier
 
-
-#######################################
-### PART 1: Read in DATA #######
-
 ###########################################
 ### PART I: READ AND VISUALIZE DATA #######
 
@@ -138,41 +135,37 @@ fileglob = "*.rst"
 pathglob = os.path.join(in_dir, fileglob)
 l_f = glob.glob(pathglob)
 l_f.sort() #order input by decade
-l_dir = map(lambda x: os.path.splitext(x)[0],l_f) #remmove extension
-l_dir = map(lambda x: os.path.join(out_dir,os.path.basename(x)),l_dir) #set the directory output
+l_dir = mp(lambda x: os.path.join(out_dir,os.path.basename(x)),l_dir) #set the directory output
  
 # Read raster bands directly to Numpy arrays.
 with rasterio.open(os.path.join(in_dir,infile)) as src:
         r_lst = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
         spatial_extent = rasterio.plot.plotting_extent(src)
 
+#test = rasterio.open(os.path.join(in_dir,infile))
 plot.show(r_lst)
 #plot.show(r_lst,cmap='viridis',scheme='quantiles')
 
-src.crs # not defined with *.rst
-#Note that you can also plot the raster io data reader
+src.crs # explore Coordinate Reference System 
+plot.show(src)
 type(r_lst)
-
 r_lst.size
-#r_lst.ndim #array dimension
+src.shape
 src.height
-#src.profile
-type(r_lst)
 
 #Can also use the regular matplotlib library function to plot images
-#plt.imshow(subset)
 plt.imshow(r_lst)
-#plt.hist(r_lst)
 
 #see: https://matplotlib.org/users/image_tutorial.html
 plt.imshow(r_lst, clim=(259.0, 287.0))
 plt.hist(r_lst.ravel(),bins=256,range=(259.0,287.0))
 
 data_gpd.plot(marker="*",color="green",markersize=5)
-station_or = data_gpd.to_crs({'init': 'epsg:2991'})
+station_or = data_gpd.to_crs({'init': 'epsg:2991'}) #reproject to  match the  raster image
 
 #https://www.earthdatascience.org/courses/earth-analytics-python/lidar-raster-data/customize-matplotlib-raster-maps/
 
+##### How to combine plots:
 fig, ax = plt.subplots()
 with rasterio.open(os.path.join(in_dir,infile)) as src:
         rasterio.plot.show((src,1),ax=ax,
@@ -193,22 +186,29 @@ fig.colorbar(lst_plot)
 # turn off the x and y axes for prettier plotting
 #ax.set_axis_off(); #this removes coordinates on the plot
 
+###########################################
+### PART II : Extract information from raster and prepare covariates #######
 #raster = './data/slope.tif'
+
 data=gr.from_file(os.path.join(in_dir,infile))
+type(data) # check that we have a georaster object
 # Plot data
 data.plot()
+data.plot(clim=(259.0, 287.0))
 
+#### Extract information from raster using coordinates
 x_coord = station_or.geometry.x # pands.core.series.Series
 y_coord = station_or.geometry.y
-
 # Find value at point (x,y) or at vectors (X,Y)
 values = data.map_pixel(x_coord,y_coord)
 list(station_or) #get names of col
+station_or.columns #get names of col
+
 station_or['year'].value_counts()
 station_or.groupby(['month'])['value'].mean()
      
 print("number of rows:",station_or.station.count(),"number of stations:",len(station_or.station.unique()))
-station_or['LST1'] = value-273.15
+station_or['LST1'] = value-273.15 #create new column
 station_or_jan = station_or.loc[(station_or['month']==1) & (station_or['value']!=-9999)]
 station_or_jan.head()
 #avg_df = station_or.groupby(['station'])['value'].mean())
@@ -216,10 +216,10 @@ avg_df = station_or_jan.groupby(['station'])['value','LST1'].mean()
 avg_df['value']= avg_df['value']/10
 avg_df.head()
          
-#######
 ################################################
-###  PART II : Analyze change and transitions
+###  PART III : Fit model and generate prediction
 
+### Add split training and testing!!!
 from sklearn.linear_model import LinearRegression
 x=avg_df.LST1.values
 y=avg_df.value.values
@@ -244,7 +244,7 @@ reg.predict(x) # Note this is a fit!
 reg.score(x, y)
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain),
 
-###################### END OF SCRIPT #####################
+############################# END OF SCRIPT ###################################
 
 
 
