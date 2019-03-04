@@ -52,21 +52,6 @@ def create_dir_and_check_existence(path):
     except:
         print ("directory already exists")
 
-def open_image(url):
-    image_data = open_http_query(url)
-    
-    if not image_data:
-            return None
-            
-    mmap_name = "/vsimem/"+uuid4().get_hex()
-    gdal.FileFromMemBuffer(mmap_name, image_data.read())
-    gdal_dataset = gdal.Open(mmap_name)
-    image = gdal_dataset.GetRasterBand(1).ReadAsArray()
-    gdal_dataset = None
-    gdal.Unlink(mmap_name)
-    
-    return image
-
 ############################################################################
 #####  Parameters and argument set up ########### 
 
@@ -143,10 +128,14 @@ census_syr_df.shape #147 spatial entities
 metals_df.shape #57 entities
 
 #########################################################
-#### PART 2: Visualizing geopandas layers 
+####### PART 2: Visualizing population in 2000 with geopandas layers 
 #### Explore two ways of joining and aggregating data at census track level #########
+#### Step 1: First join census data to blockgroups
+#### Step 2: Summarize/aggregate poppulation at census track level ###
+#### Step 3: Plot population 2000 by tracks
 
-#First need to link the block group data to generate a map of population in 2000
+### Step 1: First join census data to blockgroups
+
 bg_2000_gpd.columns # missing census information:check columns' name for the data frame
 census_syr_df.columns #contains census variables
 #key is "TRACT" but with a different format/data type
@@ -166,19 +155,13 @@ bg_2000_gpd['BKG_KEY']=bg_2000_gpd['BKG_KEY'].astype('int64')
 bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
 
 #spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
-bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
-                 scheme='quantiles')
+bg_2000_gpd.plot(column='POP2000',cmap="OrRd")
 plt.title('POPULATION 2000')
-### Let's use more option with matplotlib
-fig, ax = plt.subplots(figsize=(14,6))
-bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
-                 scheme='quantiles',k=7,
-                 ax=ax,
-                 legend=True)
-ax.set_title('POP2000')
+
+#############
+#### Step 2: Summarize/aggregate poppulation at census track level
 
 ### Method 1: Summarize by census track using DISSOLVE operation
-
 
 #To keep geometry, we must use dissolve method from geopanda
 census_2000_gpd = bg_2000_gpd.dissolve(by='TRACT',
@@ -193,15 +176,6 @@ census_2000_df.POP2000[0:2]
 census_2000_gpd.POP2000[0:2]
 ##Checking match in number of rows:
 census_2000_gpd.shape[0] == census_2000_df.shape[0]
-## Add back the tract ID Using sjoin??
-#test3=gpd.tools.sjoin(census_2000_gpd,ct_2000_gpd,
-#                      how='left')
-
-##compare to sp!!
-#df_test <- aggregate(POP2000 ~ TRACT, bg_2000_sp , 
-#                     FUN=sum)
-
-
 
 ### Method 2: Summarize using groupby aggregation and joining
 
@@ -216,27 +190,16 @@ ct_2000_gpd.shape
 ct_2000_gpd = ct_2000_gpd.merge(census_2000_df, on='TRACT')
 ct_2000_gpd.shape
 
+#### Step 3: Plot population 2000 by tracks
 
 ### Check if the new geometry of entities is the same as census
-
 fig, ax = plt.subplots(figsize=(12,8))
-
-# set aspect to equal. This is done automatically
-# when using *geopandas* plot on it's own, but not when
-# working with pyplot directly.
-ax.set_aspect('equal')
+ax.set_aspect('equal') # set aspect to equal, done automatically in *geopandas* plot but not in pyplot
 census_2000_gpd.plot(ax=ax,column='POP2000',cmap='OrRd')
 ct_2000_gpd.plot(ax=ax,color='white',edgecolor="red",alpha=0.7)
-
 ax.set_title("Population", fontsize= 20)
-#fig.colorbar(ax) #add palette later
-#ax.set_axis_off()
-#plt.show()
 
-#save as sp and text table
-#write.table(file.path(out_dir,)
-
-### Do another map with different class intervals: 
+#### Generate population maps with two different class intervals
 
 title_str = "Population by census tract in 2000"
 #range(ct_2000_sp$POP2000)
@@ -256,6 +219,26 @@ title_str = "Population by census tract in 2000"
 #                            main=title_str,
 #                            at = breaks.qt$brks)
 #print(p_plot_pop2000_ct)
+
+#spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
+bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
+                 scheme='quantiles')
+plt.title('POPULATION 2000')
+### Let's use more option with matplotlib
+fig, ax = plt.subplots(figsize=(14,6))
+bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
+                 scheme='quantiles',k=7,
+                 ax=ax,
+                 legend=True)
+ax.set_title('POP2000')
+
+### Let's use more option with matplotlib
+fig, ax = plt.subplots(figsize=(14,6))
+bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
+                 scheme='quantiles',k=7,
+                 ax=ax,
+                 legend=True)
+ax.set_title('POP2000')
 
 ##############################################
 ##### PART 3: SPATIAL QUERY #############
@@ -364,7 +347,12 @@ census_metals_gpd = census_metals_gpd.merge(grouped,on="TRACT")
 #writeOGR(census_metals_pb_sp,dsn= out_dir,layer= outfile, driver="ESRI Shapefile",overwrite_layer=TRUE)
 
 outfile = "census_metals_pb_"+'_'+out_suffix+'.shp'
-census_metals_gpd.to_file(outfile)
+census_metals_gpd.to_file(os.outfile)
+
+census_metals_df = pd.DataFrame(census_metals_pgd.drop(columns='geometry'))
+outfile = "census_metals_pb_"+'_'+out_suffix+'.csv'
+
+census_metals_df.to_csv(outfile)
 
 #outfile_df_name <- file.path(out_dir,paste0(outfile,".txt"))
 #write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
