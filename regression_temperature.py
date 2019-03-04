@@ -258,14 +258,14 @@ regr = LinearRegression().fit(X_train,y_train)
 regr.fit(x, y)
 
 # plot it as in the example at http://scikit-learn.org/
-plt.scatter(x, y,  color='black')
-plt.plot(x, regr.predict(x), color='blue', linewidth=3)
-plt.xticks(())
-plt.yticks(())
-plt.show()
+#plt.scatter(x, y,  color='black')
+#plt.plot(x, regr.predict(x), color='blue', linewidth=3)
+#plt.xticks(())
+#plt.yticks(())
+#plt.show()
 
-plt.scatter(x, y,  color='black')
-plt.plot(x, regr.predict(x), color='blue', linewidth=3)
+plt.scatter(X_train, y_train,  color='black')
+plt.plot(X_train, regr.predict(X_train), color='blue', linewidth=3)
 plt.xticks(())
 plt.yticks(())
 plt.show()
@@ -273,8 +273,12 @@ plt.show()
 print('reg coef',regr.coef_)
 print('reg intercept',regr.intercept_)
 
-reg.predict(x) # Note this is a fit!
-reg.score(x, y)
+#reg.predict(x) # Note this is a fit!
+#reg.score(x, y)
+
+regr.predict(X_train) # Note this is a fit!
+regr.score(X_train, y_train)
+
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain),
 
 ############################# END OF SCRIPT ###################################
