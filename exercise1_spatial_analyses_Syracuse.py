@@ -132,28 +132,29 @@ ct_2000_gpd.head()
 #Read tabular data
 metals_df = pd.read_excel(os.path.join(in_dir,metals_table_fname))
 census_syr_df = pd.read_csv(os.path.join(in_dir,census_table_fname),sep=",",header=0)
+#This soil lead in UTM 18 coordinate system
 soil_PB_df = pd.read_csv(os.path.join(in_dir,soil_PB_table_fname),sep=",",header=None) #point locations
 
 #Check size
 ct_2000_gpd.shape #57 spatial entities (counties)
 bg_2000_gpd.shape #147 spatial entities (block groups)
 bk_2000_gpd.shape #2025 spatial entities (blocks)
-census_syr_df.shape #1477 spatial entities
+census_syr_df.shape #147 spatial entities
 metals_df.shape #57 entities
 
 #########################################################
-### PART 2: Visualizing geopandas layers #######
-######## PRODUCE MAPS OF 2000 Population #########
+#### PART 2: Visualizing geopandas layers 
+#### Explore two ways of joining and aggregating data at census track level #########
 
-#First need to link the information to generate a map of population in 2000
-
-bg_2000_gpd.columns # check columns' name for the data frame
+#First need to link the block group data to generate a map of population in 2000
+bg_2000_gpd.columns # missing census information:check columns' name for the data frame
 census_syr_df.columns #contains census variables
 #key is "TRACT" but with a different format/data type
 #First fix the format
 bg_2000_gpd.head()
+bg_2000_gpd.shape
 census_syr_df.BKG_KEY.head()
-ct_2000_gpd.TRACT.dtype
+#ct_2000_gpd.TRACT.dtype
 bg_2000_gpd.BKG_KEY.dtypes
 census_syr_df.dtypes
 census_syr_df.BKG_KEY.dtypes
@@ -161,9 +162,8 @@ census_syr_df.BKG_KEY.dtypes
 #change data type for BKG_KEY column from object to int
 bg_2000_gpd['BKG_KEY']=bg_2000_gpd['BKG_KEY'].astype('int64')
 
-# Now that both data types match we can join tables
+# Join data based on common ID after matching data types
 bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
-# country_shapes = country_shapes.merge(country_names, on='iso_a3')
 
 #spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
 bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
@@ -176,32 +176,22 @@ bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  ax=ax,
                  legend=True)
 ax.set_title('POP2000')
-#plt.show()
-##Now change the classes!
 
-### Summarize by census track
-#census_2000_sp <- aggregate(bg_2000_sp , 
-#                            by="TRACT",FUN=sum)
-##Note losing TRACT field
-census_2000_df = bg_2000_gpd.groupby('TRACT',as_index=False).sum()
-type(census_2000_df)
+### Method 1: Summarize by census track using DISSOLVE operation
+
+
 #To keep geometry, we must use dissolve method from geopanda
 census_2000_gpd = bg_2000_gpd.dissolve(by='TRACT',
                                        aggfunc='sum')
 type(census_2000_gpd)
 census_2000_gpd.index
 #note that the TRACT field has become the index
-#census_2000_gpd['TRACT']=census_2000_gpd.index
-#census_2000_gpd.set_index(list(np.arange(0,census_2000_df.shape[0])))
-census_2000_gpd=census_2000_gpd.reset_index()
+census_2000_gpd=census_2000_gpd.reset_index() # reset before comparing data
 
-## Sum is 57!!!
-sum(census_2000_gpd.POP2000==census_2000_df.POP2000)
+sum(census_2000_gpd.POP2000==census_2000_df.POP2000)  ## Sum is 57 census tracks !!!
 census_2000_df.POP2000[0:2]
 census_2000_gpd.POP2000[0:2]
-
-##Index don't match
-#census_2000_df.index['TRACT']
+##Checking match in number of rows:
 census_2000_gpd.shape[0] == census_2000_df.shape[0]
 ## Add back the tract ID Using sjoin??
 #test3=gpd.tools.sjoin(census_2000_gpd,ct_2000_gpd,
@@ -210,6 +200,22 @@ census_2000_gpd.shape[0] == census_2000_df.shape[0]
 ##compare to sp!!
 #df_test <- aggregate(POP2000 ~ TRACT, bg_2000_sp , 
 #                     FUN=sum)
+
+
+
+### Method 2: Summarize using groupby aggregation and joining
+
+##Note losing TRACT field
+census_2000_df = bg_2000_gpd.groupby('TRACT',as_index=False).sum()
+type(census_2000_df)
+
+ct_2000_gpd.dtypes
+ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
+
+ct_2000_gpd.shape
+ct_2000_gpd = ct_2000_gpd.merge(census_2000_df, on='TRACT')
+ct_2000_gpd.shape
+
 
 ### Check if the new geometry of entities is the same as census
 
@@ -227,25 +233,6 @@ ax.set_title("Population", fontsize= 20)
 #ax.set_axis_off()
 #plt.show()
 
-#plot(census_2000_sp)
-#plot(ct_2000_sp,border="red",add=T)
-#nrow(census_2000_sp)==nrow(ct_2000_sp)
-
-#df_summary_by_census <- aggregate(. ~ TRACT, 
-#                                  bg_2000_sp 
-#                                  ,FUN=sum) #aggregate all variables from the data.frame
-
-##Join by key table id:
-#dim(ct_2000_sp)
-#ct_2000_sp <- merge(ct_2000_sp,df_summary_by_census,by="TRACT")
-#dim(ct_2000_sp)
-metals_df.dtypes
-ct_2000_gpd.dtypes
-ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
-
-ct_2000_gpd.shape
-ct_2000_gpd = ct_2000_gpd.merge(census_2000_df, on='TRACT')
-ct_2000_gpd.shape
 #save as sp and text table
 #write.table(file.path(out_dir,)
 
@@ -275,14 +262,12 @@ title_str = "Population by census tract in 2000"
 
 ## Join metals to census track 
 ## Join lead (pb) measurements to census tracks
+## Find average lead by census track
 
-#View(soil_PB_df)
 metals_df.head()
 metals_df.describe
-##This suggests matching to the following spatial entities
-#nrow(metals_df)==nrow(ct_2000_sp)
+##Number of rows suggests matching to the following spatial entities
 metals_df.shape[0]== ct_2000_gpd.shape[0]
-#nrow(soil_PB_df)==nrow(bg_2000_sp)
 
 #dim(bg_2000_sp)
 #census_metals_sp <- merge(ct_2000_sp,metals_df,by.x="TRACT",by.y="ID")
