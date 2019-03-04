@@ -9,7 +9,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 12/29/2018 
-#DATE MODIFIED: 01/24/2019
+#DATE MODIFIED: 03/04/2019
 #Version: 1
 #PROJECT: AAG 2019 workshop preparation
 #TO DO:
@@ -33,7 +33,6 @@ import os, glob
 from rasterio import plot
 import geopandas as gpd
 import descartes
-#import pysal as ps
 import libpysal as lp #new pysal interface
 from cartopy import crs as ccrs
 from pyproj import Proj
@@ -78,7 +77,7 @@ out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_1/ou
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix = "exercise1_01242019" #output suffix for the files and ouptut folder
+out_suffix = "exercise1_03042019" #output suffix for the files and ouptut folder
 #ARGS 8
 NA_value = -9999 # number of cores
 file_format = ".tif"
@@ -111,11 +110,7 @@ else:
     
     
 #######################################
-### PART 1: Read in DATA #######
-
-#ct_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(ct_2000_fname)))
-#bg_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(bg_2000_fname)))
-#bk_2000_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(bk_2000_fname)))
+### PART 1: Read in datasets #######
 
 ## Counties for Syracuse in 2000
 ct_2000_filename = os.path.join(in_dir,ct_2000_fname)
@@ -124,40 +119,40 @@ bg_2000_filename = os.path.join(in_dir,bg_2000_fname)
 ## block for Syracuse in 200
 bk_2000_filename = os.path.join(in_dir,bk_2000_fname)
 
- 
+#Read spatial data 
 ct_2000_gpd = gpd.read_file(ct_2000_filename)
 bg_2000_gpd = gpd.read_file(bg_2000_filename)
 bk_2000_gpd = gpd.read_file(bk_2000_filename)
 
+#Explore datasets:
 ct_2000_gpd.describe()
 ct_2000_gpd.plot(column="CNTY_FIPS")
 ct_2000_gpd.head()
 
+#Read tabular data
 metals_df = pd.read_excel(os.path.join(in_dir,metals_table_fname))
 census_syr_df = pd.read_csv(os.path.join(in_dir,census_table_fname),sep=",",header=0)
-
-#Soil lead samples: UTM z18 coordinates
 soil_PB_df = pd.read_csv(os.path.join(in_dir,soil_PB_table_fname),sep=",",header=None) #point locations
 
-census_syr_df.shape #57 spatial entities
-ct_2000_gpd.shape #57 spatial entities
+#Check size
+ct_2000_gpd.shape #57 spatial entities (counties)
+bg_2000_gpd.shape #147 spatial entities (block groups)
+bk_2000_gpd.shape #2025 spatial entities (blocks)
+census_syr_df.shape #1477 spatial entities
 metals_df.shape #57 entities
-bg_2000_gpd.shape #147 spatial entities
-bk_2000_gpd.shape #2025 spatial entities
 
-
+#########################################################
+### PART 2: Visualizing geopandas layers #######
 ######## PRODUCE MAPS OF 2000 Population #########
 
-#First need to link it.
+#First need to link the information to generate a map of population in 2000
 
 bg_2000_gpd.columns # check columns' name for the data frame
 census_syr_df.columns #contains census variables
-#key is "TRACT" but with a different format.
+#key is "TRACT" but with a different format/data type
 #First fix the format
 bg_2000_gpd.head()
 census_syr_df.BKG_KEY.head()
-
-#as.numeric(as.character(ct_2000_sp$TRACT))
 ct_2000_gpd.TRACT.dtype
 bg_2000_gpd.BKG_KEY.dtypes
 census_syr_df.dtypes
@@ -174,8 +169,6 @@ bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
 bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  scheme='quantiles')
 plt.title('POPULATION 2000')
-#plt.title('POP2000')
-
 ### Let's use more option with matplotlib
 fig, ax = plt.subplots(figsize=(14,6))
 bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
@@ -277,14 +270,11 @@ title_str = "Population by census tract in 2000"
 #                            at = breaks.qt$brks)
 #print(p_plot_pop2000_ct)
 
-##### PART II: SPATIAL QUERY #############
+##############################################
+##### PART 3: SPATIAL QUERY #############
 
 ## Join metals to census track 
 ## Join lead (pb) measurements to census tracks
-
-#soil_PB_df <- read.table(file.path(in_dir_var,census_table_fname),sep=",",header=T)
-#metals_df= pd.read_xls(os.path.join(in_dir,metals_table_fname))
-#metals_df <- read.xls(file.path(in_dir_var,metals_table_fname),sep=",",header=T)
 
 #View(soil_PB_df)
 metals_df.head()
@@ -397,8 +387,8 @@ census_metals_gpd.to_file(outfile)
 ## For kriging use scipy.interpolate
 #https://stackoverflow.com/questions/45175201/how-can-i-interpolate-station-data-with-kriging-in-python
 
-
-##### PART IV: Vulnerability to metals #############
+#################################################
+##### PART IV: Spatial regression: Vulnerability to metals #############
 #Examine the relationship between metals, Pb and vulnerable populations in Syracuse
 
 #P2- SPATIAL AND NON SPATIAL QUERIES (cannot use spatial join)
@@ -490,7 +480,7 @@ Moran(r_lead, f)
 
 #http://rspatial.org/analysis/rst/7-spregression.html
 
-###################### END OF SCRIPT #####################
+################################## END OF SCRIPT ########################################
 
 
 
