@@ -208,9 +208,12 @@ station_or['year'].value_counts()
 station_or.groupby(['month'])['value'].mean()
      
 print("number of rows:",station_or.station.count(),"number of stations:",len(station_or.station.unique()))
-station_or['LST1'] = value-273.15 #create new column
+station_or['LST1'] = values - 273.15 #create new column
+
 station_or_jan = station_or.loc[(station_or['month']==1) & (station_or['value']!=-9999)]
 station_or_jan.head()
+station_or_jan.columns
+
 #avg_df = station_or.groupby(['station'])['value'].mean())
 avg_df = station_or_jan.groupby(['station'])['value','LST1'].mean()
 avg_df['value']= avg_df['value']/10
@@ -220,17 +223,47 @@ avg_df.head()
 ###  PART III : Fit model and generate prediction
 
 ### Add split training and testing!!!
+### Add additionl covariates!!
+
+#selected_covariates_names_updated = selected_continuous_var_names + names_cat 
+selected_covariates_names_updated = ['LST1'] 
+selected_target_names = ['value']
+## Split training and testing
+
+from sklearn.model_selection import train_test_split
+
+prop = 0.3
+random_seed= 100
+
+#X_train, X_test, y_train, y_test = train_test_split(data_df[selected_covariates_names], 
+#                                                    data_df[selected_target_names], 
+#                                                    test_size=prop, 
+#                                                    random_state=random_seed)
+X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_covariates_names_updated], 
+                                                    avg_df[selected_target_names], 
+                                                    test_size=prop, 
+                                                    random_state=random_seed)
+
+X_train.shape
+
 from sklearn.linear_model import LinearRegression
-x=avg_df.LST1.values
-y=avg_df.value.values
-x = x.reshape(len(x), 1)
-y = y.reshape(len(y), 1)
-regr = LinearRegression().fit(x,y)
+#x=avg_df.LST1.values
+#y=avg_df.value.values
+#x = x.reshape(len(x), 1)
+#y = y.reshape(len(y), 1)
+#regr = LinearRegression().fit(x,y)
+regr = LinearRegression().fit(X_train,y_train)
 
 #regr = linear_model.LinearRegression()
 regr.fit(x, y)
 
 # plot it as in the example at http://scikit-learn.org/
+plt.scatter(x, y,  color='black')
+plt.plot(x, regr.predict(x), color='blue', linewidth=3)
+plt.xticks(())
+plt.yticks(())
+plt.show()
+
 plt.scatter(x, y,  color='black')
 plt.plot(x, regr.predict(x), color='blue', linewidth=3)
 plt.xticks(())
