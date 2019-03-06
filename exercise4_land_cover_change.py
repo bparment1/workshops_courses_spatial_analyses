@@ -404,11 +404,8 @@ X_training_df = pd.DataFrame(np.concatenate((X_train[names_cat].values,scaled_tr
 
 ##################################
 ### logistic model
-from sklearn.datasets import load_iris
 from sklearn.linear_model import LogisticRegression
-X, y = load_iris(return_X_y=True)
-clf = LogisticRegression(random_state=0, solver='lbfgs',
-                          multi_class='multinomial').fit(X, y)
+
 model_logistic = LogisticRegression()
 
 model_logistic = model_logistic.fit(X_train.values,y_train.values.ravel())
@@ -429,25 +426,63 @@ parameters = model.coef_
 #pred_test = model_logistic.predict(X_test)
 
 model_logistic.score(pred_test,y_test)
-pred_test = model_logistic.predict_proba(X_test.values)
 
-####################
-###### Step 5: Model assessment with ROC and AUC
+pred_test_prob = model_logistic.predict_proba(X_test.values)
+y_scores_test = pred_test_prob[:,1]
 
-from sklearn.metrics import roc_auc_score
-
-y_true = y_test
-y_scores = pred_test_prob[:,1]
-roc_auc_score(y_true,y_scores)
+pred_train_prob = model_logistic.predict_proba(X_train.values)
+y_scores_train = pred_test_prob[:,1]
 
 ### Note that we only have about 10% change in the dataset so setting 50% does not make sense!!
 sum(data_df.change)/data_df.shape[0]
 sum(y_train.change)/y_train.shape[0]
 
+data_df['change'].value_counts()
+
+sns.set(color_codes=True) #improves layout with bar and background grid
+sns.countplot(x='change',data=data_df)
+#,palette='hls')
+plt.show()
+plt.savefig('count_plot')
+
+plt.figure()
+sns.distplot(y_scores_test) #histogram for the predicted probablities
+
+sns.distplot(y_scores_train) #histogram for the predicted probablities
+
+####################
+###### Step 5: Model assessment with ROC and AUC
+
+
 #https://towardsdatascience.com/building-a-logistic-regression-in-python-301d27367c24
 #This is for ROC curve
 #https://towardsdatascience.com/building-a-logistic-regression-in-python-step-by-step-becd4d56c9c8
 
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
+
+y_true = y_test
+y_scores = pred_test_prob[:,1]
+auc_val_test =roc_auc_score(y_true,y_scores)
+auc_val_test =roc_auc_score(y_true,y_scores)
+
+#fpr, tpr, thresholds = roc_curve(y_test, 
+#                                 logreg.predict_proba(X_test)[:,1])
+
+fpr, tpr, thresholds = roc_curve(y_test, 
+                                 y_scores)
+plt.figure()
+plt.plot(fpr, tpr, 
+         label='Logistic Regression (area = %0.2f)' % auc_val)
+plt.plot([0, 1], [0, 1],'r--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver operating characteristic')
+plt.legend(loc="lower right")
+plt.savefig('Log_ROC')
+plt.show()
 
 ###################### END OF SCRIPT #####################
 
