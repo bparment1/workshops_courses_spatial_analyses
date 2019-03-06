@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 02/22/2019
+#DATE MODIFIED: 03/06/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
@@ -56,21 +56,6 @@ def create_dir_and_check_existence(path):
     except:
         print ("directory already exists")
 
-def open_image(url):
-    image_data = open_http_query(url)
-    
-    if not image_data:
-            return None
-            
-    mmap_name = "/vsimem/"+uuid4().get_hex()
-    gdal.FileFromMemBuffer(mmap_name, image_data.read())
-    gdal_dataset = gdal.Open(mmap_name)
-    image = gdal_dataset.GetRasterBand(1).ReadAsArray()
-    gdal_dataset = None
-    gdal.Unlink(mmap_name)
-    
-    return image
-
 ############################################################################
 #####  Parameters and argument set up ########### 
 
@@ -81,7 +66,7 @@ out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/ou
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix = "exercise4_02162018" #output suffix for the files and ouptut folder
+out_suffix = "exercise4_03062018" #output suffix for the files and ouptut folder
 #ARGS 8
 NA_value = -9999 # number of cores
 file_format = ".tif"
@@ -291,6 +276,176 @@ total_val  <- sum(lc_df$date1)
 lc_df$perc_change <- 100*lc_df$diff/total_val 
 barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
 
+###########################################
+### PART 2: Split test and train, rescaling #######
+
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import LabelEncoder
+from numpy import array
+
+selected_continuous_var_names=list(set(selected_covariates_names) - set(selected_categorical_var_names))
+##Find frequency of unique values:
+freq_val_df = data_df[selected_categorical_var_names].apply(pd.value_counts)
+print(freq_val_df.head())
+
+values_cat = array(data_df[selected_categorical_var_names].values) #note this is assuming only one cat val here
+
+label_encoder = LabelEncoder() 
+one_hot_encoder = OneHotEncoder(sparse=False)
+
+### First integer encode:
+integer_encoded = label_encoder.fit_transform(values_cat)
+print(integer_encoded)
+
+# Binary encode:
+
+integer_encoded = integer_encoded.reshape(len(integer_encoded),1)
+print(integer_encoded)
+
+onehot_encoded = one_hot_encoder.fit_transform(integer_encoded)
+print(onehot_encoded)
+onehot_encoded.shape
+type(onehot_encoded)
+
+#invert to check value?
+onehot_encoded[0:5,]
+values_cat[0:5,]
+
+inverted = label_encoder.inverse_transform([np.argmax(onehot_encoded[0,:])])
+inverted = label_encoder.inverse_transform([np.argmax(onehot_encoded[1,:])])
+print(inverted)
+
+#assign back to the data.frame
+
+unique_val = np.array(freq_val_df.index)
+unique_val = np.sort(unique_val)
+
+print(unique_val)
+#string_val = ['lc']*len(unique_val)
+#names_cat = 'lc_'.join(str(unique_val))
+#names_cat = 'lc_'.join(str(unique_val))
+
+#names_cat = map(lambda x: 'lc_'+str(x),unique_val) #remmove extension
+names_cat = ['lc_' + str(i) for i in unique_val]
+#names_cat = map(lambda x: .join('lc_', str(x))) #remmove extension
+#names_cat = map(lambda x: 'lc_'+str(x),unique_val) #remmove extension
+#names_cat = map(lambda x,y: string_val+str(x)) #remmove extension
+
+#l_dir = map(lambda x: os.path.join(out_dir,os.path.basename(x)),l_dir) #set the directory output
+
+#names_cat = ['lc3','lc4','lc5','lc7','lc8','lc9']
+
+print(names_cat)
+onehot_encoded_df = pd.DataFrame(onehot_encoded,columns=names_cat)
+#onehot_encoded_df = pd.DataFrame(onehot_encoded)
+onehot_encoded_df.columns
+onehot_encoded_df.head()
+#onehot_encoded_df.columns = names_cat
+onehot_encoded_df.shape
+data_df.shape
+## Combine back!!
+
+data_df= pd.concat([data_df,onehot_encoded_df],sort=False,axis=1)
+data_df.shape
+data_df.head()
+
+selected_covariates_names_updated = selected_continuous_var_names + names_cat 
+
+## Split training and testing
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(data_df[selected_covariates_names_updated], 
+                                                    data_df[selected_target_names], 
+                                                    test_size=prop, 
+                                                    random_state=random_seed)
+
+X_train.shape
+
+#### Scaling between 0-1 for continuous variables
+
+
+from sklearn.preprocessing import MinMaxScaler
+
+# Data needs to be scaled to a small range like 0 to 1 for the neural
+# network to work well.
+scaler = MinMaxScaler(feature_range=(0, 1))
+
+##### need to use one hot encoding or text embedding to normalize categorical variables
+#https://dzone.com/articles/artificial-intelligence-a-radical-anti-humanism
+# Scale both the training inputs and outputs
+#scaled_training = scaler.fit_transform(training_data_df)
+#scaled_testing = scaler.transform(test_data_df)
+
+### need to select only the continuous var:
+scaled_training = scaler.fit_transform(X_train[selected_continuous_var_names])
+scaled_testing = scaler.transform(X_test[selected_continuous_var_names])
+
+type(scaled_training) # array
+scaled_training.shape
+
+#X = pd.concat([scaled_training,X_train[names_cat]],sort=False,axis=1)
+#Y = pd.concat([scaled_testing,X_test[names_cat]],sort=False,axis=1)
+
+## Concatenate column-wise
+X_testing_df = pd.DataFrame(np.concatenate((X_test[names_cat].values,scaled_testing),axis=1),
+                                            columns=names_cat+selected_continuous_var_names)
+
+X_training_df = pd.DataFrame(np.concatenate((X_train[names_cat].values,scaled_training),axis=1),
+                                            columns=names_cat+selected_continuous_var_names)
+
+# Print out the adjustment that the scaler applied to the total_earnings column of data
+#print("Note: total_earnings values were scaled by multiplying by {:.10f} and adding {:.6f}".format(scaler.scale_[8], scaler.min_[8]))
+
+#scaled_training_df.to_csv("sales_data_training_scaled.csv", index=False)
+#scaled_testing_df.to_csv("sales_data_testing_scaled.csv", index=False)
+
+###########################################
+### PART 3: build model and train #######
+
+
+##################################
+### logistic model
+from sklearn.datasets import load_iris
+from sklearn.linear_model import LogisticRegression
+X, y = load_iris(return_X_y=True)
+clf = LogisticRegression(random_state=0, solver='lbfgs',
+                          multi_class='multinomial').fit(X, y)
+model_logistic = LogisticRegression()
+
+model_logistic = model_logistic.fit(X_train.values,y_train.values.ravel())
+
+model_logistic.coef_
+selected_covariates_names_updated
+
+pred_test = model_logistic.predict(X_test.values)
+pred_test_prob = model_logistic.predict_proba(X_test.values)
+
+pred_test_prob[:,1] # this is the prob for 1
+y_test[0:5]
+pred_test_prob[0:5,:]
+
+predicted_classes = model.predict(X)
+accuracy = accuracy_score(y.flatten(),pred_test)
+parameters = model.coef_
+#pred_test = model_logistic.predict(X_test)
+
+model_logistic.score(pred_test,y_test)
+pred_test = model_logistic.predict_proba(X_test.values)
+
+from sklearn.metrics import roc_auc_score
+
+y_true = y_test
+y_scores = pred_test_prob[:,1]
+roc_auc_score(y_true,y_scores)
+
+### Note that we only have about 10% change in the dataset so setting 50% does not make sense!!
+sum(data_df.change)/data_df.shape[0]
+sum(y_train.change)/y_train.shape[0]
+
+#https://towardsdatascience.com/building-a-logistic-regression-in-python-301d27367c24
+#This is for ROC curve
+#https://towardsdatascience.com/building-a-logistic-regression-in-python-step-by-step-becd4d56c9c8
 
 
 ###################### END OF SCRIPT #####################
