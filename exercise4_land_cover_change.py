@@ -233,7 +233,30 @@ selected_cat = lc_system_nlcd_df.id_l2.isin(freq_tb_nlcd.value)
 lc_system_nlcd_df = lc_system_nlcd_df[selected_cat]
 
 ### Select relevant columns for the reclassification
-rec_df <- lc_system_nlcd_df[,c(2,1)]
+
+rec_df = lc_system_nlcd_df.iloc[:,[2,1,0]]
+rec_df.head()
+
+# do not include right value
+0  to 20 is 1
+20 to 30 is 2
+30 to 40 is 3
+40 to 50 is 4
+50 to 60 is 5
+60 to 70 is 6 # does not exist
+70 to 80 is 7
+80 to 90 is 8
+90 to 100 is 9
+
+r_date1_rec = copy.copy(r_lc_date2)
+
+
+#can use np.digitize
+
+
+
+
+#rec_df <- lc_system_nlcd_df[,c(2,1)]
 r_date1_rec <- subs(r_lc_date1,rec_df,by="id_l2","id_l1")
 r_date2_rec <- subs(r_lc_date2,rec_df,by="id_l2","id_l1")
 
@@ -370,7 +393,6 @@ X_train, X_test, y_train, y_test = train_test_split(data_df[selected_covariates_
                                                     data_df[selected_target_names], 
                                                     test_size=prop, 
                                                     random_state=random_seed)
-
 X_train.shape
 
 #### Scaling between 0-1 for continuous variables
@@ -431,7 +453,7 @@ pred_test_prob = model_logistic.predict_proba(X_test.values)
 y_scores_test = pred_test_prob[:,1]
 
 pred_train_prob = model_logistic.predict_proba(X_train.values)
-y_scores_train = pred_test_prob[:,1]
+y_scores_train = pred_train_prob[:,1]
 
 ### Note that we only have about 10% change in the dataset so setting 50% does not make sense!!
 sum(data_df.change)/data_df.shape[0]
@@ -461,16 +483,16 @@ sns.distplot(y_scores_train) #histogram for the predicted probablities
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
 
-y_true = y_test
-y_scores = pred_test_prob[:,1]
-auc_val_test =roc_auc_score(y_true,y_scores)
-auc_val_test =roc_auc_score(y_true,y_scores)
+#y_true = y_test
+#y_scores = pred_test_prob[:,1]
+auc_val_train =roc_auc_score(y_train,y_scores_train)
+auc_val_test =roc_auc_score(y_test,y_scores_test)
 
 #fpr, tpr, thresholds = roc_curve(y_test, 
 #                                 logreg.predict_proba(X_test)[:,1])
 
 fpr, tpr, thresholds = roc_curve(y_test, 
-                                 y_scores)
+                                 y_scores_test)
 plt.figure()
 plt.plot(fpr, tpr, 
          label='Logistic Regression (area = %0.2f)' % auc_val)
