@@ -89,6 +89,8 @@ infile_land_cover_date3 = "agg_3_r_nlcd2011_Houston.tif"
 infile_name_nlcd_legend = "nlcd_legend.txt"
 infile_name_nlcd_classification_system = "classification_system_nlcd_legend.xlsx"
 	
+data_fname = 'r_variables_harris_county_exercise4_02072019.txt'
+
 ################# START SCRIPT ###############################
 
 ######### PART 0: Set up the output dir ################
@@ -106,9 +108,6 @@ else:
     os.chdir(create_out_dir) #use working dir defined earlier
     
     
-#######################################
-### PART 1: Read in DATA #######
-
 ###########################################
 ### PART I: READ AND VISUALIZE DATA #######
 	
@@ -300,6 +299,12 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import LabelEncoder
 from numpy import array
 
+## Relevant variables used:
+selected_covariates_names = ['land_cover', 'slope', 'roads_dist', 'developped_dist']
+selected_target_names = ['change'] #also called dependent variable
+
+selected_categorical_var_names=['land_cover']
+
 selected_continuous_var_names=list(set(selected_covariates_names) - set(selected_categorical_var_names))
 ##Find frequency of unique values:
 freq_val_df = data_df[selected_categorical_var_names].apply(pd.value_counts)
@@ -358,6 +363,9 @@ selected_covariates_names_updated = selected_continuous_var_names + names_cat
 
 from sklearn.model_selection import train_test_split
 
+prop = 0.3
+random_seed = 100
+
 X_train, X_test, y_train, y_test = train_test_split(data_df[selected_covariates_names_updated], 
                                                     data_df[selected_target_names], 
                                                     test_size=prop, 
@@ -366,7 +374,6 @@ X_train, X_test, y_train, y_test = train_test_split(data_df[selected_covariates_
 X_train.shape
 
 #### Scaling between 0-1 for continuous variables
-
 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -453,7 +460,7 @@ sum(y_train.change)/y_train.shape[0]
 
 
 
-
+                   
 
 
 
