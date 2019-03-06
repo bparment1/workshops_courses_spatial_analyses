@@ -277,7 +277,24 @@ lc_df$perc_change <- 100*lc_df$diff/total_val
 barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
 
 ###########################################
-### PART 2: Split test and train, rescaling #######
+############# PART III: Process and prepare for land change modeling ####################
+## add this later
+
+
+###########################################
+### PART IV: Run model and perform assessment ###########################
+
+################
+##### Step 1: consistent masking and generate mask removing water (1) and developped (2) in 2001
+	
+infile_land_cover_date1 = os.path.join(in_dir,infile_land_cover_date1) #NLCD 2001
+
+#data_df = pd.read_table(os.path.join(in_dir,data_fname))
+data_df = pd.read_csv(os.path.join(in_dir,data_fname))
+data_df.columns
+
+################
+##### Step 2: Prepare model for predictions: Split data into training and testing and rescaling
 
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import LabelEncoder
@@ -321,26 +338,12 @@ unique_val = np.array(freq_val_df.index)
 unique_val = np.sort(unique_val)
 
 print(unique_val)
-#string_val = ['lc']*len(unique_val)
-#names_cat = 'lc_'.join(str(unique_val))
-#names_cat = 'lc_'.join(str(unique_val))
-
-#names_cat = map(lambda x: 'lc_'+str(x),unique_val) #remmove extension
 names_cat = ['lc_' + str(i) for i in unique_val]
-#names_cat = map(lambda x: .join('lc_', str(x))) #remmove extension
-#names_cat = map(lambda x: 'lc_'+str(x),unique_val) #remmove extension
-#names_cat = map(lambda x,y: string_val+str(x)) #remmove extension
-
-#l_dir = map(lambda x: os.path.join(out_dir,os.path.basename(x)),l_dir) #set the directory output
-
-#names_cat = ['lc3','lc4','lc5','lc7','lc8','lc9']
 
 print(names_cat)
 onehot_encoded_df = pd.DataFrame(onehot_encoded,columns=names_cat)
-#onehot_encoded_df = pd.DataFrame(onehot_encoded)
 onehot_encoded_df.columns
 onehot_encoded_df.head()
-#onehot_encoded_df.columns = names_cat
 onehot_encoded_df.shape
 data_df.shape
 ## Combine back!!
@@ -372,20 +375,12 @@ from sklearn.preprocessing import MinMaxScaler
 scaler = MinMaxScaler(feature_range=(0, 1))
 
 ##### need to use one hot encoding or text embedding to normalize categorical variables
-#https://dzone.com/articles/artificial-intelligence-a-radical-anti-humanism
-# Scale both the training inputs and outputs
-#scaled_training = scaler.fit_transform(training_data_df)
-#scaled_testing = scaler.transform(test_data_df)
-
 ### need to select only the continuous var:
 scaled_training = scaler.fit_transform(X_train[selected_continuous_var_names])
 scaled_testing = scaler.transform(X_test[selected_continuous_var_names])
 
 type(scaled_training) # array
 scaled_training.shape
-
-#X = pd.concat([scaled_training,X_train[names_cat]],sort=False,axis=1)
-#Y = pd.concat([scaled_testing,X_test[names_cat]],sort=False,axis=1)
 
 ## Concatenate column-wise
 X_testing_df = pd.DataFrame(np.concatenate((X_test[names_cat].values,scaled_testing),axis=1),
@@ -394,15 +389,11 @@ X_testing_df = pd.DataFrame(np.concatenate((X_test[names_cat].values,scaled_test
 X_training_df = pd.DataFrame(np.concatenate((X_train[names_cat].values,scaled_training),axis=1),
                                             columns=names_cat+selected_continuous_var_names)
 
-# Print out the adjustment that the scaler applied to the total_earnings column of data
-#print("Note: total_earnings values were scaled by multiplying by {:.10f} and adding {:.6f}".format(scaler.scale_[8], scaler.min_[8]))
-
 #scaled_training_df.to_csv("sales_data_training_scaled.csv", index=False)
 #scaled_testing_df.to_csv("sales_data_testing_scaled.csv", index=False)
 
-###########################################
-### PART 3: build model and train #######
-
+####################
+###### Step 3: fit glm logistic model and generate predictions
 
 ##################################
 ### logistic model
@@ -432,6 +423,9 @@ parameters = model.coef_
 
 model_logistic.score(pred_test,y_test)
 pred_test = model_logistic.predict_proba(X_test.values)
+
+####################
+###### Step 5: Model assessment with ROC and AUC
 
 from sklearn.metrics import roc_auc_score
 
