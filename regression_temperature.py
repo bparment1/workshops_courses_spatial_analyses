@@ -119,11 +119,13 @@ data_gpd = gpd.read_file(os.path.join(in_dir,ghcn_filename))
 data_gpd.head()  
 
 ## Extracting information from raster using raster io object
-lst = rasterio.open(os.path.join(in_dir,infile))
-type(lst)
-lst.crs # explore Coordinate Reference System 
-lst.shape
-lst.height
+lst1 = rasterio.open(os.path.join(in_dir,infile_lst_month1))
+lst7 = rasterio.open(os.path.join(in_dir,infile_lst_month7))
+type(lst1)
+lst1.crs # explore Coordinate Reference System 
+lst1.shape
+lst1.height
+plot.show(lst1)
 plot.show(lst)
 
 ## Read raster bands directly to Numpy arrays and visualize data
@@ -255,7 +257,27 @@ regr.score(X_test, y_test)
 
 
 
+###### Additional information ######
 
+# #LAND COVER INFORMATION (Tunamu et al., Jetz lab)
+
+# LC1: Evergreen/deciduous needleleaf trees
+# LC2: Evergreen broadleaf trees
+# LC3: Deciduous broadleaf trees
+# LC4: Mixed/other trees
+# LC5: Shrubs
+# LC6: Herbaceous vegetation
+# LC7: Cultivated and managed vegetation
+# LC8: Regularly flooded shrub/herbaceous vegetation
+# LC9: Urban/built-up
+# LC10: Snow/ice
+# LC11: Barren lands/sparse vegetation
+# LC12: Open water
+
+## LST information: mm_01, mm_02 ...to mm_12 are monthly mean LST at station locaitons
+## LST information: nobs_01, nobs_02 ... to nobs_12 number of valid obs used in mean LST averages
+## TMax : monthly mean tmax at meteorological stations
+## nbs_stt: number of stations used in the monthly mean tmax at stations
 
 
 
