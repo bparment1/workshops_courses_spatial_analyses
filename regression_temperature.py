@@ -86,7 +86,9 @@ gdal_installed = True #if TRUE, GDAL is used to generate distance files
 crs_reg = "+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 
 #infile = "mean_month1_rescaled.rst" # mean LST for January
-infile = "lst_mean_month1_rescaled.tif" 
+infile_lst_month1 = "lst_mean_month1_rescaled.tif" 
+infile_lst_month7 = "lst_mean_month7_rescaled.tif" 
+
 infile_forest_perc =""
 ghcn_filename = "ghcn_or_tmax_covariates_06262012_OR83M.shp" # climate stations
 
@@ -102,8 +104,8 @@ random_seed= 100
 
 if create_out_dir==True:
     #out_path<-"/data/project/layers/commons/data_workflow/output_data"
-    out_dir = "output_data_"+out_suffix
-    out_dir = os.path.join(in_dir,out_dir)
+    out_dir_new = "output_data_"+out_suffix
+    out_dir = os.path.join(out_dir,out_dir_new)
     create_dir_and_check_existence(out_dir)
     os.chdir(out_dir)        #set working directory
 else:
@@ -118,14 +120,15 @@ data_gpd.head()
 
 ## Extracting information from raster using raster io object
 lst = rasterio.open(os.path.join(in_dir,infile))
+type(lst)
 lst.crs # explore Coordinate Reference System 
 lst.shape
 lst.height
 plot.show(lst)
 
 ## Read raster bands directly to Numpy arrays and visualize data
-r_lst = src.read(1,masked=True) #read first array with masked value, nan are assigned for NA
-spatial_extent = rasterio.plot.plotting_extent(src)
+r_lst = lst.read(1,masked=True) #read first array with masked value, nan are assigned for NA
+spatial_extent = rasterio.plot.plotting_extent(lst)
 type(r_lst)
 r_lst.size
 plot.show(r_lst)
@@ -182,8 +185,11 @@ station_or.groupby(['month'])['value'].mean()
      
 print("number of rows:",station_or.station.count(),"number of stations:",len(station_or.station.unique()))
 station_or['LST1'] = values - 273.15 #create new column
+station_or['LST7'] = values - 273.15 #create new column
 
 station_or_jan = station_or.loc[(station_or['month']==1) & (station_or['value']!=-9999)]
+station_or_july = station_or.loc[(station_or['month']==7) & (station_or['value']!=-9999)]
+
 station_or_jan.head()
 station_or_jan.columns
 
@@ -240,6 +246,9 @@ regr.score(X_test, y_test)
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain),
 ### Do models for January,July with LST and with/without land cover % of forest
 ## Calculate MAE,RMSE,R2,etc. inspire yourself from paper. Save this into a CSV file.
+
+###Ok now use station_or data: ELEV_SRTM, LC10?
+
 
 ############################# END OF SCRIPT ###################################
 
