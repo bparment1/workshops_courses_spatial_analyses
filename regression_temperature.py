@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 09/07/2018
-#DATE MODIFIED: 03/07/2019
+#DATE MODIFIED: 03/09/2019
 #Version: 1
 #PROJECT: SESYNC Geospatial Course and AAG 2019 Python Geospatial Course
 #TO DO:
@@ -126,12 +126,12 @@ lst1.crs # explore Coordinate Reference System
 lst1.shape
 lst1.height
 plot.show(lst1)
-plot.show(lst)
+plot.show(lst7)
 
 ## Read raster bands directly to Numpy arrays and visualize data
-r_lst = lst.read(1,masked=True) #read first array with masked value, nan are assigned for NA
-spatial_extent = rasterio.plot.plotting_extent(lst)
-type(r_lst)
+r_lst1 = lst1.read(1,masked=True) #read first array with masked value, nan are assigned for NA
+spatial_extent = rasterio.plot.plotting_extent(lst1)
+type(r_lst1)
 r_lst.size
 plot.show(r_lst)
 #Can also use the regular matplotlib library function to plot images
@@ -139,7 +139,9 @@ plt.imshow(r_lst)
 plt.imshow(r_lst, clim=(259.0, 287.0))
 
 # Explore values distribution
-plt.hist(r_lst.ravel(),bins=256,range=(259.0,287.0))
+plt.hist(r_lst.ravel(),
+         bins=256,
+         range=(259.0,287.0))
 
 ##### Combine raster layer and geogpanda layer
 
