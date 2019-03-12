@@ -89,9 +89,23 @@ def fit_ols_reg(avg_df,selected_features,selected_target,prop=0.3,random_seed=10
     data_metrics_df = pd.DataFrame(data,columns=['mae','rmse','r2'])
     data_metrics_df['test']=[1,0]
     
+    X_test['test'] = 1
+    X_train['test'] = 0
+    y_test['test'] = 1
+    y_train['test'] = 0
+    
+    X = pd.concat([X_train,X_test],sort=False)
+    y = pd.concat([y_train,y_test],sort=False)
     ### return a tuple, could be a dict or list?
     
-    return X_train, X_test, y_train, y_test, regr, data_metrics_df
+    residuals_val_test = y_test[selected_target] - y_pred_test
+    residuals_val_train = y_train[selected_target] - y_pred_train
+    residuals_val_test['test'] = 1   
+    residuals_val_train['test'] = 0   
+        
+    residuals_df = pd.concat([residuals_val_test,residuals_val_train],sort=False)
+    
+    return X, y, regr, residuals_df,data_metrics_df
 
 ############################################################################
 #####  Parameters and argument set up ###########
@@ -329,18 +343,27 @@ fit_ols_jul = fit_ols_reg(avg_df=avg_jul_df,
             prop=0.3,
             random_seed=10)
 
-data_metrics_jan_df = fit_ols_jan[5]
-data_metrics_jul_df = fit_ols_jul[5]
 
-data_metrics = pd.concat([fit_ols_jan[5],fit_ols_jul[5]])
+data_metrics = pd.concat([fit_ols_jan[4],fit_ols_jul[4]])
 data_metrics['month'] = [1,1,7,7] 
 
 data_metrics
 
+#data_metrics.to_csv
 #### now plot residuals
 
+#need to add residuals to outputs!!
+#return X_train, X_test, y_train, y_test, regr, data_metrics_df
 
-sns.boxplot(x=,y=,data=)
+residuals_df =fit_ols_jan[3]
+
+#X_train =fit_ols_jan[5]
+
+residuals_df.columns
+residuals_df['test'] = residuals_df['test'].astype('category')
+    
+#change data type to categorical
+sns.boxplot(x='test',y='T1',data=residuals_df)
 
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain),
 ### Do models for January,July with LST and with/without land cover % of forest
