@@ -227,24 +227,24 @@ avg_jul_df['T7'] = avg_jul_df['value']/10
 ### Add additionl covariates!!
 
 #selected_covariates_names_updated = selected_continuous_var_names + names_cat 
-selected_covariates_names_updated = ['LST1'] 
-selected_target_names = ['T1']
+selected_features = ['LST1'] #selected features
+selected_target = ['T1'] #selected dependent variables
 ## Split training and testing
 
 from sklearn.model_selection import train_test_split
 
-X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_covariates_names_updated], 
-                                                    avg_df[selected_target_names], 
+avg_df = avg_jan_df
+
+X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_features], 
+                                                    avg_df[selected_target], 
                                                     test_size=prop, 
                                                     random_state=random_seed)
-
+   
 X_train.shape
 
 from sklearn.linear_model import LinearRegression
-regr = LinearRegression().fit(X_train,y_train)
-
-#regr = linear_model.LinearRegression()
-regr.fit(x, y)
+regr = LinearRegression() #create/instantiate object used for linear regresssion
+regr.fit(X_train,y_train) #fit model
 
 plt.scatter(X_train, y_train,  color='black')
 plt.plot(X_train, regr.predict(X_train), color='blue', linewidth=3)
@@ -255,15 +255,32 @@ plt.show()
 print('reg coef',regr.coef_)
 print('reg intercept',regr.intercept_)
 
-#reg.predict(x) # Note this is a fit!
-#reg.score(x, y)
-
 regr.predict(X_train) # Note this is a fit!
 regr.score(X_train, y_train)
 
 X_test.shape
 regr.predict(X_test) # Note this is a fit!
 regr.score(X_test, y_test)
+
+test = fit_ols_reg(avg_df=avg_jan_df,
+            prop=0.3,
+            random_seed=100)
+
+def fit_ols_reg(avg_df,prop=0.3,random_seed=100):
+    #Function to fit a regressio model given a data frame
+
+    X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_covariates], 
+                                                    avg_df[selected_target], 
+                                                    test_size=prop, 
+                                                    random_state=random_seed)
+    
+    from sklearn.linear_model import LinearRegression
+    regr = LinearRegression().fit(X_train,y_train)
+
+    regr.fit(X_train, y_train)
+    
+    ### return a tuple, could be a dict or list?
+    return X_train, X_test, y_train, y_test, regr
 
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain),
 ### Do models for January,July with LST and with/without land cover % of forest
