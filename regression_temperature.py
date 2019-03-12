@@ -57,56 +57,6 @@ def create_dir_and_check_existence(path):
     except:
         print ("directory already exists")
 
-def fit_ols_reg(avg_df,selected_features,selected_target,prop=0.3,random_seed=100):
-    #Function to fit a regressio model given a data frame
-
-    X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_features], 
-                                                    avg_df[selected_target], 
-                                                    test_size=prop, 
-                                                    random_state=random_seed)
-    
-    from sklearn.linear_model import LinearRegression
-    regr = LinearRegression().fit(X_train,y_train)
-
-    regr.fit(X_train, y_train)
-
-    y_pred_train = regr.predict(X_train) # Note this is a fit!
-    y_pred_test = regr.predict(X_test) # Note this is a fit!
-
-    r2_val_train = regr.score(X_train, y_train) #coefficient of determination (R2)
-    r2_val_test = regr.score(X_test, y_test)
-
-    from sklearn import metrics
-    #https://scikit-learn.org/stable/modules/classes.html#sklearn-metrics-metrics
-
-    mae_val_test = metrics.mean_absolute_error(y_test, y_pred_test) #MAE
-    rmse_val_test = np.sqrt(metrics.mean_squared_error(y_test, y_pred_test)) #RMSE
-    mae_val_train = metrics.mean_absolute_error(y_train, y_pred_train) #MAE
-    rmse_val_train = np.sqrt(metrics.mean_squared_error(y_train, y_pred_train)) #RMSE
-    
-    data = np.array([[mae_val_test,rmse_val_test,r2_val_test],
-                     [mae_val_train,rmse_val_train,r2_val_train]])
-    data_metrics_df = pd.DataFrame(data,columns=['mae','rmse','r2'])
-    data_metrics_df['test']=[1,0]
-    
-    X_test['test'] = 1
-    X_train['test'] = 0
-    y_test['test'] = 1
-    y_train['test'] = 0
-    
-    X = pd.concat([X_train,X_test],sort=False)
-    y = pd.concat([y_train,y_test],sort=False)
-    ### return a tuple, could be a dict or list?
-    
-    residuals_val_test = y_test[selected_target] - y_pred_test
-    residuals_val_train = y_train[selected_target] - y_pred_train
-    residuals_val_test['test'] = 1   
-    residuals_val_train['test'] = 0   
-        
-    residuals_df = pd.concat([residuals_val_test,residuals_val_train],sort=False)
-    
-    return X, y, regr, residuals_df,data_metrics_df
-
 ############################################################################
 #####  Parameters and argument set up ###########
 
@@ -277,41 +227,24 @@ avg_jul_df['T7'] = avg_jul_df['value']/10
 ### Add additionl covariates!!
 
 #selected_covariates_names_updated = selected_continuous_var_names + names_cat 
-selected_features = ['LST1'] #selected features
-selected_target = ['T1'] #selected dependent variables
+selected_covariates_names_updated = ['LST1'] 
+selected_target_names = ['T1']
 ## Split training and testing
 
 from sklearn.model_selection import train_test_split
 
-X_train, X_test, y_train, y_test = train_test_split(avg_jan_df[selected_features], 
-                                                    avg_jan_df[selected_target], 
+X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_covariates_names_updated], 
+                                                    avg_df[selected_target_names], 
                                                     test_size=prop, 
                                                     random_state=random_seed)
-   
+
 X_train.shape
 
 from sklearn.linear_model import LinearRegression
-regr = LinearRegression() #create/instantiate object used for linear regresssion
-regr.fit(X_train,y_train) #fit model
+regr = LinearRegression().fit(X_train,y_train)
 
-y_pred_train = regr.predict(X_train) # Note this is a fit!
-y_pred_test = regr.predict(X_test) # Note this is a fit!
-
-#### Model evaluation
-
-r2_val_train = regr.score(X_train, y_train) #coefficient of determination (R2)
-r2_val_test = regr.score(X_test, y_test)
-
-from sklearn import metrics
-#https://scikit-learn.org/stable/modules/classes.html#sklearn-metrics-metrics
-
-mae_val_test = metrics.mean_absolute_error(y_test, y_pred_test) #MAE
-rmse_val_test = np.sqrt(metrics.mean_squared_error(y_test, y_pred_test)) #RMSE
-mae_val_train = metrics.mean_absolute_error(
-data = np.array([[mae_val_test,rmse_val_test,r2_val_test],[mae_val_train,rmse_val_train,r2_val_train]])
-data_metrics_df = pd.DataFrame(data,columns=['mae','rmse','r2'])
-data_metrics_df['test']=[1,0]
-#metrics.r2_scores(y_test, y_pred_test)
+#regr = linear_model.LinearRegression()
+regr.fit(x, y)
 
 plt.scatter(X_train, y_train,  color='black')
 plt.plot(X_train, regr.predict(X_train), color='blue', linewidth=3)
@@ -322,48 +255,15 @@ plt.show()
 print('reg coef',regr.coef_)
 print('reg intercept',regr.intercept_)
 
-############ Now use y_train, y_pred_train) #MAE
-rmse_val_train = np.sqrt(metrics.mean_squared_error(y_train, y_pred_train)) #RMSE
+#reg.predict(x) # Note this is a fit!
+#reg.score(x, y)
 
-selected_features = ['LST1'] #selected features
-selected_target = ['T1'] #selected dependent variables
+regr.predict(X_train) # Note this is a fit!
+regr.score(X_train, y_train)
 
-fit_ols_jan = fit_ols_reg(avg_df=avg_jan_df,
-            selected_features = selected_features,
-            selected_target = selected_target,
-            prop=0.3,
-            random_seed=10)
-
-selected_features = ['LST7'] #selected features
-selected_target = ['T7'] #selected dependent variables
-
-fit_ols_jul = fit_ols_reg(avg_df=avg_jul_df,
-            selected_features = selected_features,
-            selected_target = selected_target,
-            prop=0.3,
-            random_seed=10)
-
-
-data_metrics = pd.concat([fit_ols_jan[4],fit_ols_jul[4]])
-data_metrics['month'] = [1,1,7,7] 
-
-data_metrics
-
-#data_metrics.to_csv
-#### now plot residuals
-
-#need to add residuals to outputs!!
-#return X_train, X_test, y_train, y_test, regr, data_metrics_df
-
-residuals_df =fit_ols_jan[3]
-
-#X_train =fit_ols_jan[5]
-
-residuals_df.columns
-residuals_df['test'] = residuals_df['test'].astype('category')
-    
-#change data type to categorical
-sns.boxplot(x='test',y='T1',data=residuals_df)
+X_test.shape
+regr.predict(X_test) # Note this is a fit!
+regr.score(X_test, y_test)
 
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain),
 ### Do models for January,July with LST and with/without land cover % of forest
