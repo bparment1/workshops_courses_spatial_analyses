@@ -231,9 +231,13 @@ selected_features = ['LST1'] #selected features
 selected_target = ['T1'] #selected dependent variables
 ## Split training and testing
 
+selected_features = ['LST7'] #selected features
+selected_target = ['T7'] #selected dependent variables
+
 from sklearn.model_selection import train_test_split
 
 avg_df = avg_jan_df
+avg_df = avg_jul_df
 
 X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_features], 
                                                     avg_df[selected_target], 
@@ -246,6 +250,27 @@ from sklearn.linear_model import LinearRegression
 regr = LinearRegression() #create/instantiate object used for linear regresssion
 regr.fit(X_train,y_train) #fit model
 
+y_pred_train = regr.predict(X_train) # Note this is a fit!
+y_pred_test = regr.predict(X_test) # Note this is a fit!
+
+#### Model evaluation
+
+r2_val_train = regr.score(X_train, y_train) #coefficient of determination (R2)
+r2_val_test = regr.score(X_test, y_test)
+
+from sklearn import metrics
+#https://scikit-learn.org/stable/modules/classes.html#sklearn-metrics-metrics
+
+mae_val_test = metrics.mean_absolute_error(y_test, y_pred_test) #MAE
+rmse_val_test = np.sqrt(metrics.mean_squared_error(y_test, y_pred_test)) #RMSE
+mae_val_train = metrics.mean_absolute_error(y_train, y_pred_train) #MAE
+rmse_val_train = np.sqrt(metrics.mean_squared_error(y_train, y_pred_train)) #RMSE
+
+data = np.array([[mae_val_test,rmse_val_test,r2_val_test],[mae_val_train,rmse_val_train,r2_val_train]])
+data_metrics_df = pd.DataFrame(data,columns=['mae','rmse','r2'])
+data_metrics_df['test']=[1,0]
+#metrics.r2_scores(y_test, y_pred_test)
+
 plt.scatter(X_train, y_train,  color='black')
 plt.plot(X_train, regr.predict(X_train), color='blue', linewidth=3)
 plt.xticks(())
@@ -255,21 +280,31 @@ plt.show()
 print('reg coef',regr.coef_)
 print('reg intercept',regr.intercept_)
 
-regr.predict(X_train) # Note this is a fit!
-regr.score(X_train, y_train)
+selected_features = ['LST1'] #selected features
+selected_target = ['T1'] #selected dependent variables
 
-X_test.shape
-regr.predict(X_test) # Note this is a fit!
-regr.score(X_test, y_test)
-
-test = fit_ols_reg(avg_df=avg_jan_df,
+fit_ols_jan = fit_ols_reg(avg_df=avg_jan_df,
+            selected_features = selected_features,
+            selected_target = selected_target,
             prop=0.3,
             random_seed=100)
 
-def fit_ols_reg(avg_df,prop=0.3,random_seed=100):
+selected_features = ['LST7'] #selected features
+selected_target = ['T7'] #selected dependent variables
+
+fit_ols_jul = fit_ols_reg(avg_df=avg_jul_df,
+            selected_features = selected_features,
+            selected_target = selected_target,
+            prop=0.3,
+            random_seed=100)
+
+X_test.shape
+regr.predict(X_test) # Note this is a f
+
+def fit_ols_reg(avg_df,selected_features,selected_target,prop=0.3,random_seed=100):
     #Function to fit a regressio model given a data frame
 
-    X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_covariates], 
+    X_train, X_test, y_train, y_test = train_test_split(avg_df[selected_features], 
                                                     avg_df[selected_target], 
                                                     test_size=prop, 
                                                     random_state=random_seed)
@@ -278,9 +313,29 @@ def fit_ols_reg(avg_df,prop=0.3,random_seed=100):
     regr = LinearRegression().fit(X_train,y_train)
 
     regr.fit(X_train, y_train)
+
+    y_pred_train = regr.predict(X_train) # Note this is a fit!
+    y_pred_test = regr.predict(X_test) # Note this is a fit!
+
+    r2_val_train = regr.score(X_train, y_train) #coefficient of determination (R2)
+    r2_val_test = regr.score(X_test, y_test)
+
+    from sklearn import metrics
+    #https://scikit-learn.org/stable/modules/classes.html#sklearn-metrics-metrics
+
+    mae_val_test = metrics.mean_absolute_error(y_test, y_pred_test) #MAE
+    rmse_val_test = np.sqrt(metrics.mean_squared_error(y_test, y_pred_test)) #RMSE
+    mae_val_train = metrics.mean_absolute_error(y_train, y_pred_train) #MAE
+    rmse_val_train = np.sqrt(metrics.mean_squared_error(y_train, y_pred_train)) #RMSE
+    
+    data = np.array([[mae_val_test,rmse_val_test,r2_val_test],
+                     [mae_val_train,rmse_val_train,r2_val_train]])
+    data_metrics_df = pd.DataFrame(data,columns=['mae','rmse','r2'])
+    data_metrics_df['test']=[1,0]
     
     ### return a tuple, could be a dict or list?
-    return X_train, X_test, y_train, y_test, regr
+    
+    return X_train, X_test, y_train, y_test, regr, data_metrics_df
 
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain),
 ### Do models for January,July with LST and with/without land cover % of forest
