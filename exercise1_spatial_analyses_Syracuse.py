@@ -203,21 +203,20 @@ ax.set_title("Population", fontsize= 20)
 #### Generate population maps with two different class intervals
 
 title_str = "Population by census tract in 2000"
-bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
+census_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  scheme='quantiles')
 plt.title(title_str)
 
 ### Let's use more option with matplotlib
-### Let's use more option with matplotlib
 
 fig, ax = plt.subplots(figsize=(14,6))
-bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
+census_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  scheme='equal_interval',k=7,
                  ax=ax,
                  legend=False)
 
 fig, ax = plt.subplots(figsize=(14,6))
-bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
+census_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  scheme='quantiles',k=7,
                  ax=ax,
                  legend=True)
@@ -228,76 +227,80 @@ ax.set_title('POP2000')
 #          fontsize=25,
 #          frameon=False)
 #plt.show()
+#https://nbviewer.jupyter.org/github/pysal/mapclassify/blob/master/notebooks/south.ipynb
+#q10 = ps.Quantiles(tx.HR90,k=10)
+#q10.bins
+
+#f, ax = plt.subplots(1, figsize=(9, 9))
+#tx.assign(cl=q10.yb).plot(column='cl', categorical=True, \
+#        k=10, cmap='OrRd', linewidth=0.1, ax=ax, \
+#        edgecolor='white', legend=True)
+#ax.set_axis_off()
+#plt.show()
 
 ##############################################
 ##### PART 3: SPATIAL QUERY #############
+### We generate a dataset with metals and lead information by census tracks.
+### To do so we use the following steps:
+##Step 1: Join metals to census tracks 
+##Step 2: Generate geopanda from PB sample measurements 
+##Step 3: Join lead (pb) measurements to census tracks
+##Step 4: Find average lead by census track
 
-## Join metals to census track 
-## Join lead (pb) measurements to census tracks
-## Find average lead by census track
+##### Step 1: Join metals to census tracks ###### 
 
 metals_df.head()
-metals_df.describe
+metals_df.describe # 57 rows  
 ##Number of rows suggests matching to the following spatial entities
 metals_df.shape[0]== ct_2000_gpd.shape[0]
-
-#dim(bg_2000_sp)
-#census_metals_sp <- merge(ct_2000_sp,metals_df,by.x="TRACT",by.y="ID")
 #Check data types before joining tables with "merge"
-#metals_df.dtypes
-#ct_2000_gpd.dtypes
-#ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
-census_metals_gpd = ct_2000_gpd.merge(metals_df,left_on='TRACT',right_on='ID')
+metals_df.dtypes
+ct_2000_gpd.dtypes
+ct_2000_gpd.shape
 
-########processing lead data
-### Now let's plot lead data 
-#Soil lead samples: UTM z18 coordinates
-#soil_PB_df <- read.table(file.path(in_dir_var,soil_PB_table_fname),sep=",",header=T) #point locations
-census_metals_gpd.crs
-#proj4string(census_metals_sp) #
+census_metals_gpd = ct_2000_gpd.merge(metals_df,left_on='TRACT',right_on='ID')
+census_metals_gpd.shape
+
+##### Step 2: Generate geopanda from PB sample measurements ##### 
+# Processing lead data to generate a geopanda object using shapely points
+
+soil_PB_df.columns #Missing names for columns
 soil_PB_df.columns = ["x","y","ID","ppm"]
-#names(soil_PB_df)
 soil_PB_df.head()
-#names(soil_PB_df) <- c("x","y","ID","ppm") 
 
 soil_PB_gpd = soil_PB_df.copy()
 type(soil_PB_df)
-soil_PB_gpd['Coordinates']=list(zip(soil_PB_gpd.x,soil_PB_gpd.y))
-#coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
-#coordinates(soil_PB_sp) <- soil_PB_sp[,c("x","y")]
+soil_PB_gpd['Coordinates']=list(zip(soil_PB_gpd.x,soil_PB_gpd.y)) #create a new column with tuples of coordinates
 type(soil_PB_gpd)
-soil_PB_gpd['Coordinates']= soil_PB_gpd.Coordinates.apply(Point)
-soil_PB_gpd = gpd.GeoDataFrame(soil_PB_gpd,geometry='Coordinates')
+soil_PB_gpd['Coordinates']= soil_PB_gpd.Coordinates.apply(Point) #create a point for each tupple row
+type(soil_PB_gpd.Coordinates[0]) #This shows that we created a shapely geometry point
+type(soil_PB_gpd) #This is still an panda DataFrame
+soil_PB_gpd = gpd.GeoDataFrame(soil_PB_gpd,geometry='Coordinates') #Create a gpd by setting the geometry column
+type(soil_PB_gpd) # This is now a GeoDataFrame
 
-#### Check the coordinates reference system
-type(census_metals_gpd.crs) #dictionary
+## Checking and setting the coordinates reference system
+soil_PB_gpd.crs #No coordinate reference system (CRS) is set
+census_metals_gpd.crs # Let's use the metal geopanda object to set the CRS
+
+## Find out more about the CRS using the epsg code
 epsg_code = census_metals_gpd.crs.get('init').split(':')[1]
-
 inproj = osr.SpatialReference()
 inproj.ImportFromEPSG(int(epsg_code))
-inproj.ExportToProj4()
-
-#Assign projection system
-soil_PB_gpd.crs= census_metals_gpd.crs
-#proj4string(soil_PB_sp) <- proj4string(census_metals_sp)
-#dim(soil_PB_sp)
-
-#
-#soil_PB_sp <- soil_PB_sp[,c("ID","ppm","x","y")]
-#View(soil_PB_sp)
+inproj.ExportToProj4() # UTM 18: this is the coordinate system in Proj4 format
+## Assign projection system
+soil_PB_gpd.crs= census_metals_gpd.crs #No coordinate system is set
 soil_PB_gpd.head()
 
+## Now plot the points
 fig, ax = plt.subplots()
-
 census_metals_gpd.plot(ax=ax,color='white',edgecolor='red')
 soil_PB_gpd.plot(ax=ax,marker='*',
                  color='black',
                  markersize=0.8)
-                 
-#plot(census_metals_sp)
-#plot(soil_PB_sp,add=T)
 
-###### Spatial query: associate points of pb measurements to each census tract
+##### Step 3: Join lead (pb) measurements to census tracks #####
+# Spatial query: associate points of pb measurements to each census tract
+
 ### Get the ID and 
 #Use sjoin
 ##### Problem here ********************
@@ -307,8 +310,11 @@ test=gpd.tools.sjoin(soil_PB_gpd,census_2000_gpd,
 len(test.BKG_KEY.value_counts()) #associated BKG Key to points
 len(test.index_right.value_counts())
 test.columns
+test.shape #every point is associated with information from the census track it is contained in
 grouped = test.groupby(['index_right']).mean()
 grouped = grouped.reset_index()
+grouped.shape
+
 #soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
 #soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
 #test4 <- gIntersection(soil_PB_sp,census_2000_sp,byid=T)
@@ -316,7 +322,7 @@ grouped = grouped.reset_index()
 #grouped = grouped.rename(columns={'index_right': 'TRACT',
 #                            'ppm': 'pb_ppm' })
 grouped = grouped.rename(columns={'ppm': 'pb_ppm' })
-
+type(grouped)
 #soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
 
 #census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),
