@@ -355,16 +355,32 @@ census_metals_gpd.index
 #census_metals_gpd.reset_index(drop=True)
 census_metals_gpd = census_metals_gpd.set_index('TRACT')
 
-####
-w_queen = ps.weights.queen_from_shapefile(outfile,idVariable='TRACT')
+####hapefile(outfile,idVariable='TRACT')
+from libpysal.weights.contiguity import Queen
 
 #q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
-w_queen.transform = 'R'
-w_queen.neighbors
-w_queen.n # number of observations (spatia features)
-w_queen.mean_neighbors
+#w = Queen.from_dataframe(gdf)
+w = Queen.from_dataframe(census_metals_gpd)
+type(w)
 
-y = census_metals_gpd.pb_ppm_x
+w.transform = 'r'
+w.n # number of observations (spatial features)
+w.neighbors # list of neighbours per census track
+w.mean_neighbors
+
+#http://pysal.org/notebooks/viz/splot/esda_morans_viz
+import os
+import splot
+
+from esda.moran import Moran
+
+#w = Queen.from_dataframe(gdf)
+y = census_metals_gpd['pb_ppm'] 
+moran = Moran(y, w)
+moran.I
+
+#y = censu
+#w_queen = ps.weights.queen_from_ss_metals_gpd.pb_ppm_x
 
 m_I = ps.Moran(y,w_queen)
 
