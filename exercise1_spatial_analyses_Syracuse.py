@@ -9,7 +9,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 12/29/2018 
-#DATE MODIFIED: 03/04/2019
+#DATE MODIFIED: 03/13/2019
 #Version: 1
 #PROJECT: AAG 2019 workshop preparation
 #TO DO:
@@ -97,7 +97,7 @@ else:
 #######################################
 ### PART 1: Read in datasets #######
 
-## Counties for Syracuse in 2000
+## Census tracks for Syracuse in 2000
 ct_2000_filename = os.path.join(in_dir,ct_2000_fname)
 ## block groups for Syracuse in 2000
 bg_2000_filename = os.path.join(in_dir,bg_2000_fname)
@@ -116,59 +116,61 @@ ct_2000_gpd.head()
 
 #Read tabular data
 metals_df = pd.read_excel(os.path.join(in_dir,metals_table_fname))
-census_syr_df = pd.read_csv(os.path.join(in_dir,census_table_fname),sep=",",header=0)
+census_syr_df = pd.read_csv(os.path.join(in_dir,census_table_fname),sep=",",header=0) #census information
 #This soil lead in UTM 18 coordinate system
 soil_PB_df = pd.read_csv(os.path.join(in_dir,soil_PB_table_fname),sep=",",header=None) #point locations
 
 #Check size
-ct_2000_gpd.shape #57 spatial entities (counties)
+ct_2000_gpd.shape #57 spatial entities (census)
 bg_2000_gpd.shape #147 spatial entities (block groups)
 bk_2000_gpd.shape #2025 spatial entities (blocks)
 census_syr_df.shape #147 spatial entities
 metals_df.shape #57 entities
 
 #########################################################
-####### PART 2: Visualizing population in 2000 with geopandas layers 
-#### Explore two ways of joining and aggregating data at census track level #########
-#### Step 1: First join census data to blockgroups
+####### PART 2: Visualizing population in 2000 at Census track level with geopandas layers 
+#### We explore  also two ways of joining and aggregating data at census track level #########
+#### Step 1: First join census information data to blockgroups
 #### Step 2: Summarize/aggregate poppulation at census track level ###
 #### Step 3: Plot population 2000 by tracks
 
 ### Step 1: First join census data to blockgroups
 
 bg_2000_gpd.columns # missing census information:check columns' name for the data frame
-census_syr_df.columns #contains census variables
-#key is "TRACT" but with a different format/data type
+census_syr_df.columns #contains census variables to join
+#Key is "TRACT" but with a different format/data type
 #First fix the format
 bg_2000_gpd.head()
 bg_2000_gpd.shape
 census_syr_df.BKG_KEY.head()
 #ct_2000_gpd.TRACT.dtype
-bg_2000_gpd.BKG_KEY.dtypes
-census_syr_df.dtypes
+census_syr_df.dtypes #check all the data types for all the columns
+bg_2000_gpd.BKG_KEY.dtypes #check data type for the "BKG_KEY"" note dtype is 'O"
 census_syr_df.BKG_KEY.dtypes
 
-#change data type for BKG_KEY column from object to int
-bg_2000_gpd['BKG_KEY']=bg_2000_gpd['BKG_KEY'].astype('int64')
+#Change data type for BKG_KEY column from object 'O" to int64
+bg_2000_gpd['BKG_KEY'] = bg_2000_gpd['BKG_KEY'].astype('int64')
 
 # Join data based on common ID after matching data types
 bg_2000_gpd = bg_2000_gpd.merge(census_syr_df, on='BKG_KEY')
+# Check if data has been joined 
+bg_2000_gpd.head()
 
-#spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
+#Quick visualization of population 
 bg_2000_gpd.plot(column='POP2000',cmap="OrRd")
 plt.title('POPULATION 2000')
 
 #############
 #### Step 2: Summarize/aggregate poppulation at census track level
 
-### Method 1: Summarize by census track using DISSOLVE operation
+### Method 1: Summarize by census track using DISSOLVE geospatial operation
 
 #To keep geometry, we must use dissolve method from geopanda
 census_2000_gpd = bg_2000_gpd.dissolve(by='TRACT',
                                        aggfunc='sum')
 type(census_2000_gpd)
 census_2000_gpd.index
-#note that the TRACT field has become the index
+#Note that the TRACT field has become the index
 census_2000_gpd=census_2000_gpd.reset_index() # reset before comparing data
 
 sum(census_2000_gpd.POP2000==census_2000_df.POP2000)  ## Sum is 57 census tracks !!!
