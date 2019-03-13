@@ -301,59 +301,36 @@ soil_PB_gpd.plot(ax=ax,marker='*',
 ##### Step 3: Join lead (pb) measurements to census tracks #####
 # Spatial query: associate points of pb measurements to each census tract
 
-### Get the ID and 
-#Use sjoin
-##### Problem here ********************
-test=gpd.tools.sjoin(soil_PB_gpd,census_2000_gpd,
+soil_PB_joined_gpd =gpd.tools.sjoin(soil_PB_gpd,census_2000_gpd,
                      how="left")
-#test2=gpd.tools.sjoin(test,ct_2000_gpd,"left")
-len(test.BKG_KEY.value_counts()) #associated BKG Key to points
-len(test.index_right.value_counts())
-test.columns
-test.shape #every point is associated with information from the census track it is contained in
-grouped = test.groupby(['index_right']).mean()
-grouped = grouped.reset_index()
-grouped.shape
+soil_PB_joined_gpd.columns
+soil_PB_joined_gpd.shape #every point is associated with information from the census track it is contained in
 
-#soil_tract_id_df <- over(soil_PB_sp,census_2000_sp,fn=mean)
-#soil_PB_sp <- intersect(soil_PB_sp,census_2000_sp)
-#test4 <- gIntersection(soil_PB_sp,census_2000_sp,byid=T)
-#names(soil_PB_sp)
+len(soil_PB_joined_gpd.BKG_KEY.value_counts()) #associated BKG Key to points: 57 unique identifiers
+len(soil_PB_joined_gpd.index_right.value_counts()) #associated BKG Key to points: 57 unique identifiers
+
+#### Step 4: Find average lead by census track #####
+
+grouped_PB_ct_df = soil_PB_joined_gpd.groupby(['index_right']).mean() #compute average by census track
+grouped_PB_ct_df = grouped_PB_ct_df.reset_index()
+grouped_PB_ct_df.shape
+
 #grouped = grouped.rename(columns={'index_right': 'TRACT',
 #                            'ppm': 'pb_ppm' })
-grouped = grouped.rename(columns={'ppm': 'pb_ppm' })
-type(grouped)
-#soil_PB_sp <- rename(soil_PB_sp, c("d"="TRACT")) #from package plyr
+grouped_PB_ct_df = grouped_PB_ct_df.rename(columns={'ppm': 'pb_ppm' })
+type(grouped_PB_ct_df)
 
-#census_pb_avg <- aggregate(ppm ~ TRACT,(soil_PB_sp),
-#                           FUN=mean)
-#census_pb_avg <- rename(census_pb_avg,c("ppm"="pb_ppm"))
-
-##Now join
-#census_metals_pb_sp <- merge(census_metals_sp,
-#                             census_pb_avg,by="TRACT")
-
-census_metals_gpd = census_metals_gpd.merge(grouped,on="TRACT")
-
-### write out final table and shapefile
-
-#outfile<-paste("census_metals_pb_sp","_",
-#               out_suffix,sep="")
-#writeOGR(census_metals_pb_sp,dsn= out_dir,layer= outfile, driver="ESRI Shapefile",overwrite_layer=TRUE)
+census_metals_gpd = census_metals_gpd.merge(grouped_PB_ct_df,on="TRACT")
+census_metals_gpd.shape
+census_metals_gpd.columns #check for duplicate columns
 
 outfile = "census_metals_pb_"+'_'+out_suffix+'.shp'
 census_metals_gpd.to_file(os.outfile)
 
-census_metals_df = pd.DataFrame(census_metals_pgd.drop(columns='geometry'))
+census_metals_df = pd.DataFrame(census_metals_gpd.drop(columns='geometry'))
 outfile = "census_metals_pb_"+'_'+out_suffix+'.csv'
 
 census_metals_df.to_csv(outfile)
-
-#outfile_df_name <- file.path(out_dir,paste0(outfile,".txt"))
-#write.table(as.data.frame(census_metals_pb_sp),file=outfile_df_name,sep=",")
-
-## For kriging use scipy.interpolate
-#https://stackoverflow.com/questions/45175201/how-can-i-interpolate-station-data-with-kriging-in-python
 
 #################################################
 ##### PART IV: Spatial regression: Vulnerability to metals #############
