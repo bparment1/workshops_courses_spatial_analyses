@@ -172,61 +172,50 @@ type(census_2000_gpd)
 census_2000_gpd.index
 #Note that the TRACT field has become the index
 census_2000_gpd=census_2000_gpd.reset_index() # reset before comparing data
-
-sum(census_2000_gpd.POP2000==census_2000_df.POP2000)  ## Sum is 57 census tracks !!!
-census_2000_df.POP2000[0:2]
-census_2000_gpd.POP2000[0:2]
-##Checking match in number of rows:
-census_2000_gpd.shape[0] == census_2000_df.shape[0]
+census_2000_gpd.shape #Dissolved results shows aggregation from 147 to 57.
 
 ### Method 2: Summarize using groupby aggregation and joining
 
 ##Note losing TRACT field
 census_2000_df = bg_2000_gpd.groupby('TRACT',as_index=False).sum()
-type(census_2000_df)
+type(census_2000_df) #This is a panda object, we lost the geometry after the groupby operation.
+census_2000_df.shape #Groupby results shows aggregation from 147 to 57.
 
-ct_2000_gpd.dtypes
-ct_2000_gpd['TRACT']=ct_2000_gpd.TRACT.astype('int64')
+### Let's join the dataFrame to the geopanda object to the census track layer 
+census_2000_df['TRACT'].dtype == ct_2000_gpd['TRACT'].dtype #Note that the data type for the common Key does not mach.  
+census_2000_df['TRACT'].dtype # check data type field from table
+ct_2000_gpd['TRACT'].dtype # check data type field from census geopanda layer
+ct_2000_gpd['TRACT'] = ct_2000_gpd.TRACT.astype('int64') #Change data type to int64
+ct_2000_gpd.shape #57 rows and 8 columns
 
-ct_2000_gpd.shape
 ct_2000_gpd = ct_2000_gpd.merge(census_2000_df, on='TRACT')
-ct_2000_gpd.shape
+ct_2000_gpd.shape #57 rows and 50 columns
 
-#### Step 3: Plot population 2000 by tracks
+#### Step 3: Plot population 2000 by tracks in Syracuse
 
 ### Check if the new geometry of entities is the same as census
 fig, ax = plt.subplots(figsize=(12,8))
 ax.set_aspect('equal') # set aspect to equal, done automatically in *geopandas* plot but not in pyplot
 census_2000_gpd.plot(ax=ax,column='POP2000',cmap='OrRd')
-ct_2000_gpd.plot(ax=ax,color='white',edgecolor="red",alpha=0.7)
+ct_2000_gpd.plot(ax=ax,color='white',edgecolor="red",alpha=0.7) # Check if outputs from two methods match
 ax.set_title("Population", fontsize= 20)
 
 #### Generate population maps with two different class intervals
 
 title_str = "Population by census tract in 2000"
-#range(ct_2000_sp$POP2000)
-#col_palette <- matlab.like(256)
-
-## 9 classes with fixed and constant break
-#break_seq <- seq(0,9000,1000)
-#breaks.qt <- classIntervals(ct_2000_sp$POP2000, n=length(break_seq), 
-#                            style="fixed", fixedBreaks=break_seq, intervalClosure='right')
-
-## Color for each class
-#colcode = findColours(breaks.qt , c('darkblue', 'blue', 'lightblue', 'palegreen','yellow','lightpink', 'pink','brown3',"red","darkred"))
-#p_plot_pop2000_ct <- spplot(ct_2000_sp,
-#                            "POP2000",
-#                            col="transparent", #transprent color boundaries for polygons
-#                            col.regions = col_palette ,
-#                            main=title_str,
-#                            at = breaks.qt$brks)
-#print(p_plot_pop2000_ct)
-
-#spplot(bg_2000_sp,"POP2000",main="POP2000") #quick visualization of population 
 bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  scheme='quantiles')
-plt.title('POPULATION 2000')
+plt.title(title_str)
+
 ### Let's use more option with matplotlib
+### Let's use more option with matplotlib
+
+fig, ax = plt.subplots(figsize=(14,6))
+bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
+                 scheme='equal_interval',k=7,
+                 ax=ax,
+                 legend=False)
+
 fig, ax = plt.subplots(figsize=(14,6))
 bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  scheme='quantiles',k=7,
@@ -234,13 +223,11 @@ bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  legend=True)
 ax.set_title('POP2000')
 
-### Let's use more option with matplotlib
-fig, ax = plt.subplots(figsize=(14,6))
-bg_2000_gpd.plot(column='POP2000',cmap="OrRd",
-                 scheme='quantiles',k=7,
-                 ax=ax,
-                 legend=True)
-ax.set_title('POP2000')
+#Problem with legend
+#ax.legend(loc=3,
+#          fontsize=25,
+#          frameon=False)
+#plt.show()
 
 ##############################################
 ##### PART 3: SPATIAL QUERY #############
