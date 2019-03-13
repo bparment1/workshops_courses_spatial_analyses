@@ -257,9 +257,8 @@ metals_df.shape[0]== ct_2000_gpd.shape[0]
 metals_df.dtypes
 ct_2000_gpd.dtypes
 ct_2000_gpd.shape
-
 census_metals_gpd = ct_2000_gpd.merge(metals_df,left_on='TRACT',right_on='ID')
-census_metals_gpd.shape
+census_metals_gpd.shape #census information has been joined
 
 ##### Step 2: Generate geopanda from PB sample measurements ##### 
 # Processing lead data to generate a geopanda object using shapely points
@@ -311,9 +310,10 @@ len(soil_PB_joined_gpd.index_right.value_counts()) #associated BKG Key to points
 
 #### Step 4: Find average lead by census track #####
 
-grouped_PB_ct_df = soil_PB_joined_gpd.groupby(['index_right']).mean() #compute average by census track
+grouped_PB_ct_df = soil_PB_joined_gpd[['ppm','TRACT','index_right']].groupby(['index_right']).mean() #compute average by census track
 grouped_PB_ct_df = grouped_PB_ct_df.reset_index()
 grouped_PB_ct_df.shape
+grouped_PB_ct_df.head()
 
 #grouped = grouped.rename(columns={'index_right': 'TRACT',
 #                            'ppm': 'pb_ppm' })
@@ -340,7 +340,7 @@ census_metals_df.to_csv(outfile)
 #GOAL: Answer a set of questions using spatial and attribute queries and their combinations
 
 #Produce:
-#  a) two different maps based on two different definitions that answer the question:  which areas have high levels of children and are predominantly minority AND are at risk of heavy metal exposure using at least three variables. Use only tabular operations
+#a) two different maps based on two different definitions that answer the question:  which areas have high levels of children and are predominantly minority AND are at risk of heavy metal exposure using at least three variables. Use only tabular operations
 #b) Same question as a) but using both spatial and tabular operations
 
 #Note: In both cases include the method, variables used and your definition of risk areas in each 4 maps. The definition of risk is your own, you can also follow an established standard that would make sense or is official.  
@@ -355,6 +355,7 @@ census_metals_gpd.index
 #census_metals_gpd.reset_index(drop=True)
 census_metals_gpd = census_metals_gpd.set_index('TRACT')
 
+####
 w_queen = ps.weights.queen_from_shapefile(outfile,idVariable='TRACT')
 
 #q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
