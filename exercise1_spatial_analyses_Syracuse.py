@@ -38,6 +38,7 @@ from cartopy import crs as ccrs
 from pyproj import Proj
 from osgeo import osr
 from shapely.geometry import Point
+import pysal as ps
 
 ################ NOW FUNCTIONS  ###################
 
@@ -389,11 +390,11 @@ from esda.moran import Moran
 
 #w = Queen.from_dataframe(gdf)
 y = census_metals_gpd['pb_ppm'] 
+y.shape
 moran = Moran(y, w)
 moran.I
 moran.EI
 
-#y = censu
 #w_queen = ps.weights.queen_from_ss_metals_gpd.pb_ppm_x
 
 m_I = ps.Moran(y,w_queen)
@@ -401,8 +402,12 @@ m_I = ps.Moran(y,w_queen)
 m_I.I
 m_I.EI
 
-y_lag = ps.lag_spatial(w_queen,y) #this is a numpy array
-y_lag = ps.lag_spatial(w_queen,y) #this is a numpy array
+from splot.esda import plot_moran
+
+plot_moran(moran, zstandard=True, figsize=(10,4))
+plt.show()
+moran.p_sim #observed moran's I statistically significant
+y_lag = ps.lag_spatial(w,y) #this is a numpy array
 
 census_metals_gpd['y'] = census_metals_gpd.pb_ppm
 census_metals_gpd['y_lag'] = y_lag
@@ -430,18 +435,19 @@ y.values.shape #not the right dimension
 y = y.values.reshape(len(y),1)
 y_lag = y_lag.reshape(len(y_lag),1)
 
+y
 x = census_metals_gpd['perc_hispa']
 x = x.values.reshape(len(x),1)
 
 mod_ols = ps.spreg.OLS(y,x)
 mod_ols.u 
-m_I_residuals = ps.Moran(mod_ols.u,w_queen)
+m_I_residuals = ps.Moran(mod_ols.u,w)
 #take into account autocorr in spreg
 mod_ols.summary
-mod_ols_test = ps.spreg.OLS(y,x,w_queen)
+mod_ols_test = ps.spreg.OLS(y,x,w)#w must be pysal object not libpysal
 mod_ols_test.summary
 
-mod_ml_lag = ps.spreg.ML_Lag(y,x,w_queen)
+mod_ml_lag = ps.spreg.ML_Lag(y,x,w)
 
 #replace explicative variable later! 
 
@@ -453,15 +459,11 @@ mod_ml_lag = ps.spreg.ML_Lag(y,x,w_queen)
 
 #### Compare Moran's I from raster to Moran's I from polygon sp
 # Rook's case
-f <- matrix(c(0,1,0,1,0,1,0,1,0), nrow=3)
-Moran(r_lead, f)
+#f <- matrix(c(0,1,0,1,0,1,0,1,0), nrow=3)
+#Moran(r_lead, f)
 
-#http://rspatial.org/analysis/rst/7-spregression.html
-
+#http://rspatial.org/ana
 ################################## END OF SCRIPT ########################################
-
-
-
 
 
 
