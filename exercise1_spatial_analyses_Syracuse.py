@@ -335,16 +335,16 @@ import fiona
 #with fiona.drivers():
 #    df.to_file('foo.json', driver='GeoJSON')
     
+census_metals_df = pd.DataFrame(census_metals_gpd.drop(columns='geometry'))
+outfile = "census_metals_pb_"+'_'+out_suffix+'.csv'
+
+census_metals_df.to_csv(outfile)
+
 outfile = "census_metals_pb_"+'_'+out_suffix+'.shp'
 census_metals_gpd.to_file(os.path.join(out_dir,outfile))
 #with fiona.drivers():
 #    #df.to_file('foo.json', driver='GeoJSON')
 #    census_metals_gpd.to_file(outfile,driver='ESRI')
-
-census_metals_df = pd.DataFrame(census_metals_gpd.drop(columns='geometry'))
-outfile = "census_metals_pb_"+'_'+out_suffix+'.csv'
-
-census_metals_df.to_csv(outfile)
 
 #################################################
 ##### PART IV: Spatial regression: Vulnerability to metals #############
@@ -366,17 +366,12 @@ census_metals_df.to_csv(outfile)
 #moran(x, listw, n, S0, zero.policy=NULL, NAOK=FALSE)
 
 census_metals_gpd.index
-#census_metals_gpd.reset_index(drop=True)
 census_metals_gpd = census_metals_gpd.set_index('TRACT')
 
-####hapefile(outfile,idVariable='TRACT')
 from libpysal.weights.contiguity import Queen
 
-#q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
-#w = Queen.from_dataframe(gdf)
 w = Queen.from_dataframe(census_metals_gpd)
 type(w)
-
 w.transform = 'r'
 w.n # number of observations (spatial features)
 w.neighbors # list of neighbours per census track
@@ -395,7 +390,10 @@ moran = Moran(y, w)
 moran.I
 moran.EI
 
-#w_queen = ps.weights.queen_from_ss_metals_gpd.pb_ppm_x
+#q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
+#w = Queen.from_dataframe(gdf)
+
+#w_queen = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
 
 m_I = ps.Moran(y,w_queen)
 
@@ -431,6 +429,10 @@ sns.regplot(x=y,y=y_lag,data=census_metals_gpd)
 
 ##### Now do a spatial regression
 #Use numpy array so convert with values
+#w_queen = ps.weights.queen_from_shapefile(outfile,
+#                                          idVariable='TRACT')
+
+
 y.values.shape #not the right dimension
 y = y.values.reshape(len(y),1)
 y_lag = y_lag.reshape(len(y_lag),1)
@@ -442,13 +444,25 @@ x = x.values.reshape(len(x),1)
 mod_ols = ps.spreg.OLS(y,x)
 mod_ols.u 
 m_I_residuals = ps.Moran(mod_ols.u,w)
+m_I_residuals.p_sim # suggesting there is autocorreation
+m_I_residuals.I
 #take into account autocorr in spreg
 mod_ols.summary
-mod_ols_test = ps.spreg.OLS(y,x,w)#w must be pysal object not libpysal
+
+
+## Spatial lag model
+## Requires pysal weight object
+
+w_queen = ps.weights.queen_from_shapefile(outfile)
+#q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
+w_queen.transform = 'R'
+w_queen.neighbors
+
+mod_ols_test = ps.spreg.OLS(y,x,w_queen)#w must be pysal object not libpysal
 mod_ols_test.summary
 
-mod_ml_lag = ps.spreg.ML_Lag(y,x,w)
-
+mod_ml_lag = ps.spreg.ML_Lag(y,x,w_queen)
+mod_ml_lag.summary
 #replace explicative variable later! 
 
 #mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
