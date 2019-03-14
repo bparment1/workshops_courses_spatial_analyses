@@ -204,6 +204,40 @@ color_val_developed_high = rgb_col[7]
 lc_system_nlcd_df = pd.read_excel(os.path.join(in_dir,infile_name_nlcd_classification_system))
 lc_system_nlcd_df.head #inspect data
 
+# do not include right value
+
+class_def = np.array([0,20,1,
+                      20,30,2,
+                      30,40,3,
+                      40,50,4,
+                      50,60,5,
+                      60,70,6,
+                      70,80,7,
+                      80,90,8,
+                      90,100,9])
+ 
+class_def = class_def.reshape(9,3)
+ 
+np.arange(0,9)
+
+import copy
+r_date1_rec = copy.copy(r_lc_date1)
+r_date2_rec = copy.copy(r_lc_date2)
+
+for i in np.arange(0,9):
+    class_val = class_def[i,:]
+    r_date1_rec[(class_val[0]<= r_date1_rec) & (r_date1_rec <class_val[1])] = class_val[2]
+
+for i in np.arange(0,9):
+    class_val = class_def[i,:]
+    r_date2_rec[(class_val[0]<= r_date2_rec) & (r_date2_rec <class_val[1])] = class_val[2]
+ 
+test =  r_date1_rec - r_lc_date1
+plot.show(r_date1_rec)
+   
+plot.show(r_lc_date1)   
+plot.show(test)
+
 val, cnts =np.unique(r_lc_date1,return_counts=True)
 
 df = pd.DataFrame(np.ma.filled(val))
@@ -236,51 +270,6 @@ lc_system_nlcd_df = lc_system_nlcd_df[selected_cat]
 
 rec_df = lc_system_nlcd_df.iloc[:,[2,1,0]]
 rec_df.head()
-
->>> x = np.arange(9.).reshape(3, 3)
->>> np.where( x > 5 )
-(array([2, 2, 2]), array([0, 1, 2]))
->>> x[np.where( x > 3.0 )]               # Note: result is 1D.
-array([ 4.,  5.,  6.,  7.,  8.])
->>> np.where(x < 5, x, -1)               # Note: broadcasting.
-array([[ 0.,  1.,  2.],
-       [ 3.,  4., -1.],
-       [-1., -1., -1.]])
-       
-# do not include right value
-
-class_def = np.array([0,20,1,
- 20,30,2,
- 30,40,3,
- 40,50,4,
- 50,60,5,
- 60,70,6,
- 70,80,7,
- 80,90,8,
- 90,100,9])
- 
- class_def = class_def.reshape(9,3)
- 
-np.arange(0,9)
-
-r_date1_rec = r_lc_date1
-for i in np.arange(0,9):
-    class_val = class_def[i,:]
-
-plot.show(r_lc_date1)    
-plot.show(r_date1_rec)
-    
-0  to 20 is 1
-20 to 30 is 2
-30 to 40 is 3
-40 to 50 is 4
-50 to 60 is 5
-60 to 70 is 6 # does not exist
-70 to 80 is 7
-80 to 90 is 8
-90 to 100 is 9
-
-r_date1_rec = copy.copy(r_lc_date2)
 
 
 #can use np.digitize
