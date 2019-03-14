@@ -9,7 +9,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 12/29/2018 
-#DATE MODIFIED: 03/13/2019
+#DATE MODIFIED: 03/14/2019
 #Version: 1
 #PROJECT: AAG 2019 workshop preparation
 #TO DO:
@@ -86,8 +86,8 @@ metals_table_fname = "SYR_metals.xlsx" #contains metals data to be linked
 
 if create_out_dir==True:
     #out_path<-"/data/project/layers/commons/data_workflow/output_data"
-    out_dir = "output_data_"+out_suffix
-    out_dir = os.path.join(in_dir,out_dir)
+    out_dir_new = "output_data_"+out_suffix
+    out_dir = os.path.join(out_dir,out_dir_new)
     create_dir_and_check_existence(out_dir)
     os.chdir(out_dir)        #set working directory
 else:
@@ -145,8 +145,8 @@ bg_2000_gpd.shape
 census_syr_df.BKG_KEY.head()
 #ct_2000_gpd.TRACT.dtype
 census_syr_df.dtypes #check all the data types for all the columns
-bg_2000_gpd.BKG_KEY.dtypes #check data type for the "BKG_KEY"" note dtype is 'O"
-census_syr_df.BKG_KEY.dtypes
+bg_2000_gpd.BKG_KEY.dtypes #check data type for the "BKG_KEY"" note dtype is "O"
+census_syr_df.BKG_KEY.dtypes # check data type, note that it is "int64"
 
 #Change data type for BKG_KEY column from object 'O" to int64
 bg_2000_gpd['BKG_KEY'] = bg_2000_gpd['BKG_KEY'].astype('int64')
@@ -250,7 +250,7 @@ ax.set_title('POP2000')
 ##### Step 1: Join metals to census tracks ###### 
 
 metals_df.head()
-metals_df.describe # 57 rows  
+metals_df.describe() # 57 rows  
 ##Number of rows suggests matching to the following spatial entities
 metals_df.shape[0]== ct_2000_gpd.shape[0]
 #Check data types before joining tables with "merge"
@@ -267,8 +267,8 @@ soil_PB_df.columns #Missing names for columns
 soil_PB_df.columns = ["x","y","ID","ppm"]
 soil_PB_df.head()
 
-soil_PB_gpd = soil_PB_df.copy()
-type(soil_PB_df)
+soil_PB_gpd = soil_PB_df.copy() # generate a new panda DataFrame object
+type(soil_PB_gpd)
 soil_PB_gpd['Coordinates']=list(zip(soil_PB_gpd.x,soil_PB_gpd.y)) #create a new column with tuples of coordinates
 type(soil_PB_gpd)
 soil_PB_gpd['Coordinates']= soil_PB_gpd.Coordinates.apply(Point) #create a point for each tupple row
@@ -324,8 +324,21 @@ census_metals_gpd = census_metals_gpd.merge(grouped_PB_ct_df,on="TRACT")
 census_metals_gpd.shape
 census_metals_gpd.columns #check for duplicate columns
 
+from shapely.geometry import shape
+import fiona
+
+#logging.basicConfig(level=logging.DEBUG)
+
+#geom = { "type": "Polygon", "coordinates": [ [ [0, 0], [1, 1], [1, 0] ] ] }
+#df = gpd.GeoDataFrame(geometry=[shape(geom)])
+#with fiona.drivers():
+#    df.to_file('foo.json', driver='GeoJSON')
+    
 outfile = "census_metals_pb_"+'_'+out_suffix+'.shp'
-census_metals_gpd.to_file(os.outfile)
+census_metals_gpd.to_file(os.path.join(out_dir,outfile))
+#with fiona.drivers():
+#    #df.to_file('foo.json', driver='GeoJSON')
+#    census_metals_gpd.to_file(outfile,driver='ESRI')
 
 census_metals_df = pd.DataFrame(census_metals_gpd.drop(columns='geometry'))
 outfile = "census_metals_pb_"+'_'+out_suffix+'.csv'
@@ -378,6 +391,7 @@ from esda.moran import Moran
 y = census_metals_gpd['pb_ppm'] 
 moran = Moran(y, w)
 moran.I
+moran.EI
 
 #y = censu
 #w_queen = ps.weights.queen_from_ss_metals_gpd.pb_ppm_x
@@ -388,7 +402,9 @@ m_I.I
 m_I.EI
 
 y_lag = ps.lag_spatial(w_queen,y) #this is a numpy array
-census_metals_gpd['y'] = census_metals_gpd.pb_ppm_x
+y_lag = ps.lag_spatial(w_queen,y) #this is a numpy array
+
+census_metals_gpd['y'] = census_metals_gpd.pb_ppm
 census_metals_gpd['y_lag'] = y_lag
 
 sns.regplot(x=y,y=y_lag,data=census_metals_gpd)
