@@ -194,17 +194,15 @@ color_val_developed_high = rgb_col[7]
 
 #######
 ################################################
-###  PART II : Analyze change and transitions
+###  PART II : Analyze overall changes and land transitions
 
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain), 
 # persistence in land cover will generate a large number of transitions (potential up to 15*15=225 transitions in this case!)
 
 ## To generalize the information, let's aggregate leveraging the hierachical nature of NLCD Anderson Classification system.
 
-lc_system_nlcd_df = pd.read_excel(os.path.join(in_dir,infile_name_nlcd_classification_system))
-lc_system_nlcd_df.head #inspect data
 
-# do not include right value
+#### Step 1: aggregate NLCD classes
 
 class_def = np.array([0,20,1,
                       20,30,2,
@@ -232,13 +230,12 @@ for i in np.arange(0,9):
     class_val = class_def[i,:]
     r_date2_rec[(class_val[0]<= r_date2_rec) & (r_date2_rec <class_val[1])] = class_val[2]
  
-test =  r_date1_rec - r_lc_date1
 plot.show(r_date1_rec)
-   
 plot.show(r_lc_date1)   
-plot.show(test)
 
-val, cnts =np.unique(r_lc_date1,return_counts=True)
+####### Step 2: Examine overall changes in categories
+
+val, cnts =np.unique(r_date1_rec,return_counts=True)
 
 df = pd.DataFrame(np.ma.filled(val))
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
@@ -246,7 +243,7 @@ df_date1 = pd.DataFrame(val,cnts)
 df_date1 = df_date1.reset_index()
 df_date1.columns = ['y_2001','value']
 
-val, cnts =np.unique(r_lc_date2,return_counts=True)
+val, cnts =np.unique(r_date2_rec,return_counts=True)
 df = pd.DataFrame(np.ma.filled(val))
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 df_date2 = pd.DataFrame(val,cnts)
@@ -258,47 +255,25 @@ freq_tb_nlcd = pd.merge(df_date1,df_date2,on='value')
 #reorder columns 
 freq_tb_nlcd = freq_tb_nlcd[['value','y_2001','y_2006']]
 freq_tb_nlcd.head()
-#dim(lc_system_nlcd_df) # We have categories that are not relevant to the study area and time period.
-#lc_system_nlcd_df <- subset(lc_system_nlcd_df,id_l2%in%freq_tb_nlcd$value ) 
+
+freq_tb_nlcd
+
 #dim(lc_system_nlcd_df) # Now 15 land categories instead of 20.
 
+lc_system_nlcd_df = pd.read_excel(os.path.join(in_dir,infile_name_nlcd_classification_system))
+lc_system_nlcd_df.head #inspect data
+
 lc_system_nlcd_df.shape
-selected_cat = lc_system_nlcd_df.id_l2.isin(freq_tb_nlcd.value)
+selected_cat = lc_system_nlcd_df.id_l1.isin(freq_tb_nlcd.value)
 lc_system_nlcd_df = lc_system_nlcd_df[selected_cat]
 
 ### Select relevant columns for the reclassification
 
 rec_df = lc_system_nlcd_df.iloc[:,[2,1,0]]
 rec_df.head()
+rec_df
 
-
-#can use np.digitize
-
-
-#rec_df <- lc_system_nlcd_df[,c(2,1)]
-r_date1_rec <- subs(r_lc_date1,rec_df,by="id_l2","id_l1")
-r_date2_rec <- subs(r_lc_date2,rec_df,by="id_l2","id_l1")
-
-plot(r_date1_rec)
-
-rec_xtab_df <- crosstab(r_date1_rec,r_date2_rec,long=T)
-names(rec_xtab_df) <- c("2001","2011","freq")
-
-head(rec_xtab_df)
-dim(rec_xtab_df) #9*9 possible transitions if we include NA values
-print(rec_xtab_df) # View the full table
-
-which.max(rec_xtab_df$freq)
-rec_xtab_df[11,] # Note the most important transition is persistence!!
-
-### Let's rank the transition:
-class(rec_xtab_df)
-is.na(rec_xtab_df$freq)
-rec_xtab_df_ranked <- rec_xtab_df[order(rec_xtab_df$freq,decreasing=T) , ]
-head(rec_xtab_df_ranked) # Unsurprsingly, top transitions are persistence categories
-
-### Let's examine the overall change in categories rather than transitions
-
+#rec_df.
 label_legend_df <- data.frame(ID=lc_system_nlcd_df$id_l1,name=lc_system_nlcd_df$name_l1)
 r_stack <- stack(r_date1_rec,r_date2_rec)
 
@@ -317,10 +292,67 @@ total_val  <- sum(lc_df$date1)
 lc_df$perc_change <- 100*lc_df$diff/total_val 
 barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
 
+##### Step 3: examine transitions
+#### Crosstab
+
+data_rec = pd.DataFrame({'date1': r_date1_rec.ravel(),
+             'date2': r_date2_rec.ravel()})
+rec_xtab_df= pd.crosstab(data_rec['date1'],data_rec['date2'])
+
+#rec_xtab_df['class'] = rec_xtab_df.index
+rec_xtab_df.columns = ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']
+rec_xtab_df.index = ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']
+rec_xtab_df
+
+np.repeat( ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0'],9)
+['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']*9
+val= np.array(rec_xtab_df.values.ravel())
+
+val.reshape(64,1)
+
+transitions_df = pd.DataFrame({'date1':np.repeat( ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0'],8),
+              'date2':['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']*8,
+              'values': val})
+
+#rec_xtab_df['class'] = ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']
+
+#test = pd.wide_to_long(rec_xtab_df,
+#                       stubnames="freq",
+#                       i=['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0'],
+#                       j='transitions')
+
+test = pd.wide_to_long(rec_xtab_df,st)
+
+selected_col=list(rec_xtab_df)
+
+selected_col = selected_col[0:len(selected_col)-1]
+
+test = pd.wide_to_long(rec_xtab_df,
+                       stubnames="freq",
+                       i=selected_col,
+                       j='transitions')
+selected_col = ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']
+
+
+#rec_xtab_df <- crosstab(r_date1_rec,r_date2_rec,long=T)
+#names(rec_xtab_df) <- c("2001","2011","freq")
+
+#head(rec_xtab_df)
+#dim(rec_xtab_df) #9*9 possible transitions if we include NA values
+#print(rec_xtab_df) # View the full table
+
+#which.max(rec_xtab_df$freq)
+#rec_xtab_df[11,] # Note the most important transition is persistence!!
+
+### Let's rank the transition:
+#class(rec_xtab_df)
+#is.na(rec_xtab_df$freq)
+#rec_xtab_df_ranked <- rec_xtab_df[order(rec_xtab_df$freq,decreasing=T) , ]
+#head(rec_xtab_df_ranked) # Unsurprsingly, top transitions are persistence categories
+
 ###########################################
 ############# PART III: Process and prepare for land change modeling ####################
 ## add this later
-
 
 ###########################################
 ### PART IV: Run model and perform assessment ###########################
