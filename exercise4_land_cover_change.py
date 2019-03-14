@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 03/06/2019
+#DATE MODIFIED: 03/14/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
@@ -66,7 +66,7 @@ out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/ou
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix = "exercise4_03062018" #output suffix for the files and ouptut folder
+out_suffix = "exercise4_03142019" #output suffix for the files and ouptut folder
 #ARGS 8
 NA_value = -9999 # number of cores
 file_format = ".tif"
@@ -237,7 +237,39 @@ lc_system_nlcd_df = lc_system_nlcd_df[selected_cat]
 rec_df = lc_system_nlcd_df.iloc[:,[2,1,0]]
 rec_df.head()
 
+>>> x = np.arange(9.).reshape(3, 3)
+>>> np.where( x > 5 )
+(array([2, 2, 2]), array([0, 1, 2]))
+>>> x[np.where( x > 3.0 )]               # Note: result is 1D.
+array([ 4.,  5.,  6.,  7.,  8.])
+>>> np.where(x < 5, x, -1)               # Note: broadcasting.
+array([[ 0.,  1.,  2.],
+       [ 3.,  4., -1.],
+       [-1., -1., -1.]])
+       
 # do not include right value
+
+class_def = np.array([0,20,1,
+ 20,30,2,
+ 30,40,3,
+ 40,50,4,
+ 50,60,5,
+ 60,70,6,
+ 70,80,7,
+ 80,90,8,
+ 90,100,9])
+ 
+ class_def = class_def.reshape(9,3)
+ 
+np.arange(0,9)
+
+r_date1_rec = r_lc_date1
+for i in np.arange(0,9):
+    class_val = class_def[i,:]
+
+plot.show(r_lc_date1)    
+plot.show(r_date1_rec)
+    
 0  to 20 is 1
 20 to 30 is 2
 30 to 40 is 3
@@ -252,8 +284,6 @@ r_date1_rec = copy.copy(r_lc_date2)
 
 
 #can use np.digitize
-
-
 
 
 #rec_df <- lc_system_nlcd_df[,c(2,1)]
