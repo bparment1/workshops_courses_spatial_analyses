@@ -327,13 +327,6 @@ census_metals_gpd.columns #check for duplicate columns
 
 from shapely.geometry import shape
 import fiona
-
-#logging.basicConfig(level=logging.DEBUG)
-
-#geom = { "type": "Polygon", "coordinates": [ [ [0, 0], [1, 1], [1, 0] ] ] }
-#df = gpd.GeoDataFrame(geometry=[shape(geom)])
-#with fiona.drivers():
-#    df.to_file('foo.json', driver='GeoJSON')
     
 census_metals_df = pd.DataFrame(census_metals_gpd.drop(columns='geometry'))
 outfile = "census_metals_pb_"+'_'+out_suffix+'.csv'
@@ -342,28 +335,14 @@ census_metals_df.to_csv(outfile)
 
 outfile = "census_metals_pb_"+'_'+out_suffix+'.shp'
 census_metals_gpd.to_file(os.path.join(out_dir,outfile))
-#with fiona.drivers():
-#    #df.to_file('foo.json', driver='GeoJSON')
-#    census_metals_gpd.to_file(outfile,driver='ESRI')
 
 #################################################
 ##### PART IV: Spatial regression: Vulnerability to metals #############
 #Examine the relationship between metals, Pb and vulnerable populations in Syracuse
+## Step 1: Explore Autocorrelation with Moran's I
+## Step 2: Spatial regression: examine relationship between lead ppm and % hispanic
 
-#P2- SPATIAL AND NON SPATIAL QUERIES (cannot use spatial join)
-#GOAL: Answer a set of questions using spatial and attribute queries and their combinations
-
-#Produce:
-#a) two different maps based on two different definitions that answer the question:  which areas have high levels of children and are predominantly minority AND are at risk of heavy metal exposure using at least three variables. Use only tabular operations
-#b) Same question as a) but using both spatial and tabular operations
-
-#Note: In both cases include the method, variables used and your definition of risk areas in each 4 maps. The definition of risk is your own, you can also follow an established standard that would make sense or is official.  
-#From these products, the layman should be able to answer the following questions:
-#  a. Where are the areas of high heavy metal exposure that also have high levels of children population that belong to a demographic minority(s)? 
-#b. Is there a different outcome in using tabular methods only vs combining tabular and spatial query methods?
-
-#lm(,data=census_metals_pb_sp)
-#moran(x, listw, n, S0, zero.policy=NULL, NAOK=FALSE)
+#### Step 1: Explore Autocorrelation with Moran's I #######
 
 census_metals_gpd.index
 census_metals_gpd = census_metals_gpd.set_index('TRACT')
@@ -390,16 +369,6 @@ moran = Moran(y, w)
 moran.I
 moran.EI
 
-#q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
-#w = Queen.from_dataframe(gdf)
-
-#w_queen = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
-
-m_I = ps.Moran(y,w_queen)
-
-m_I.I
-m_I.EI
-
 from splot.esda import plot_moran
 
 plot_moran(moran, zstandard=True, figsize=(10,4))
@@ -412,32 +381,14 @@ census_metals_gpd['y_lag'] = y_lag
 
 sns.regplot(x=y,y=y_lag,data=census_metals_gpd)
 
-#list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
-#summary(list_nb)
-#plot(census_lead_sp,border="blue")
-#plot.nb(list_nb,coordinates(census_lead_sp),add=T)
+# now plot neighbours links
 
-#generate weights
-#nb2listw
-#list_w <- nb2listw(list_nb, glist=NULL, style="W", zero.policy=NULL) #use row standardized
-#can.be.simmed(list_w)
-#summary(list_w)
-#plot(as.matrix(list_w))
-#moran(census_lead_sp$pb_ppm,list_w,n=nrow(census_lead_sp), Szero(list_w))
-#moran.plot(census_lead_sp$pb_ppm, list_w,
-#           labels=as.character(census_lead_sp$TRACT), pch=19)
-
-##### Now do a spatial regression
-#Use numpy array so convert with values
-#w_queen = ps.weights.queen_from_shapefile(outfile,
-#                                          idVariable='TRACT')
-
+### Step 2: Spatial regression: examine relationship between lead ppm and % hispanic
 
 y.values.shape #not the right dimension
 y = y.values.reshape(len(y),1)
 y_lag = y_lag.reshape(len(y_lag),1)
 
-y
 x = census_metals_gpd['perc_hispa']
 x = x.values.reshape(len(x),1)
 
@@ -449,12 +400,9 @@ m_I_residuals.I
 #take into account autocorr in spreg
 mod_ols.summary
 
-
-## Spatial lag model
+## Use spatial lag model from the pysal package
 ## Requires pysal weight object
-
 w_queen = ps.weights.queen_from_shapefile(outfile)
-#q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
 w_queen.transform = 'R'
 w_queen.neighbors
 
@@ -463,20 +411,10 @@ mod_ols_test.summary
 
 mod_ml_lag = ps.spreg.ML_Lag(y,x,w_queen)
 mod_ml_lag.summary
-#replace explicative variable later! 
+mod_ml_lag.betas #intercept,  %hispanic,spatial lag (rho)
+# Add significance values?
 
-#mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
-#mod_lag <- lagsarlm(pb_ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
 
-#moran.test(mod_lm$residuals,list_w)
-#moran.test(mod_lag$residuals,list_w)
-
-#### Compare Moran's I from raster to Moran's I from polygon sp
-# Rook's case
-#f <- matrix(c(0,1,0,1,0,1,0,1,0), nrow=3)
-#Moran(r_lead, f)
-
-#http://rspatial.org/ana
 ################################## END OF SCRIPT ########################################
 
 
