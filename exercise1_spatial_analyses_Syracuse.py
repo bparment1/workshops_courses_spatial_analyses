@@ -9,7 +9,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 12/29/2018 
-#DATE MODIFIED: 03/14/2019
+#DATE MODIFIED: 03/18/2019
 #Version: 1
 #PROJECT: AAG 2019 workshop preparation
 #TO DO:
@@ -38,7 +38,11 @@ from cartopy import crs as ccrs
 from pyproj import Proj
 from osgeo import osr
 from shapely.geometry import Point
-import pysal as ps
+
+import os
+import splot
+
+from esda.moran import Moran
 
 ################ NOW FUNCTIONS  ###################
 
@@ -63,7 +67,7 @@ out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_1/ou
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix = "exercise1_03042019" #output suffix for the files and ouptut folder
+out_suffix = "exercise1_03182019" #output suffix for the files and ouptut folder
 #ARGS 8
 NA_value = -9999 # number of cores
 file_format = ".tif"
@@ -87,8 +91,8 @@ metals_table_fname = "SYR_metals.xlsx" #contains metals data to be linked
 
 if create_out_dir==True:
     #out_path<-"/data/project/layers/commons/data_workflow/output_data"
-    out_dir_new = "output_data_"+out_suffix
-    out_dir = os.path.join(out_dir,out_dir_new)
+    out_dir = "output_data_"+out_suffix
+    out_dir = os.path.join(in_dir,out_dir)
     create_dir_and_check_existence(out_dir)
     os.chdir(out_dir)        #set working directory
 else:
@@ -146,8 +150,8 @@ bg_2000_gpd.shape
 census_syr_df.BKG_KEY.head()
 #ct_2000_gpd.TRACT.dtype
 census_syr_df.dtypes #check all the data types for all the columns
-bg_2000_gpd.BKG_KEY.dtypes #check data type for the "BKG_KEY"" note dtype is "O"
-census_syr_df.BKG_KEY.dtypes # check data type, note that it is "int64"
+bg_2000_gpd.BKG_KEY.dtypes #check data type for the "BKG_KEY"" note dtype is 'O"
+census_syr_df.BKG_KEY.dtypes
 
 #Change data type for BKG_KEY column from object 'O" to int64
 bg_2000_gpd['BKG_KEY'] = bg_2000_gpd['BKG_KEY'].astype('int64')
@@ -251,7 +255,7 @@ ax.set_title('POP2000')
 ##### Step 1: Join metals to census tracks ###### 
 
 metals_df.head()
-metals_df.describe() # 57 rows  
+metals_df.describe # 57 rows  
 ##Number of rows suggests matching to the following spatial entities
 metals_df.shape[0]== ct_2000_gpd.shape[0]
 #Check data types before joining tables with "merge"
@@ -268,8 +272,8 @@ soil_PB_df.columns #Missing names for columns
 soil_PB_df.columns = ["x","y","ID","ppm"]
 soil_PB_df.head()
 
-soil_PB_gpd = soil_PB_df.copy() # generate a new panda DataFrame object
-type(soil_PB_gpd)
+soil_PB_gpd = soil_PB_df.copy()
+type(soil_PB_df)
 soil_PB_gpd['Coordinates']=list(zip(soil_PB_gpd.x,soil_PB_gpd.y)) #create a new column with tuples of coordinates
 type(soil_PB_gpd)
 soil_PB_gpd['Coordinates']= soil_PB_gpd.Coordinates.apply(Point) #create a point for each tupple row
@@ -325,32 +329,46 @@ census_metals_gpd = census_metals_gpd.merge(grouped_PB_ct_df,on="TRACT")
 census_metals_gpd.shape
 census_metals_gpd.columns #check for duplicate columns
 
-from shapely.geometry import shape
-import fiona
-    
+outfile = "census_metals_pb_"+'_'+out_suffix+'.shp'
+census_metals_gpd.to_file(os.path.join(outfile))
+
 census_metals_df = pd.DataFrame(census_metals_gpd.drop(columns='geometry'))
 outfile = "census_metals_pb_"+'_'+out_suffix+'.csv'
 
-census_metals_df.to_csv(outfile)
-
-outfile = "census_metals_pb_"+'_'+out_suffix+'.shp'
-census_metals_gpd.to_file(os.path.join(out_dir,outfile))
+census_metals_gpd.to_file()
+census_metals_df.to_csv(os.path.join(outfile))
 
 #################################################
 ##### PART IV: Spatial regression: Vulnerability to metals #############
 #Examine the relationship between metals, Pb and vulnerable populations in Syracuse
-## Step 1: Explore Autocorrelation with Moran's I
-## Step 2: Spatial regression: examine relationship between lead ppm and % hispanic
 
-#### Step 1: Explore Autocorrelation with Moran's I #######
+#P2- SPATIAL AND NON SPATIAL QUERIES (cannot use spatial join)
+#GOAL: Answer a set of questions using spatial and attribute queries and their combinations
+
+#Produce:
+#a) two different maps based on two different definitions that answer the question:  which areas have high levels of children and are predominantly minority AND are at risk of heavy metal exposure using at least three variables. Use only tabular operations
+#b) Same question as a) but using both spatial and tabular operations
+
+#Note: In both cases include the method, variables used and your definition of risk areas in each 4 maps. The definition of risk is your own, you can also follow an established standard that would make sense or is official.  
+#From these products, the layman should be able to answer the following questions:
+#  a. Where are the areas of high heavy metal exposure that also have high levels of children population that belong to a demographic minority(s)? 
+#b. Is there a different outcome in using tabular methods only vs combining tabular and spatial query methods?
+
+#lm(,data=census_metals_pb_sp)
+#moran(x, listw, n, S0, zero.policy=NULL, NAOK=FALSE)
 
 census_metals_gpd.index
+#census_metals_gpd.reset_index(drop=True)
 census_metals_gpd = census_metals_gpd.set_index('TRACT')
 
+####hapefile(outfile,idVariable='TRACT')
 from libpysal.weights.contiguity import Queen
 
+#q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
+#w = Queen.from_dataframe(gdf)
 w = Queen.from_dataframe(census_metals_gpd)
 type(w)
+
 w.transform = 'r'
 w.n # number of observations (spatial features)
 w.neighbors # list of neighbours per census track
@@ -364,27 +382,40 @@ from esda.moran import Moran
 
 #w = Queen.from_dataframe(gdf)
 y = census_metals_gpd['pb_ppm'] 
-y.shape
 moran = Moran(y, w)
 moran.I
-moran.EI
 
-from splot.esda import plot_moran
+#y = censu
+#w_queen = ps.weights.queen_from_ss_metals_gpd.pb_ppm_x
 
-plot_moran(moran, zstandard=True, figsize=(10,4))
-plt.show()
-moran.p_sim #observed moran's I statistically significant
-y_lag = ps.lag_spatial(w,y) #this is a numpy array
+m_I = ps.Moran(y,w_queen)
 
-census_metals_gpd['y'] = census_metals_gpd.pb_ppm
+m_I.I
+m_I.EI
+
+y_lag = ps.lag_spatial(w_queen,y) #this is a numpy array
+census_metals_gpd['y'] = census_metals_gpd.pb_ppm_x
 census_metals_gpd['y_lag'] = y_lag
 
 sns.regplot(x=y,y=y_lag,data=census_metals_gpd)
 
-# now plot neighbours links
+#list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
+#summary(list_nb)
+#plot(census_lead_sp,border="blue")
+#plot.nb(list_nb,coordinates(census_lead_sp),add=T)
 
-### Step 2: Spatial regression: examine relationship between lead ppm and % hispanic
+#generate weights
+#nb2listw
+#list_w <- nb2listw(list_nb, glist=NULL, style="W", zero.policy=NULL) #use row standardized
+#can.be.simmed(list_w)
+#summary(list_w)
+#plot(as.matrix(list_w))
+#moran(census_lead_sp$pb_ppm,list_w,n=nrow(census_lead_sp), Szero(list_w))
+#moran.plot(census_lead_sp$pb_ppm, list_w,
+#           labels=as.character(census_lead_sp$TRACT), pch=19)
 
+##### Now do a spatial regression
+#Use numpy array so convert with values
 y.values.shape #not the right dimension
 y = y.values.reshape(len(y),1)
 y_lag = y_lag.reshape(len(y_lag),1)
@@ -394,28 +425,33 @@ x = x.values.reshape(len(x),1)
 
 mod_ols = ps.spreg.OLS(y,x)
 mod_ols.u 
-m_I_residuals = ps.Moran(mod_ols.u,w)
-m_I_residuals.p_sim # suggesting there is autocorreation
-m_I_residuals.I
+m_I_residuals = ps.Moran(mod_ols.u,w_queen)
 #take into account autocorr in spreg
 mod_ols.summary
-
-## Use spatial lag model from the pysal package
-## Requires pysal weight object
-w_queen = ps.weights.queen_from_shapefile(outfile)
-w_queen.transform = 'R'
-w_queen.neighbors
-
-mod_ols_test = ps.spreg.OLS(y,x,w_queen)#w must be pysal object not libpysal
+mod_ols_test = ps.spreg.OLS(y,x,w_queen)
 mod_ols_test.summary
 
 mod_ml_lag = ps.spreg.ML_Lag(y,x,w_queen)
-mod_ml_lag.summary
-mod_ml_lag.betas #intercept,  %hispanic,spatial lag (rho)
-# Add significance values?
 
+#replace explicative variable later! 
+
+#mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
+#mod_lag <- lagsarlm(pb_ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
+
+#moran.test(mod_lm$residuals,list_w)
+#moran.test(mod_lag$residuals,list_w)
+
+#### Compare Moran's I from raster to Moran's I from polygon sp
+# Rook's case
+f <- matrix(c(0,1,0,1,0,1,0,1,0), nrow=3)
+Moran(r_lead, f)
+
+#http://rspatial.org/analysis/rst/7-spregression.html
 
 ################################## END OF SCRIPT ########################################
+
+
+
 
 
 
