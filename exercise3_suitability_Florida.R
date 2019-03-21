@@ -91,7 +91,7 @@ create_out_dir_param=TRUE #PARAM9
 ## First create an output directory
 
 if(is.null(out_dir)){
-  out_dir <- dirname(in_dir) #output will be created in the input dir
+  out_dir <- dirname(in_dir_var) #output will be created in the input dir
 }
 
 out_suffix_s <- out_suffix #can modify name of output suffix
@@ -117,19 +117,16 @@ if(create_out_dir_param==TRUE){
 
 ## Read in the datasets
 r_strat_hab <- raster(file.path(in_dir_var,strat_hab_fname))
-#reg_counties_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(regional_counties_fname))) 
 reg_counties_sf <- st_read(file.path(in_dir_var,regional_counties_fname)) 
 
 r_roads <- raster(file.path(in_dir_var,roads_fname))
 r_priority_wet_hab <- raster(file.path(in_dir_var,priority_wet_habitats_fname))
 
-#clay_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(clay_parcels_fname))) #large file
 clay_sf <- st_read(file.path(in_dir_var,clay_parcels_fname)) #large file
 
 r_habitat <- raster(file.path(in_dir_var,habitat_fname))
 r_bio_hotspot <- raster(file.path(in_dir_var,biodiversity_hotspot_fname))
 
-#flma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname))) 
 flma_sf <- st_read(file.path(in_dir_var,florida_managed_areas_fname)) 
 
 r_focus_zone1 <- raster(file.path(in_dir_var,focus_zone1_filename))
@@ -158,7 +155,6 @@ lapply(list_raster,function(x){extent(x)}) #extent of rasters
 ## Let's use the resolution 55x55 m as the reference since it corresponds to finer resolution relevant
 # for this study. The focus region provides the extent for the final step.
 ## Select clay county
-#clay_county_sp <- subset(reg_counties_sp,NAME=="CLAY")
 clay_county_sf <- subset(reg_counties_sf,NAME=="CLAY")
 
 plot(r_strat_hab, main="strategic habitat")
@@ -250,18 +246,13 @@ plot(rc_bio_hotspot_reg, main="Bio hotspot reclassified")
 projection(r_priority_wet_hab)
 
 ## Crop Wetland priority raster
-#r_priority_wet_hab_w_test <- crop(r_priority_wet_hab,clay_county_sp)
-#as.vector(st_bbox(clay_county_sf))[c(1, 3, 2, 4)]
 r_priority_wet_hab_w <- crop(r_priority_wet_hab,as.vector(st_bbox(clay_county_sf))[c(1, 3, 2, 4)])
 
-#r_diff <- r_priority_wet_hab_w_test - r_priority_wet_hab_w
-#r_priority_wet_hab_reg <- mask(r_priority_wet_hab_w,r_clay) ## Does not work!! because resolution don't match
 #match resolution:
 r_priority_wet_hab_reg <- raster::resample(r_priority_wet_hab_w,r_clay, method='bilinear') #resolution matching the study region
 
-#r_priority_wet_hab_reg <- mask(r_priority_wet_hab_reg,r_clay) ## Does not work!! because resolution don't match
+#r_priority_wet_hab_reg <- mask(r_priority_wet_hab_reg,r_clay) ## Does not work!! because resolution doesn't match
 plot(r_priority_wet_hab_reg,main="Priority Wetland Habitat resampled")
-#plot(clay_county_sp,border="red",add=T)
 plot(clay_county_sf$geometry,border="red",add=T)
 
 ### Now reclass
@@ -281,7 +272,6 @@ rc_priority_wet_hab_reg <- reclassify(r_priority_wet_hab_reg, rclmat)
 freq_tb <- freq(rc_priority_wet_hab_reg)
 freq_tb
 plot(rc_priority_wet_hab_reg,main="Priority Wetland Habitat reclassified")
-#plot(clay_county_sp,border="red",add=T)
 plot(clay_county_sf$geometry,border="red",add=T)
 
 ### STEP 4: Combine all the three input criteria layers with weigthed/unweighted sum
@@ -294,8 +284,7 @@ r_bio_ws_factor <- (f_weights[1]*rc_strat_hab_reg + f_weights[2]*rc_bio_hotspot_
 
 r_bio_factor <- stack(r_bio_es_factor,r_bio_ws_factor)
 names(r_bio_factor) <- c("equal_weights","weigthed_sum")
-#plot(r_bio_factor,main="Bio factor for suitability analysis")
-plot(r_bio_factor)
+plot(r_bio_factor,main="Bio factor for suitability analysis")
 
 out_suffix_str <- paste0(names(r_bio_factor),"_",out_suffix) # this needs to be matching the number of outputs files writeRaste
 
@@ -323,10 +312,7 @@ r_roads_bool <- writeRaster(r_roads_bool,filename=roads_bool_fname,overwrite=T)
 
 #setp 2: prepare files to create a distance to existing managed land
 
-#r_flma_clay <- rasterize(flma_sp,r_clay,"OBJECTID_1",fun="max")
-#r_flma_clay_test <- rasterize(flma_sf,r_clay,"OBJECTID_1",fun="max")
 r_flma_clay <- rasterize(flma_sf,r_clay,"OBJECTID_1",fun="max")
-#test = r_flma_clay - r_flma_clay_test
 
 r_flma_clay_bool <- r_flma_clay > 0
 NAvalue(r_flma_clay_bool) <- 0 
@@ -401,7 +387,7 @@ r_flma_dist <- r_flma_distance * a
 f_weights <- c(1,1)/2 #factor weights for distance to roads
 r_dist_factor <- f_weights[1]*r_roads_dist + f_weights[2]*r_flma_dist #weighted sum with equal weight
 
-### Step 3: Combine distance factor and bio factor
+### Step 2: Combine distance factor and bio factor
 f_weights <- c(2/3,1/3) #We are weighting factor bio more for this exercise
 r_suitability_factor <- f_weights[1]*r_bio_factor + f_weights[2]*r_dist_factor #weighted sum with equal weight
 names(r_suitability_factor) <- c("suitability1","suitability2")
@@ -412,27 +398,16 @@ out_suffix_str <- paste0(names(r_suitability_factor),"_",out_suffix) # this need
 writeRaster(r_suitability_factor,filename="r_suitability_factor_clay.tif",
             bylayer=T,datatype="FLT4S",options="COMPRESS=LZW",suffix=out_suffix_str,overwrite=T)
 
-### Write out later
-#writeRaster(,"bio_factor_equal_weights.tif")
-#writeRaster(subset(r_bio_factor,1),"bio_factor_equal_weights.tif")
-
-# Step 3: summarize by parcels!!
+### Step 3: summarize by parcels!!
 
 projection(r_focus_zone1)<- projection(r_clay)
 
-#bb <- st_as_sfc(st_bbox(r_clay))
-
-#clay_sp_parcels_reg_test <- spTransform(clay_sp,projection(r_clay))
 clay_sp_parcels_reg <- st_transform(clay_sf,projection(r_clay))
 
-#test <- as(extent(r_focus_zone1),"sf")
-#test <- as(st_bbox(r_focus_zone1),"sf")
 focus_zone1_sf <- st_as_sfc(st_bbox(r_focus_zone1))
 
-#parcels_focus_zone1_sp <- intersect(clay_sp_parcels_reg,r_focus_zone1)
 parcels_focus_zone1_sf <- st_intersection(clay_sp_parcels_reg,focus_zone1_sf)
 
-#parcels_avg_suitability <- extract(r_suitability_factor,parcels_focus_zone1_sp,fun=mean,sp=T)
 parcels_avg_suitability <- extract(r_suitability_factor,parcels_focus_zone1_sf,fun=mean,sp=T) #takes about 2 minutes, check on docker!!
 
 ## Select top 10 parcels to target for conservation
