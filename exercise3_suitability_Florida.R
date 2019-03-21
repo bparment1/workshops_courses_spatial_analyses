@@ -117,19 +117,19 @@ if(create_out_dir_param==TRUE){
 
 ## Read in the datasets
 r_strat_hab <- raster(file.path(in_dir_var,strat_hab_fname))
-reg_counties_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(regional_counties_fname))) 
+#reg_counties_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(regional_counties_fname))) 
 reg_counties_sf <- st_read(file.path(in_dir_var,regional_counties_fname)) 
 
 r_roads <- raster(file.path(in_dir_var,roads_fname))
 r_priority_wet_hab <- raster(file.path(in_dir_var,priority_wet_habitats_fname))
 
-clay_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(clay_parcels_fname))) #large file
+#clay_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(clay_parcels_fname))) #large file
 clay_sf <- st_read(file.path(in_dir_var,clay_parcels_fname)) #large file
 
 r_habitat <- raster(file.path(in_dir_var,habitat_fname))
 r_bio_hotspot <- raster(file.path(in_dir_var,biodiversity_hotspot_fname))
 
-flma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname))) 
+#flma_sp <- readOGR(dsn=in_dir_var,sub(".shp","",basename(florida_managed_areas_fname))) 
 flma_sf <- st_read(file.path(in_dir_var,florida_managed_areas_fname)) 
 
 r_focus_zone1 <- raster(file.path(in_dir_var,focus_zone1_filename))
@@ -158,7 +158,7 @@ lapply(list_raster,function(x){extent(x)}) #extent of rasters
 ## Let's use the resolution 55x55 m as the reference since it corresponds to finer resolution relevant
 # for this study. The focus region provides the extent for the final step.
 ## Select clay county
-clay_county_sp <- subset(reg_counties_sp,NAME=="CLAY")
+#clay_county_sp <- subset(reg_counties_sp,NAME=="CLAY")
 clay_county_sf <- subset(reg_counties_sf,NAME=="CLAY")
 
 plot(r_strat_hab, main="strategic habitat")
@@ -445,6 +445,6 @@ print(p)
 ##Figure of selected parcels
 plot(clay_county_sf$geometry,border="red",main="Selected parcels")
 plot(parcels_avg_suitability[1:10,],add=T)
-plot(bb,add=T)
+plot(focus_zone1_sf,add=T)
 
 ##############################   END OF SCRIPT    ##########################################
