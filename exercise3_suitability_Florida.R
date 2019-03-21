@@ -420,23 +420,31 @@ writeRaster(r_suitability_factor,filename="r_suitability_factor_clay.tif",
 
 projection(r_focus_zone1)<- projection(r_clay)
 
-clay_sp_parcels_reg <- spTransform(clay_sp,projection(r_clay))
-clay_sp_parcels_reg_test <- st_transform(clay_sf,projection(r_clay))
+#bb <- st_as_sfc(st_bbox(r_clay))
 
-parcels_focus_zone1_sp <- intersect(clay_sp_parcels_reg,r_focus_zone1)
+#clay_sp_parcels_reg_test <- spTransform(clay_sp,projection(r_clay))
+clay_sp_parcels_reg <- st_transform(clay_sf,projection(r_clay))
 
-parcels_avg_suitability <- extract(r_suitability_factor,parcels_focus_zone1_sp,fun=mean,sp=T)
-#spplot(parcels_avg_suitability,"equal_weights")
+#test <- as(extent(r_focus_zone1),"sf")
+#test <- as(st_bbox(r_focus_zone1),"sf")
+focus_zone1_sf <- st_as_sfc(st_bbox(r_focus_zone1))
+
+#parcels_focus_zone1_sp <- intersect(clay_sp_parcels_reg,r_focus_zone1)
+parcels_focus_zone1_sf <- st_intersection(clay_sp_parcels_reg,focus_zone1_sf)
+
+#parcels_avg_suitability <- extract(r_suitability_factor,parcels_focus_zone1_sp,fun=mean,sp=T)
+parcels_avg_suitability <- extract(r_suitability_factor,parcels_focus_zone1_sf,fun=mean,sp=T) #takes about 2 minutes, check on docker!!
 
 ## Select top 10 parcels to target for conservation
 parcels_avg_suitability <- parcels_avg_suitability[order(parcels_avg_suitability$suitability1,decreasing = T),] 
 plot(parcels_avg_suitability$suitability1,main="Suitability index by parcel in focus zone 1")
 
-p<- spplot(parcels_avg_suitability[1:10,],"suitability1",main="Selected top 10 parcels for possible conservation")
+p <- spplot(parcels_avg_suitability[1:10,],"suitability1",main="Selected top 10 parcels for possible conservation")
 print(p)
 
 ##Figure of selected parcels
-plot(clay_county_sp,border="red",main="Selected parcels")
+plot(clay_county_sf$geometry,border="red",main="Selected parcels")
 plot(parcels_avg_suitability[1:10,],add=T)
+plot(bb,add=T)
 
 ##############################   END OF SCRIPT    ##########################################
