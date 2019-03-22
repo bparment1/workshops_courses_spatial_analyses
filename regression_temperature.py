@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 09/07/2018
-#DATE MODIFIED: 03/12/2019
+#DATE MODIFIED: 03/22/2019
 #Version: 1
 #PROJECT: SESYNC Geospatial Course and AAG 2019 Python Geospatial Course
 #TO DO:
@@ -43,6 +43,7 @@ from shapely.geometry import Point
 from collections import OrderedDict
 import webcolors
 import sklearn
+import rasterstats
 
 ################ NOW FUNCTIONS  ###################
 
@@ -175,8 +176,8 @@ type(lst1)
 lst1.crs # explore Coordinate Reference System 
 lst1.shape
 lst1.height
-plot.show(lst1)
-plot.show(lst7)
+plot.show(lst1,title="LST January")
+plot.show(lst7,title="LST July")
 
 ## Read raster bands directly to Numpy arrays and visualize data
 r_lst1 = lst1.read(1,masked=True) #read first array with masked value, nan are assigned for NA
@@ -192,8 +193,7 @@ plt.title("Difference in land surface temperature between January and July ", fo
 plt.colorbar()
 
 # Explore values distribution
-plt.hist(r_lst1.ravel(),
-         bins=256,
+plt.hist(r_lst1.ravel(bins=256,
          range=(259.0,287.0))
 ## Add panel figures later
          
@@ -205,7 +205,8 @@ station_or = data_gpd.to_crs({'init': 'epsg:2991'}) #reproject to  match the  ra
 ##### How to combine plots with rasterio package
 fig, ax = plt.subplots()
 rasterio.plot.show(lst1,ax=ax,
-                          clim=(259.0,287.0),)
+                          clim=(259.0,287.0),
+                   title="Combine raster and points in a plot")
 station_or.plot(ax=ax,marker="*",
               color="red",
                markersize=10)
@@ -237,9 +238,14 @@ lst1_gr.plot(clim=(259.0, 287.0))
 #### Extract information from raster using coordinates
 x_coord = station_or.geometry.x # pands.core.series.Series
 y_coord = station_or.geometry.y
+
 # Find value at point (x,y) or at vectors (X,Y)
 station_or['LST1'] = lst1_gr.map_pixel(x_coord,y_coord)
 station_or['LST7'] = lst7_gr.map_pixel(x_coord,y_coord)
+
+### use point_query from rasterstats
+#from rasterstats import zonal_stats, point_query
+#pts = point_query(os.path.join(in_dir,ghcn_filename),os.path.join(in_dir,infile_lst_month1))
 
 station_or.columns #get names of col
 
