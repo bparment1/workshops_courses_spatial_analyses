@@ -168,8 +168,6 @@ print(" Rows and columns: ", lst1.shape, "number of rows: ", lst1.height)
 
 data_gpd.head()
 
-
-
 #Generate quick visualization using rasterio object
 f, ax = plt.subplots(1, 2)
 
@@ -181,18 +179,32 @@ r_lst1 = lst1.read(1,masked=True) #read first array with masked value, nan are a
 r_lst7 = lst7.read(1,masked=True) #read first array with masked value, nan are assigned for NA
 
 spatial_extent = rasterio.plot.plotting_extent(lst1)
-type(r_lst1)
+print("Data type for r_lst1 object: ",type(r_lst1))
 r_lst1.size
 
 r_diff = r_lst7 - r_lst1
-plt.imshow(r_diff) # other way to display data
+plt.imshow(r_diff);
+# other way to display data
 plt.title("Difference in land surface temperature between January and July ", fontsize= 20)
 plt.colorbar()
 
+
+
 # Explore values distribution
-plt.hist(r_lst1.ravel(bins=256,
-         range=(259.0,287.0))
-## Add panel figures later
+f, ax = plt.subplots(1, 2)
+ax[0].hist(r_lst1.ravel(),
+         bins=256,
+         range=(259.0,295.0));
+ax[0].set_title('January LST')
+ax[0].set_xlabel('Land Surface Temperature (K)')
+ax[0].set_ylabel('Frequency')
+
+ax[1].hist(r_lst7.ravel(),
+         bins=256,
+         range=(259.0,330));
+ax[1].set_title('July LST')
+ax[1].set_xlabel('Land Surface Temperature (K)')
+ax[1].set_ylabel('Frequency')
          
 ##### Combine raster layer and geogpanda layer
 
