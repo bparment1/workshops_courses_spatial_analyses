@@ -111,11 +111,11 @@ def fit_ols_reg(avg_df,selected_features,selected_target,prop=0.3,random_seed=10
 #####  Parameters and argument set up ###########
 
 #ARGS 1
-in_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/data/"
-#in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/climate_regression/data"
+#in_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/data/"
+in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/climate_regression/data"
 #ARGS 2
-out_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/outputs"
-#out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/climate_regression/outputs"
+#out_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/outputs"
+out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/climate_regression/outputs"
 #ARGS 3
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 4
@@ -188,8 +188,6 @@ plt.imshow(r_diff);
 plt.title("Difference in land surface temperature between January and July ", fontsize= 20)
 plt.colorbar()
 
-
-
 # Explore values distribution
 f, ax = plt.subplots(1, 2)
 ax[0].hist(r_lst1.ravel(),
@@ -231,8 +229,6 @@ station_or.plot(ax=ax,marker="*",
 ax.set_title("Long term mean for January land surface temperature", fontsize= 20)
 fig.colorbar(lst_plot)
 
-
-
 ###########################################
 ### PART II : Extract information from raster and prepare covariates #######
 
@@ -251,8 +247,6 @@ station_or['LST1'] = lst1_gr.map_pixel(x_coord,y_coord)
 station_or['LST7'] = lst7_gr.map_pixel(x_coord,y_coord)
 
 station_or[['LST1','LST7']].head()
-
-
 
 station_or.columns #get names of col
 
@@ -285,9 +279,6 @@ avg_jul_df['T7'] = avg_jul_df['value']/10
 
 avg_jan_df[['LST1','T1']].head()
          
-
-In [203]:
-
 ################################################
 ###  PART III : Fit model and generate prediction
 
@@ -334,6 +325,9 @@ plt.scatter(X_train, y_train,  color='black')
 plt.plot(X_train, regr.predict(X_train), color='blue', linewidth=3)
 plt.xticks(())
 plt.yticks(())
+plt.xlabel("LST temperature")
+plt.ylable("Air temperature")
+plt.title("Regression between satellite based temperature and air temperature")
 plt.show()
 
 print('reg coef',regr.coef_)
@@ -364,7 +358,8 @@ data_metrics
 residuals_jan_df =fit_ols_jan[3]
 residuals_jul_df =fit_ols_jul[3]
 
-residuals_df.columns
+residuals_jan_df.columns
+
 residuals_jan_df['test'] = residuals_jan_df['test'].astype('category')
 outfile = os.path.join(out_dir,"residuals_jan_df_"+out_suffix+".csv")
 residuals_jan_df.to_csv(outfile)
@@ -373,19 +368,20 @@ residuals_jul_df['test'] = residuals_jul_df['test'].astype('category')
 outfile = os.path.join(out_dir,"residuals_jul_df_"+out_suffix+".csv")
 residuals_jul_df.to_csv(outfile)
 
-    
-#change data type to categorical
-sns.boxplot(x='test',y='T1',data=residuals_df)
+#Note that we had to change data type to categorical for the variable used on the x-axis!
 
-## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain),
-### Do models for January,July with LST and with/without land cover % of forest
-## Calculate MAE,RMSE,R2,etc. inspire yourself from paper. Save this into a CSV file.
+f, ax = plt.subplots(1, 2)
+sns.boxplot(ax=ax[0],x='test',y='T1',data=residuals_jan_df)#title='January residuals')
+ax[0].set(ylim=(-8, 8)) 
+ax[0].set(title="Residuals in January") 
 
-###Ok now use station_or data: ELEV_SRTM, LC10?
+sns.boxplot(ax=ax[1],x='test',y='T7',data=residuals_jul_df) #title='July residuals')
+ax[1].set(ylim=(-8, 8)) 
+ax[1].set(title="Residuals in July") 
 
+data_metrics.head()
 
-############################# END OF SCRIPT ###################################
-
+###################### END OF SCRIPT ################################
 
 
 
