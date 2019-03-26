@@ -285,11 +285,11 @@ avg_jul_df['T7'] = avg_jul_df['value']/10
 
 avg_jan_df[['LST1','T1']].head()
          
+
+In [203]:
+
 ################################################
 ###  PART III : Fit model and generate prediction
-
-### Add split training and testing!!!
-### Add additionl covariates!!
 
 #selected_covariates_names_updated = selected_continuous_var_names + names_cat 
 selected_features = ['LST1'] #selected features
@@ -304,6 +304,7 @@ X_train, X_test, y_train, y_test = train_test_split(avg_jan_df[selected_features
                                                     random_state=random_seed)
    
 X_train.shape
+y_train.shape
 
 from sklearn.linear_model import LinearRegression
 regr = LinearRegression() #create/instantiate object used for linear regresssion
@@ -313,17 +314,18 @@ y_pred_train = regr.predict(X_train) # Note this is a fit!
 y_pred_test = regr.predict(X_test) # Note this is a fit!
 
 #### Model evaluation
-
-r2_val_train = regr.score(X_train, y_train) #coefficient of determination (R2)
-r2_val_test = regr.score(X_test, y_test)
-
 from sklearn import metrics
 #https://scikit-learn.org/stable/modules/classes.html#sklearn-metrics-metrics
-
+r2_val_test = regr.score(X_test, y_test)
 mae_val_test = metrics.mean_absolute_error(y_test, y_pred_test) #MAE
 rmse_val_test = np.sqrt(metrics.mean_squared_error(y_test, y_pred_test)) #RMSE
-mae_val_train = metrics.mean_absolute_error(
+
+r2_val_train = regr.score(X_train, y_train) #coefficient of determination (R2)
+rmse_val_train = np.sqrt(metrics.mean_squared_error(y_train, y_pred_train)) #RMSE
+mae_val_train = metrics.mean_absolute_error(y_test, y_pred_test)
+
 data = np.array([[mae_val_test,rmse_val_test,r2_val_test],[mae_val_train,rmse_val_train,r2_val_train]])
+    
 data_metrics_df = pd.DataFrame(data,columns=['mae','rmse','r2'])
 data_metrics_df['test']=[1,0]
 #metrics.r2_scores(y_test, y_pred_test)
