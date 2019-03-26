@@ -206,8 +206,6 @@ ax[1].set_title('July LST')
 ax[1].set_xlabel('Land Surface Temperature (K)')
 ax[1].set_ylabel('Frequency')
          
-
-
 ##### Combine raster layer and geogpanda layer
 
 data_gpd.plot(marker="*",color="green",markersize=5)
@@ -233,29 +231,28 @@ station_or.plot(ax=ax,marker="*",
 ax.set_title("Long term mean for January land surface temperature", fontsize= 20)
 fig.colorbar(lst_plot)
 
+
+
 ###########################################
 ### PART II : Extract information from raster and prepare covariates #######
-#raster = './data/slope.tif'
 
 lst1_gr = gr.from_file(os.path.join(in_dir,infile_lst_month1))
 lst7_gr = gr.from_file(os.path.join(in_dir,infile_lst_month7))
 
 type(lst1_gr) # check that we have a georaster object
 # Plot data
-lst1_gr.plot()
 lst1_gr.plot(clim=(259.0, 287.0))
 
 #### Extract information from raster using coordinates
 x_coord = station_or.geometry.x # pands.core.series.Series
 y_coord = station_or.geometry.y
-
 # Find value at point (x,y) or at vectors (X,Y)
 station_or['LST1'] = lst1_gr.map_pixel(x_coord,y_coord)
 station_or['LST7'] = lst7_gr.map_pixel(x_coord,y_coord)
 
-### use point_query from rasterstats
-#from rasterstats import zonal_stats, point_query
-#pts = point_query(os.path.join(in_dir,ghcn_filename),os.path.join(in_dir,infile_lst_month1))
+station_or[['LST1','LST7']].head()
+
+
 
 station_or.columns #get names of col
 
@@ -285,6 +282,8 @@ avg_jul_df.head()
 
 avg_jan_df['T1'] = avg_jan_df['value']/10
 avg_jul_df['T7'] = avg_jul_df['value']/10
+
+avg_jan_df[['LST1','T1']].head()
          
 ################################################
 ###  PART III : Fit model and generate prediction
