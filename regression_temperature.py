@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 09/07/2018
-#DATE MODIFIED: 03/22/2019
+#DATE MODIFIED: 03/26/2019
 #Version: 1
 #PROJECT: SESYNC Geospatial Course and AAG 2019 Python Geospatial Course
 #TO DO:
@@ -43,7 +43,6 @@ from shapely.geometry import Point
 from collections import OrderedDict
 import webcolors
 import sklearn
-import rasterstats
 
 ################ NOW FUNCTIONS  ###################
 
@@ -112,41 +111,34 @@ def fit_ols_reg(avg_df,selected_features,selected_target,prop=0.3,random_seed=10
 #####  Parameters and argument set up ###########
 
 #ARGS 1
-in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/climate_regression/data/Oregon_covariates"
+in_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/data/"
+#in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/climate_regression/data"
 #ARGS 2
-out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/climate_regression/outputs"
-
-#in_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/data/Oregon_covariates"
-#out_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/outputs"
-
-#ARGS 3:
+out_dir="/nfs/bparmentier-data/Data/workshop_spatial/climate_regression/outputs"
+#out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/climate_regression/outputs"
+#ARGS 3
 create_out_dir=True #create a new ouput dir if TRUE
-#ARGS 7
-out_suffix = "exercise4_03032019" #output suffix for the files and ouptut folder
-#ARGS 8
+#ARGS 4
+out_suffix = "exercise4_03252019" #output suffix for the files and ouptut folder
+#ARGS 5
 NA_value = -9999 # NA flag balue
+#ARGS 6
 file_format = ".tif"
 
-#NLCD coordinate reference system: we will use this projection rather than TX.
-CRS_reg = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-method_proj_val = "bilinear" # method option for the reprojection and resampling
-gdal_installed = True #if TRUE, GDAL is used to generate distance files
-
-
+#ARGS 7
 #epsg 2991
 crs_reg = "+proj=lcc +lat_1=43 +lat_2=45.5 +lat_0=41.75 +lon_0=-120.5 +x_0=400000 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 
-#infile = "mean_month1_rescaled.rst" # mean LST for January
+#ARGS 8
 infile_lst_month1 = "lst_mean_month1_rescaled.tif" 
+#ARGS 9
 infile_lst_month7 = "lst_mean_month7_rescaled.tif" 
-
-infile_forest_perc =""
+#ARGS 10
 ghcn_filename = "ghcn_or_tmax_covariates_06262012_OR83M.shp" # climate stations
-
+##ARGS 11
 prop = 0.3
+#ARGS 12
 random_seed= 100
-
-################# START SCRIPT ###############################
 
 ######### PART 0: Set up the output dir ################
 
@@ -165,19 +157,24 @@ else:
 ###########################################
 ### PART I: READ AND VISUALIZE DATA #######
 
-data_gpd = gpd.read_file(os.path.join(in_dir,ghcn_filename))
-
-data_gpd.head()  
-
+data_gpd = gpd.read_file(os.path.join(in_dir,ghcn_filename)) 
 ## Extracting information from raster using raster io object
 lst1 = rasterio.open(os.path.join(in_dir,infile_lst_month1))
 lst7 = rasterio.open(os.path.join(in_dir,infile_lst_month7))
-type(lst1)
-lst1.crs # explore Coordinate Reference System 
-lst1.shape
-lst1.height
-plot.show(lst1,title="LST January")
-plot.show(lst7,title="LST July")
+print(type(lst1))
+print("Coordinate reference system: ",lst1.crs ) 
+      
+print(" Rows and columns: ", lst1.shape, "number of rows: ", lst1.height)  
+
+data_gpd.head()
+
+
+
+#Generate quick visualization using rasterio object
+f, ax = plt.subplots(1, 2)
+
+plot.show(lst1,title="LST January",ax=ax[0])
+plot.show(lst7,title="LST July",ax=ax[1])
 
 ## Read raster bands directly to Numpy arrays and visualize data
 r_lst1 = lst1.read(1,masked=True) #read first array with masked value, nan are assigned for NA
