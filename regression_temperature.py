@@ -206,6 +206,8 @@ ax[1].set_title('July LST')
 ax[1].set_xlabel('Land Surface Temperature (K)')
 ax[1].set_ylabel('Frequency')
          
+
+
 ##### Combine raster layer and geogpanda layer
 
 data_gpd.plot(marker="*",color="green",markersize=5)
@@ -215,7 +217,7 @@ station_or = data_gpd.to_crs({'init': 'epsg:2991'}) #reproject to  match the  ra
 fig, ax = plt.subplots()
 rasterio.plot.show(lst1,ax=ax,
                           clim=(259.0,287.0),
-                   title="Combine raster and points in a plot")
+                  title="Combine raster and points in a plot")
 station_or.plot(ax=ax,marker="*",
               color="red",
                markersize=10)
@@ -225,12 +227,11 @@ fig, ax = plt.subplots(figsize = (16,6))
 lst_plot = ax.imshow(r_lst1, 
                        cmap='Greys', 
                        extent=spatial_extent)
+station_or.plot(ax=ax,marker="*",
+              color="red",
+               markersize=10)
 ax.set_title("Long term mean for January land surface temperature", fontsize= 20)
 fig.colorbar(lst_plot)
-
-#https://stackoverflow.com/questions/9662995/matplotlib-change-title-and-colorbar-text-and-tick-colors
-# turn off the x and y axes for prettier plotting
-#ax.set_axis_off(); #this removes coordinates on the plot
 
 ###########################################
 ### PART II : Extract information from raster and prepare covariates #######
