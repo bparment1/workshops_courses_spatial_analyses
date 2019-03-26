@@ -339,9 +339,6 @@ plt.show()
 print('reg coef',regr.coef_)
 print('reg intercept',regr.intercept_)
 
-############ Now use y_train, y_pred_train) #MAE
-rmse_val_train = np.sqrt(metrics.mean_squared_error(y_train, y_pred_train)) #RMSE
-
 selected_features = ['LST1'] #selected features
 selected_target = ['T1'] #selected dependent variables
 
@@ -360,24 +357,22 @@ fit_ols_jul = fit_ols_reg(avg_df=avg_jul_df,
             prop=0.3,
             random_seed=10)
 
-
 data_metrics = pd.concat([fit_ols_jan[4],fit_ols_jul[4]])
 data_metrics['month'] = [1,1,7,7] 
-
 data_metrics
 
-#data_metrics.to_csv
-#### now plot residuals
-
-#need to add residuals to outputs!!
-#return X_train, X_test, y_train, y_test, regr, data_metrics_df
-
-residuals_df =fit_ols_jan[3]
-
-#X_train =fit_ols_jan[5]
+residuals_jan_df =fit_ols_jan[3]
+residuals_jul_df =fit_ols_jul[3]
 
 residuals_df.columns
-residuals_df['test'] = residuals_df['test'].astype('category')
+residuals_jan_df['test'] = residuals_jan_df['test'].astype('category')
+outfile = os.path.join(out_dir,"residuals_jan_df_"+out_suffix+".csv")
+residuals_jan_df.to_csv(outfile)
+
+residuals_jul_df['test'] = residuals_jul_df['test'].astype('category')
+outfile = os.path.join(out_dir,"residuals_jul_df_"+out_suffix+".csv")
+residuals_jul_df.to_csv(outfile)
+
     
 #change data type to categorical
 sns.boxplot(x='test',y='T1',data=residuals_df)
