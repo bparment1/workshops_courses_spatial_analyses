@@ -65,30 +65,40 @@ in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/dat
 out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/outputs"
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
-#ARGS 7
+#ARGS 4
 out_suffix = "exercise4_03142019" #output suffix for the files and ouptut folder
-#ARGS 8
+#ARGS 5
 NA_value = -9999 # number of cores
+#ARGS 6
 file_format = ".tif"
-
+#ARGS 7
 #NLCD coordinate reference system: we will use this projection rather than TX.
 CRS_reg = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+#ARGS 8
 method_proj_val = "bilinear" # method option for the reprojection and resampling
+#ARGS 9
 gdal_installed = True #if TRUE, GDAL is used to generate distance files
 		
 ### Input data files
+#ARGS 10
 rastername_county_harris = "harris_county_mask.tif" #Region of interest: extent of Harris County
+#ARGS 11
 elevation_fname = "srtm_Houston_area_90m.tif" #SRTM elevation
+#ARGS 12
 roads_fname = "r_roads_Harris.tif" #Road count for Harris county
 	
 ### Aggreagate NLCD input files
+ #ARGS 13
 infile_land_cover_date1 = "agg_3_r_nlcd2001_Houston.tif"
+#ARGS 14
 infile_land_cover_date2 = "agg_3_r_nlcd2006_Houston.tif"
+#ARGS 15
 infile_land_cover_date3 = "agg_3_r_nlcd2011_Houston.tif"
-	
+#ARGS 16	
 infile_name_nlcd_legend = "nlcd_legend.txt"
+#ARGS 17
 infile_name_nlcd_classification_system = "classification_system_nlcd_legend.xlsx"
-	
+#ARGS 18	
 data_fname = 'r_variables_harris_county_exercise4_02072019.txt'
 
 ################# START SCRIPT ###############################
