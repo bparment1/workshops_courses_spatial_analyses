@@ -40,9 +40,10 @@ from osgeo import osr
 from shapely.geometry import Point
 import pysal as ps
 import os
-import splot
+import splot #for hotspot analysis
 from esda.moran import Moran
 from libpysal.weights.contiguity import Queen
+from sklearn.preprocessing import StandardScaler
 
 ################ NOW FUNCTIONS  ###################
 
@@ -319,6 +320,8 @@ outfile = "census_metals_pb_"+'_'+out_suffix+'.csv'
 
 census_metals_df.to_csv(os.path.join(outfile))
 
+census_metals_gpd.head()
+
 #################################################
 ##### PART IV: Spatial regression: Vulnerability to metals #############
 #Examine the relationship between  Pb and vulnerable populations in Syracuse
@@ -355,13 +358,9 @@ census_metals_gpd['y_lag'] = y_lag
 ax= sns.regplot(x='y',y='y_lag',data=census_metals_gpd)
 ax.set_title("Moran's scatter plot")
 
-#from sklearn.preprocessing import StandardScaler
-#scaler = StandardScaler()
-#census_metals_gpd['y_std'] = scaler.fit_transform(census_metals_gpd['pb_ppm'].values)
-#census_metals_gpd['y_lag_std'] = ps.lag_spatial(w_queen,
-#                                                census_metals_gpd['y_std']) #this is a numpy array
+### Visualize the Moran's I with standardized values
+scaler = StandardScaler()
 census_metals_gpd['y_std'] = scaler.fit_transform(census_metals_gpd['pb_ppm'].values.reshape(-1,1))
-#scaler.fit_transform(df['Col1'].values.reshape(-1,1))
 census_metals_gpd['y_lag_std'] = ps.lag_spatial(w_queen,
                                                 census_metals_gpd['y_std']) #this is a numpy array
 
@@ -384,22 +383,27 @@ y.values.shape #not the right dimension
 y = y.values.reshape(len(y),1)
 
 y_lag = y_lag.reshape(len(y_lag),1)
-
 x = census_metals_gpd['perc_hispa']
 x = x.values.reshape(len(x),1)
 
 mod_ols = ps.spreg.OLS(y,x)
 mod_ols.u 
 m_I_residuals = ps.Moran(mod_ols.u,w_queen)
+m_I_residuals.I
+m_I_residuals.p_sim #significant autocorrelation
+
 #take into account autocorr in spreg
 mod_ols.summary
 mod_ols_test = ps.spreg.OLS(y,x,w_queen)
 mod_ols_test.summary
 
 mod_ml_lag = ps.spreg.ML_Lag(y,x,w_queen)
+mod_ml_lag.summary
+mod_ml_lag.u
+m_ml_I_residuals = ps.Moran(mod_ml_lag.u,w_queen)
+m_ml_I_residuals.I # Moran's I is lower now!!!
 
-#moran.test(mod_lm$residuals,list_w)
-#moran.test(mod_lag$residuals,list_w)
+m_ml_I_residuals.p_sim #not significant autocorrelation
 
 ################################## END OF SCRIPT ########################################
 
