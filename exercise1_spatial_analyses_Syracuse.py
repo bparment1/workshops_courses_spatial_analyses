@@ -41,7 +41,6 @@ from shapely.geometry import Point
 import pysal as ps
 import os
 import splot
-
 from esda.moran import Moran
 from libpysal.weights.contiguity import Queen
 
@@ -228,22 +227,6 @@ census_2000_gpd.plot(column='POP2000',cmap="OrRd",
                  legend=True)
 ax.set_title('POP2000')
 
-#Problem with legend
-#ax.legend(loc=3,
-#          fontsize=25,
-#          frameon=False)
-#plt.show()
-#https://nbviewer.jupyter.org/github/pysal/mapclassify/blob/master/notebooks/south.ipynb
-#q10 = ps.Quantiles(tx.HR90,k=10)
-#q10.bins
-
-#f, ax = plt.subplots(1, figsize=(9, 9))
-#tx.assign(cl=q10.yb).plot(column='cl', categorical=True, \
-#        k=10, cmap='OrRd', linewidth=0.1, ax=ax, \
-#        edgecolor='white', legend=True)
-#ax.set_axis_off()
-#plt.show()
-
 ##############################################
 ##### PART 3: SPATIAL QUERY #############
 ### We generate a dataset with metals and lead information by census tracks.
@@ -338,32 +321,19 @@ census_metals_df.to_csv(os.path.join(outfile))
 
 #################################################
 ##### PART IV: Spatial regression: Vulnerability to metals #############
-#Examine the relationship between metals, Pb and vulnerable populations in Syracuse
+#Examine the relationship between  Pb and vulnerable populations in Syracuse
 
-#P2- SPATIAL AND NON SPATIAL QUERIES (cannot use spatial join)
-#GOAL: Answer a set of questions using spatial and attribute queries and their combinations
-
-#Produce:
-#a) two different maps based on two different definitions that answer the question:  which areas have high levels of children and are predominantly minority AND are at risk of heavy metal exposure using at least three variables. Use only tabular operations
-#b) Same question as a) but using both spatial and tabular operations
-
-#Note: In both cases include the method, variables used and your definition of risk areas in each 4 maps. The definition of risk is your own, you can also follow an established standard that would make sense or is official.  
-#From these products, the layman should be able to answer the following questions:
-#  a. Where are the areas of high heavy metal exposure that also have high levels of children population that belong to a demographic minority(s)? 
-#b. Is there a different outcome in using tabular methods only vs combining tabular and spatial query methods?
-
-
-census_metals_gpd.index
-#### Explore neighbors using libpysal
+######## Step 1: Explore neighbors with pysal
 
 w = Queen.from_dataframe(census_metals_gpd)
 type(w)
 w.transform = 'r'
 w.n # number of observations (spatial features)
+census_metals_gpd.index #this is the index used for neighbors
 w.neighbors # list of neighbours per census track
-w.mean_neighbors
-w.pct_nonzero
+w.mean_neighbors #average number of neighbours
 
+### Visualizaing neighbors:
 ax = census_metals_gpd.plot(edgecolor='grey', 
                             facecolor='w')
 f,ax = w.plot(census_metals_gpd, ax=ax, 
@@ -373,22 +343,40 @@ f,ax = w.plot(census_metals_gpd, ax=ax,
 ax.set_axis_off()
 ax.set_title("Queen Neighbors links")
 
-
 ########## Step 2: Explore Moran's I ##########
 
 #http://pysal.org/notebooks/viz/splot/esda_morans_viz
 y = census_metals_gpd['pb_ppm'] 
-moran = Moran(y, w)
-moran.I
-
 w_queen = ps.weights.Queen.from_shapefile(outfile_metals_shp)
 y_lag = ps.lag_spatial(w_queen,y) #this is a numpy array
-#HR90Lag = ps.lag_spatial(W, data.HR90)
-
 census_metals_gpd['y'] = census_metals_gpd['pb_ppm']
 census_metals_gpd['y_lag'] = y_lag
 
-sns.regplot(x=y,y=y_lag,data=census_metals_gpd)
+ax= sns.regplot(x='y',y='y_lag',data=census_metals_gpd)
+ax.set_title("Moran's scatter plot")
+
+#from sklearn.preprocessing import StandardScaler
+#scaler = StandardScaler()
+#census_metals_gpd['y_std'] = scaler.fit_transform(census_metals_gpd['pb_ppm'].values)
+#census_metals_gpd['y_lag_std'] = ps.lag_spatial(w_queen,
+#                                                census_metals_gpd['y_std']) #this is a numpy array
+census_metals_gpd['y_std'] = scaler.fit_transform(census_metals_gpd['pb_ppm'].values.reshape(-1,1))
+#scaler.fit_transform(df['Col1'].values.reshape(-1,1))
+census_metals_gpd['y_lag_std'] = ps.lag_spatial(w_queen,
+                                                census_metals_gpd['y_std']) #this is a numpy array
+
+ax= sns.regplot(x='y_std',y='y_lag_std',data=census_metals_gpd)
+ax.set_title("Moran's scatter plot")
+ax.axhline(0, color='black')
+ax.axvline(0, color='black')
+#for more in depth understanding take a look at: http://darribas.org/gds15/content/labs/lab_06.html
+
+#This suggests autocorrelation.
+#Let's us Moran's I.
+
+moran = Moran(y, w)
+moran.I # Moran's I value
+moran.p_sim # Permutation test suggests that autocorrelation is significant
 
 ########## Step 3: Spatial Regression ##########
 
@@ -410,20 +398,8 @@ mod_ols_test.summary
 
 mod_ml_lag = ps.spreg.ML_Lag(y,x,w_queen)
 
-#replace explicative variable later! 
-
-#mod_lm <- lm(pb_ppm ~ perc_hispa, data=census_lead_sp)
-#mod_lag <- lagsarlm(pb_ppm ~ perc_hispa, data=census_lead_sp, list_w, tol.solve=1.0e-30)
-
 #moran.test(mod_lm$residuals,list_w)
 #moran.test(mod_lag$residuals,list_w)
-
-#### Compare Moran's I from raster to Moran's I from polygon sp
-# Rook's case
-f <- matrix(c(0,1,0,1,0,1,0,1,0), nrow=3)
-Moran(r_lead, f)
-
-#http://rspatial.org/analysis/rst/7-spregression.html
 
 ################################## END OF SCRIPT ########################################
 
