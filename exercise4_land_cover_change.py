@@ -42,6 +42,7 @@ from osgeo import osr
 from shapely.geometry import Point
 from collections import OrderedDict
 import webcolors
+import copy
 
 ################ NOW FUNCTIONS  ###################
 
@@ -131,11 +132,6 @@ lc_date2 = rasterio.open(infile_land_cover_date2)
 r_lc_date2 = lc_date2.read(1,masked=True) #read first array with masked value, nan are assigned for NA
 lc_date3= rasterio.open(infile_land_cover_date2) 
 
-#Note that you can also plot the raster io data reader
-plot.show(lc_date1) #no need to read in memory
-plot.show(lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
-plot.show(lc_date2,cmap=plt.cm.get_cmap('cubehelix',16 ))	
-
 #Generate quick visualization using rasterio object
 f, ax = plt.subplots(1, 2)
 
@@ -176,22 +172,18 @@ class_def = np.array([0,20,1,
                       90,100,9])
  
 class_def = class_def.reshape(9,3)
-np.arange(0,9)
 
-import copy
 r_date1_rec = copy.copy(r_lc_date1)
 r_date2_rec = copy.copy(r_lc_date2)
 
 for i in np.arange(0,9):
     class_val = class_def[i,:]
     r_date1_rec[(class_val[0]<= r_date1_rec) & (r_date1_rec <class_val[1])] = class_val[2]
-
-for i in np.arange(0,9):
-    class_val = class_def[i,:]
     r_date2_rec[(class_val[0]<= r_date2_rec) & (r_date2_rec <class_val[1])] = class_val[2]
- 
-plot.show(r_date1_rec)
-plot.show(r_lc_date1)   
+
+f, ax = plt.subplots(1, 2)
+plot.show(r_date1_rec,title="NLCD 2001 reclassified",ax=ax[0])
+plot.show(r_date2_rec,title="NLCD 2006 reclassified",ax=ax[1])
 
 ####### Step 2: Examine overall changes in categories
 
@@ -215,6 +207,7 @@ freq_tb_nlcd = pd.merge(df_date1,df_date2,on='value')
 freq_tb_nlcd = freq_tb_nlcd[['value','y_2001','y_2006']]
 freq_tb_nlcd['diff'] = freq_tb_nlcd['y_2006'] - freq_tb_nlcd['y_2001']
 ## link to category names
+
 freq_tb_nlcd = pd.merge(freq_tb_nlcd,
                         lc_system_nlcd_df[['id_l1','name_l1']],
                         left_on='value',
