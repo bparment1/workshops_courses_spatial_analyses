@@ -10,7 +10,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 03/14/2019
+#DATE MODIFIED: 04/04/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
@@ -130,77 +130,24 @@ r_lc_date1 = lc_date1.read(1,masked=True) #read first array with masked value, n
 lc_date2 = rasterio.open(infile_land_cover_date2) 
 r_lc_date2 = lc_date2.read(1,masked=True) #read first array with masked value, nan are assigned for NA
 lc_date3= rasterio.open(infile_land_cover_date2) 
-r_lc_date3 = lc_date3.read(1,masked=True) #read first array with masked value, nan are assigned for NA
-
-spatial_extent = rasterio.plot.plotting_extent(lc_date1)
-plot.show(r_lc_date1)
 
 #Note that you can also plot the raster io data reader
-type(lc_date2)
-plot.show(lc_date2) #no need to read in memory
-
-lc_date1.crs # not defined with *.rst
-lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",")
-	
-lc_legend_df.head() # Inspect data
+plot.show(lc_date1) #no need to read in memory
 plot.show(lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
 plot.show(lc_date2,cmap=plt.cm.get_cmap('cubehelix',16 ))	
-### Let's generate a palette from the NLCD legend information to view the existing land cover for 2006.
-#names(lc_legend_df)
+
+print(type(lc_date1))
+print("Coordinate reference system: ",lc_date1.crs ) 
+      
+print(" Rows and columns: ", lc_date1.shape, "number of rows: ", lc_date1.height)  
+
+lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",")
+lc_legend_df.head() # Inspect data
 lc_legend_df.columns
 lc_legend_df.shape
 #subset the data to remove unsured rows
 lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0] 
 
-
-# Generate palette
-
-colors_val = ['linen', 'lightgreen', 'darkgreen', 'maroon']
-
-cmap = colors.ListedColormap(colors_val) # can be used directly
-webcolors.rgb_to_name
-webcolors.rgb_to_name((0, 0, 0)) #default is css3 convention
-webcolors.rgb_to_name((255,255,255))
-webcolors.name_to_rgb('navy')
-
-### Generate a palette color from the input Red, Green and Blue information using RGB encoding:
-rgb_col=list(zip(lc_legend_df.Red,lc_legend_df.Green,lc_legend_df.Blue))
-len(rgb_col)
-rgb_col[0]
-#lc_legend_df$rgb <- paste(lc_legend_df$Red,lc_legend_df$Green,lc_legend_df$Blue,sep=",") #combine
-#','.join([lc_legend_df.Red,lc_legend_df.Green, lc_legend_df.Blue]) 	
-
-#lc_legend_df['rgb'] = lc_legend_df[['Red','Green','Blue']].apply[lambda x:]
-lc_legend_df['rgb'] = rgb_col
-### row 2 correspond to the "open water" category
-#webcolors.rgb_to_name(rgb_col[1])
-
-color_val_water = rgb_col[1]
-color_val_developed_high = rgb_col[7]
-
-#color_val_water <- rgb(lc_legend_df$Red[2],lc_legend_df$Green[2],lc_legend_df$Blue[2],maxColorValue = 255)
-#color_val_developed_high <- rgb(lc_legend_df$Red[7],lc_legend_df$Green[7],lc_legend_df$Blue[7],maxColorValue = 255)
-	
-#lc_col_palette <- c(color_val_water,color_val_developed_high)
-	
-#barplot(c(1,1),
-#col=lc_col_palette,
-#main="Visualization of color palette for NLCD land cover",
-#names.arg=c("Open water", "Developed, High Intensity"),las=1)
-	
-### Let's generate a color for all the land cover categories by using lapply and function
-#n_cat <- nrow(lc_legend_df)
-#lc_col_palette <- lapply(1:n_cat,
-#FUN=function(i){rgb(lc_legend_df$Red[i],lc_legend_df$Green[i],lc_legend_df$Blue[i],maxColorValue = 255)})
-#lc_col_palette <- unlist(lc_col_palette)
-	
-	
-### Now generate a plot of land cover with the NLCD legend and palette
-#levelplot(r_lc_date2,
-#	col.regions = lc_legend_df_date2$palette,
-#	scales=list(draw=FALSE),
-#	main = "NLCD 2006")
-	
 
 #######
 ################################################
