@@ -136,6 +136,12 @@ plot.show(lc_date1) #no need to read in memory
 plot.show(lc_date2) # View NLCD 2006, we will need to add the legend use the appropriate palette!!
 plot.show(lc_date2,cmap=plt.cm.get_cmap('cubehelix',16 ))	
 
+#Generate quick visualization using rasterio object
+f, ax = plt.subplots(1, 2)
+
+plot.show(lc_date1,title="NLCD 2001",ax=ax[0])
+plot.show(lc_date2,title="NLCD 2006",ax=ax[1])
+
 print(type(lc_date1))
 print("Coordinate reference system: ",lc_date1.crs ) 
       
@@ -148,7 +154,6 @@ lc_legend_df.shape
 #subset the data to remove unsured rows
 lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0] 
 
-
 #######
 ################################################
 ###  PART II : Analyze overall changes and land transitions
@@ -157,7 +162,6 @@ lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0]
 # persistence in land cover will generate a large number of transitions (potential up to 15*15=225 transitions in this case!)
 
 ## To generalize the information, let's aggregate leveraging the hierachical nature of NLCD Anderson Classification system.
-
 
 #### Step 1: aggregate NLCD classes
 
@@ -172,7 +176,6 @@ class_def = np.array([0,20,1,
                       90,100,9])
  
 class_def = class_def.reshape(9,3)
- 
 np.arange(0,9)
 
 import copy
@@ -193,7 +196,6 @@ plot.show(r_lc_date1)
 ####### Step 2: Examine overall changes in categories
 
 val, cnts =np.unique(r_date1_rec,return_counts=True)
-
 df = pd.DataFrame(np.ma.filled(val))
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 df_date1 = pd.DataFrame(val,cnts)
@@ -211,9 +213,13 @@ df_date2.columns = ['y_2006','value']
 freq_tb_nlcd = pd.merge(df_date1,df_date2,on='value')
 #reorder columns 
 freq_tb_nlcd = freq_tb_nlcd[['value','y_2001','y_2006']]
-freq_tb_nlcd.head()
+freq_tb_nlcd['diff'] = freq_tb_nlcd['y_2006'] - freq_tb_nlcd['y_2001']
+## link to category names
 
+freq_tb_nlcd.head()
 freq_tb_nlcd
+
+infile_name_nlcd_classification_system = "classification_system_nlcd_legend.xlsx"
 
 #dim(lc_system_nlcd_df) # Now 15 land categories instead of 20.
 
