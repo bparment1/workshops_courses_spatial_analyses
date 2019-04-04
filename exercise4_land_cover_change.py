@@ -43,6 +43,9 @@ from shapely.geometry import Point
 from collections import OrderedDict
 import webcolors
 import copy
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import LabelEncoder
+from numpy import array
 
 ################ NOW FUNCTIONS  ###################
 
@@ -161,6 +164,12 @@ lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0]
 
 #### Step 1: aggregate NLCD classes
 
+# Read in classification system: Now 15 land categories instead of 20.
+
+lc_system_nlcd_df = pd.read_excel(os.path.join(in_dir,infile_name_nlcd_classification_system))
+lc_system_nlcd_df.head #inspect data
+
+### Set up the reclassification
 class_def = np.array([0,20,1,
                       20,30,2,
                       30,40,3,
@@ -207,39 +216,28 @@ freq_tb_nlcd = pd.merge(df_date1,df_date2,on='value')
 freq_tb_nlcd = freq_tb_nlcd[['value','y_2001','y_2006']]
 freq_tb_nlcd['diff'] = freq_tb_nlcd['y_2006'] - freq_tb_nlcd['y_2001']
 ## link to category names
+cat_val = lc_system_nlcd_df[['id_l1','name_l1']].drop_duplicates()
 
 freq_tb_nlcd = pd.merge(freq_tb_nlcd,
-                        lc_system_nlcd_df[['id_l1','name_l1']],
+                        cat_val,
                         left_on='value',
                         right_on='id_l1')
-
-test = pd.merge(freq_tb_nlcd,
-                        lc_system_nlcd_df[['id_l1','name_l1']],
-                        left_on='value',
-                        right_on='id_l1',
-                        how='left',
-                        right_index=False)
-
-test = test.drop(columns=['id_l1'])
-freq_tb_nlcd.head()
 freq_tb_nlcd
 
-infile_name_nlcd_classification_system = "classification_system_nlcd_legend.xlsx"
-lc_system_nlcd_df = pd.read_excel(os.path.join(in_dir,
-                                       infile_name_nlcd_classification_system))
-
-#dim(lc_system_nlcd_df) # Now 15 land categories instead of 20.
-
-lc_system_nlcd_df = pd.read_excel(os.path.join(in_dir,infile_name_nlcd_classification_system))
-lc_system_nlcd_df.head #inspect data
-
-lc_system_nlcd_df.shape
-selected_cat = lc_system_nlcd_df.id_l1.isin(freq_tb_nlcd.value)
-lc_system_nlcd_df = lc_system_nlcd_df[selected_cat]
+## barplot
+sns.set(style="whitegrid")
+#tips = ns.load_dataset("tips")
+ax = sns.barplot(x="name_l1", 
+                     y="diff", 
+                     data=freq_tb_nlcd)
+ax.set_xticklabels(list(freq_tb_nlcd["name_l1"]),rotation=30)
 
 ### Select relevant columns for the reclassification
 
-rec_df = lc_system_nlcd_df.iloc[:,[2,1,0]]
+#lc_system_nlcd_df.shape
+#selected_cat = lc_system_nlcd_df.id_l1.isin(freq_tb_nlcd.value)
+#lc_system_nlcd_df = lc_system_nlcd_df[selected_cat]
+#rec_df = lc_system_nlcd_df.iloc[:,[2,1,0]]
 
 ##### Step 3: examine land transitions 
 #### Cros  stab
@@ -283,13 +281,6 @@ test = pd.wide_to_long(rec_xtab_df,
 selected_col = ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']
 
 
-#rec_xtab_df <- crosstab(r_date1_rec,r_date2_rec,long=T)
-#names(rec_xtab_df) <- c("2001","2011","freq")
-
-#head(rec_xtab_df)
-#dim(rec_xtab_df) #9*9 possible transitions if we include NA values
-#print(rec_xtab_df) # View the full table
-
 #which.max(rec_xtab_df$freq)
 #rec_xtab_df[11,] # Note the most important transition is persistence!!
 
@@ -318,9 +309,6 @@ data_df.columns
 ################
 ##### Step 2: Prepare model for predictions: Split data into training and testing and rescaling
 
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.preprocessing import LabelEncoder
-from numpy import array
 
 ## Relevant variables used:
 selected_covariates_names = ['land_cover', 'slope', 'roads_dist', 'developped_dist']
