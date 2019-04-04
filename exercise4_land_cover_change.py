@@ -251,44 +251,12 @@ rec_xtab_df.columns = ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']
 rec_xtab_df.index = ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']
 rec_xtab_df
 
-np.repeat( ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0'],9)
-['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']*9
-val= np.array(rec_xtab_df.values.ravel())
+rec_xtab_df.max() # diagonal is the max for all columns
 
-val.reshape(64,1)
-
-transitions_df = pd.DataFrame({'date1':np.repeat( ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0'],8),
-              'date2':['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']*8,
-              'values': val})
-
-#rec_xtab_df['class'] = ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']
-
-#test = pd.wide_to_long(rec_xtab_df,
-#                       stubnames="freq",
-#                       i=['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0'],
-#                       j='transitions')
-
-test = pd.wide_to_long(rec_xtab_df,st)
-
-selected_col=list(rec_xtab_df)
-
-selected_col = selected_col[0:len(selected_col)-1]
-
-test = pd.wide_to_long(rec_xtab_df,
-                       stubnames="freq",
-                       i=selected_col,
-                       j='transitions')
-selected_col = ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']
-
-
-#which.max(rec_xtab_df$freq)
-#rec_xtab_df[11,] # Note the most important transition is persistence!!
-
-### Let's rank the transition:
-#class(rec_xtab_df)
-#is.na(rec_xtab_df$freq)
-#rec_xtab_df_ranked <- rec_xtab_df[order(rec_xtab_df$freq,decreasing=T) , ]
-#head(rec_xtab_df_ranked) # Unsurprsingly, top transitions are persistence categories
+## Look at transitions for class 2 (urban)
+## Most common is from 8 to 2
+## Planted cultived to urban
+## Second biggest is from FOrest (4) to 2
 
 ###########################################
 ############# PART III: Process and prepare for land change modeling ####################
