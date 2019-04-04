@@ -9,7 +9,7 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier                                             
 #DATE CREATED: 12/29/2018 
-#DATE MODIFIED: 03/18/2019
+#DATE MODIFIED: 04/04/2019
 #Version: 1
 #PROJECT: AAG 2019 workshop preparation
 #TO DO:
@@ -38,11 +38,12 @@ from cartopy import crs as ccrs
 from pyproj import Proj
 from osgeo import osr
 from shapely.geometry import Point
-
+import pysal as ps
 import os
 import splot
 
 from esda.moran import Moran
+from libpysal.weights.contiguity import Queen
 
 ################ NOW FUNCTIONS  ###################
 
@@ -60,15 +61,15 @@ def create_dir_and_check_existence(path):
 ############################################################################
 #####  Parameters and argument set up ########### 
 
-#ARGS 1
+#ARG 1
 in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_1/data"
-#ARGS 2
+#ARG 2
 out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_1/outputs"
-#ARGS 3:
+#ARG 3:
 create_out_dir=True #create a new ouput dir if TRUE
-#ARGS 7
+#ARG 4
 out_suffix = "exercise1_03182019" #output suffix for the files and ouptut folder
-#ARGS 8
+#ARGS 5
 NA_value = -9999 # number of cores
 file_format = ".tif"
 
@@ -335,7 +336,6 @@ census_metals_gpd.to_file(os.path.join(outfile))
 census_metals_df = pd.DataFrame(census_metals_gpd.drop(columns='geometry'))
 outfile = "census_metals_pb_"+'_'+out_suffix+'.csv'
 
-census_metals_gpd.to_file()
 census_metals_df.to_csv(os.path.join(outfile))
 
 #################################################
@@ -362,7 +362,6 @@ census_metals_gpd.index
 census_metals_gpd = census_metals_gpd.set_index('TRACT')
 
 ####hapefile(outfile,idVariable='TRACT')
-from libpysal.weights.contiguity import Queen
 
 #q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
 #w = Queen.from_dataframe(gdf)
@@ -375,10 +374,6 @@ w.neighbors # list of neighbours per census track
 w.mean_neighbors
 
 #http://pysal.org/notebooks/viz/splot/esda_morans_viz
-import os
-import splot
-
-from esda.moran import Moran
 
 #w = Queen.from_dataframe(gdf)
 y = census_metals_gpd['pb_ppm'] 
