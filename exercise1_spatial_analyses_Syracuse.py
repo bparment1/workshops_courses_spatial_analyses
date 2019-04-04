@@ -321,8 +321,6 @@ grouped_PB_ct_df = grouped_PB_ct_df.reset_index()
 grouped_PB_ct_df.shape
 grouped_PB_ct_df.head()
 
-#grouped = grouped.rename(columns={'index_right': 'TRACT',
-#                            'ppm': 'pb_ppm' })
 grouped_PB_ct_df = grouped_PB_ct_df.rename(columns={'ppm': 'pb_ppm' })
 type(grouped_PB_ct_df)
 
@@ -330,8 +328,8 @@ census_metals_gpd = census_metals_gpd.merge(grouped_PB_ct_df,on="TRACT")
 census_metals_gpd.shape
 census_metals_gpd.columns #check for duplicate columns
 
-outfile = "census_metals_pb_"+'_'+out_suffix+'.shp'
-census_metals_gpd.to_file(os.path.join(outfile))
+outfile_metals_shp = "census_metals_pb_"+'_'+out_suffix+'.shp'
+census_metals_gpd.to_file(os.path.join(outfile_metals_shp))
 
 census_metals_df = pd.DataFrame(census_metals_gpd.drop(columns='geometry'))
 outfile = "census_metals_pb_"+'_'+out_suffix+'.csv'
@@ -356,18 +354,15 @@ census_metals_df.to_csv(os.path.join(outfile))
 
 
 census_metals_gpd.index
-#census_metals_gpd.reset_index(drop=True)
-#census_metals_gpd = census_metals_gpd.set_index('TRACT')
+#### Explore neighbors using libpysal
 
-#q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
-#w = Queen.from_dataframe(gdf)
 w = Queen.from_dataframe(census_metals_gpd)
 type(w)
-
 w.transform = 'r'
 w.n # number of observations (spatial features)
 w.neighbors # list of neighbours per census track
 w.mean_neighbors
+w.pct_nonzero
 
 ax = census_metals_gpd.plot(edgecolor='grey', 
                             facecolor='w')
@@ -379,46 +374,27 @@ ax.set_axis_off()
 ax.set_title("Queen Neighbors links")
 
 
-#http://pysal.org/notebooks/viz/splot/esda_morans_viz
+########## Step 2: Explore Moran's I ##########
 
-#w = Queen.from_dataframe(gdf)
+#http://pysal.org/notebooks/viz/splot/esda_morans_viz
 y = census_metals_gpd['pb_ppm'] 
 moran = Moran(y, w)
 moran.I
 
-#y = censu
-#w_queen = ps.weights.queen_from_ss_metals_gpd.pb_ppm_x
-
-m_I = ps.Moran(y,w_queen)
-
-m_I.I
-m_I.EI
-
+w_queen = ps.weights.Queen.from_shapefile(outfile_metals_shp)
 y_lag = ps.lag_spatial(w_queen,y) #this is a numpy array
-census_metals_gpd['y'] = census_metals_gpd.pb_ppm_x
+#HR90Lag = ps.lag_spatial(W, data.HR90)
+
+census_metals_gpd['y'] = census_metals_gpd['pb_ppm']
 census_metals_gpd['y_lag'] = y_lag
 
 sns.regplot(x=y,y=y_lag,data=census_metals_gpd)
 
-#list_nb <- poly2nb(census_lead_sp) #generate neighbours based on polygons
-#summary(list_nb)
-#plot(census_lead_sp,border="blue")
-#plot.nb(list_nb,coordinates(census_lead_sp),add=T)
+########## Step 3: Spatial Regression ##########
 
-#generate weights
-#nb2listw
-#list_w <- nb2listw(list_nb, glist=NULL, style="W", zero.policy=NULL) #use row standardized
-#can.be.simmed(list_w)
-#summary(list_w)
-#plot(as.matrix(list_w))
-#moran(census_lead_sp$pb_ppm,list_w,n=nrow(census_lead_sp), Szero(list_w))
-#moran.plot(census_lead_sp$pb_ppm, list_w,
-#           labels=as.character(census_lead_sp$TRACT), pch=19)
-
-##### Now do a spatial regression
-#Use numpy array so convert with values
 y.values.shape #not the right dimension
 y = y.values.reshape(len(y),1)
+
 y_lag = y_lag.reshape(len(y_lag),1)
 
 x = census_metals_gpd['perc_hispa']
