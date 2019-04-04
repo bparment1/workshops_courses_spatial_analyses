@@ -354,14 +354,10 @@ census_metals_df.to_csv(os.path.join(outfile))
 #  a. Where are the areas of high heavy metal exposure that also have high levels of children population that belong to a demographic minority(s)? 
 #b. Is there a different outcome in using tabular methods only vs combining tabular and spatial query methods?
 
-#lm(,data=census_metals_pb_sp)
-#moran(x, listw, n, S0, zero.policy=NULL, NAOK=FALSE)
 
 census_metals_gpd.index
 #census_metals_gpd.reset_index(drop=True)
-census_metals_gpd = census_metals_gpd.set_index('TRACT')
-
-####hapefile(outfile,idVariable='TRACT')
+#census_metals_gpd = census_metals_gpd.set_index('TRACT')
 
 #q_weights = ps.weights.queen_from_shapefile(census_metals_gpd,idVariable='TRACT')
 #w = Queen.from_dataframe(gdf)
@@ -372,6 +368,16 @@ w.transform = 'r'
 w.n # number of observations (spatial features)
 w.neighbors # list of neighbours per census track
 w.mean_neighbors
+
+ax = census_metals_gpd.plot(edgecolor='grey', 
+                            facecolor='w')
+f,ax = w.plot(census_metals_gpd, ax=ax, 
+        edge_kws=dict(color='r', linestyle=':', 
+                      linewidth=1),
+        node_kws=dict(marker=''))
+ax.set_axis_off()
+ax.set_title("Queen Neighbors links")
+
 
 #http://pysal.org/notebooks/viz/splot/esda_morans_viz
 
