@@ -350,8 +350,8 @@ ax.set_title("Queen Neighbors links")
 
 #http://pysal.org/notebooks/viz/splot/esda_morans_viz
 y = census_metals_gpd['pb_ppm'] 
-w_queen = ps.weights.Queen.from_shapefile(outfile_metals_shp)
-y_lag = ps.lag_spatial(w_queen,y) #this is a numpy array
+w_queen = ps.lib.weights.Queen.from_shapefile(outfile_metals_shp)
+y_lag = ps.model.spreg.lag_spatial(w_queen,y)
 census_metals_gpd['y'] = census_metals_gpd['pb_ppm']
 census_metals_gpd['y_lag'] = y_lag
 
@@ -361,7 +361,7 @@ ax.set_title("Moran's scatter plot")
 ### Visualize the Moran's I with standardized values
 scaler = StandardScaler()
 census_metals_gpd['y_std'] = scaler.fit_transform(census_metals_gpd['pb_ppm'].values.reshape(-1,1))
-census_metals_gpd['y_lag_std'] = ps.lag_spatial(w_queen,
+census_metals_gpd['y_lag_std'] = ps.model.spreg.lag_spatial(w_queen,
                                                 census_metals_gpd['y_std']) #this is a numpy array
 
 ax= sns.regplot(x='y_std',y='y_lag_std',data=census_metals_gpd)
@@ -386,21 +386,21 @@ y_lag = y_lag.reshape(len(y_lag),1)
 x = census_metals_gpd['perc_hispa']
 x = x.values.reshape(len(x),1)
 
-mod_ols = ps.spreg.OLS(y,x)
+mod_ols = ps.model.spreg.OLS(y,x)
 mod_ols.u 
-m_I_residuals = ps.Moran(mod_ols.u,w_queen)
+m_I_residuals = ps.explore.esda.Moran(mod_ols.u,w_queen)
 m_I_residuals.I
 m_I_residuals.p_sim #significant autocorrelation
 
 #take into account autocorr in spreg
 mod_ols.summary
-mod_ols_test = ps.spreg.OLS(y,x,w_queen)
+mod_ols_test = ps.model.spreg.OLS(y,x,w_queen)
 mod_ols_test.summary
 
-mod_ml_lag = ps.spreg.ML_Lag(y,x,w_queen)
+mod_ml_lag = ps.model.spreg.ML_Lag(y,x,w_queen)
 mod_ml_lag.summary
 mod_ml_lag.u
-m_ml_I_residuals = ps.Moran(mod_ml_lag.u,w_queen)
+m_ml_I_residuals = ps.explore.esda.Moran(mod_ml_lag.u,w_queen)
 m_ml_I_residuals.I # Moran's I is lower now!!!
 
 m_ml_I_residuals.p_sim #not significant autocorrelation
