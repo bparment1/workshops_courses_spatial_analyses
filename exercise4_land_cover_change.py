@@ -215,11 +215,25 @@ freq_tb_nlcd = pd.merge(df_date1,df_date2,on='value')
 freq_tb_nlcd = freq_tb_nlcd[['value','y_2001','y_2006']]
 freq_tb_nlcd['diff'] = freq_tb_nlcd['y_2006'] - freq_tb_nlcd['y_2001']
 ## link to category names
+freq_tb_nlcd = pd.merge(freq_tb_nlcd,
+                        lc_system_nlcd_df[['id_l1','name_l1']],
+                        left_on='value',
+                        right_on='id_l1')
 
+test = pd.merge(freq_tb_nlcd,
+                        lc_system_nlcd_df[['id_l1','name_l1']],
+                        left_on='value',
+                        right_on='id_l1',
+                        how='left',
+                        right_index=False)
+
+test = test.drop(columns=['id_l1'])
 freq_tb_nlcd.head()
 freq_tb_nlcd
 
 infile_name_nlcd_classification_system = "classification_system_nlcd_legend.xlsx"
+lc_system_nlcd_df = pd.read_excel(os.path.join(in_dir,
+                                       infile_name_nlcd_classification_system))
 
 #dim(lc_system_nlcd_df) # Now 15 land categories instead of 20.
 
@@ -233,30 +247,9 @@ lc_system_nlcd_df = lc_system_nlcd_df[selected_cat]
 ### Select relevant columns for the reclassification
 
 rec_df = lc_system_nlcd_df.iloc[:,[2,1,0]]
-rec_df.head()
-rec_df
 
-#rec_df.
-label_legend_df <- data.frame(ID=lc_system_nlcd_df$id_l1,name=lc_system_nlcd_df$name_l1)
-r_stack <- stack(r_date1_rec,r_date2_rec)
-
-lc_df <- freq(r_stack,merge=T)
-names(lc_df) <- c("value","date1","date2")
-lc_df$diff <- lc_df$date2 - lc_df$date1 #difference for each land cover categories over the 2001-2011 time period
-head(lc_df) # Quickly examine the output
-
-### Add relevant categories
-lc_df <- merge(lc_df,label_legend_df,by.x="value",by.y="ID",all.y=F)
-lc_df <- lc_df[!duplicated(lc_df),] #remove duplictates
-head(lc_df) # Note the overall cahnge
-#### Now visualize the overall land cover changes
-barplot(lc_df$diff,names.arg=lc_df$name,las=2)
-total_val  <- sum(lc_df$date1)
-lc_df$perc_change <- 100*lc_df$diff/total_val 
-barplot(lc_df$perc_change,names.arg=lc_df$name,las=2)
-
-##### Step 3: examine transitions
-#### Crosstab
+##### Step 3: examine land transitions 
+#### Cros  stab
 
 data_rec = pd.DataFrame({'date1': r_date1_rec.ravel(),
              'date2': r_date2_rec.ravel()})
