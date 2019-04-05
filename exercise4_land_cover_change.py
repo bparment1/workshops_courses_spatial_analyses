@@ -376,32 +376,22 @@ sum(data_df.change)/data_df.shape[0]
 sum(y_train.change)/y_train.shape[0]
 sns.set(color_codes=True) #improves layout with bar and background grid
 sns.countplot(x='change',data=data_df)
-#,palette='hls')
 plt.show()
 plt.savefig('count_plot')
 
 # Explore values distribution
-
 f, ax = plt.subplots(1, 2)
-sns.boxplot(ax=ax[0],x='test',y='T1',data=residuals_jan_df)#title='January residuals')
-ax[0].set(ylim=(-8, 8)) 
-ax[0].set(title="Residuals in January") 
-
-sns.boxplot(ax=ax[1],x='test',y='T7',data=residuals_jul_df) #title='July residuals')
-ax[1].set(ylim=(-8, 8)) 
-ax[1].set(title="Residuals in July") 
-
-sns.distplot(y_scores_test) #histogram for the predicted probablities
-sns.distplot(y_scores_train) #histogram for the predicted probablities
+sns.distplot(y_scores_train,ax=ax[0])#title='January residuals')
+sns.distplot(y_scores_test,ax=ax[1])#title='January residuals')
+ax[0].set(title="Predicted training probabilities") 
+ax[1].set(title="Predicted testing probabilities") 
 
 ####################
 ###### Step 5: Model assessment with ROC and AUC
 
-
 #https://towardsdatascience.com/building-a-logistic-regression-in-python-301d27367c24
 #This is for ROC curve
 #https://towardsdatascience.com/building-a-logistic-regression-in-python-step-by-step-becd4d56c9c8
-
 
 #y_true = y_test
 #y_scores = pred_test_prob[:,1]
