@@ -266,7 +266,7 @@ rec_xtab_df['2.0']
 ############# PART III: Process and prepare for land change modeling ####################
 ## add this later
 
-### Let's read in the information
+### Let's read in the information that contains variables
 data_df = pd.read_csv(os.path.join(in_dir,data_fname))
 data_df.columns
 data_df.head()
@@ -308,7 +308,6 @@ inverted = label_encoder.inverse_transform([np.argmax(onehot_encoded[1,:])])
 print(inverted)
 
 #assign back to the data.frame
-
 unique_val = np.array(freq_val_df.index)
 unique_val = np.sort(unique_val)
 print(unique_val)
@@ -387,31 +386,27 @@ ax[0].set(title="Predicted training probabilities")
 ax[1].set(title="Predicted testing probabilities") 
 
 ####################
-###### Step 5: Model assessment with ROC and AUC
+###### Step 2: Model assessment with ROC and AUC
 
-#https://towardsdatascience.com/building-a-logistic-regression-in-python-301d27367c24
-#This is for ROC curve
-#https://towardsdatascience.com/building-a-logistic-regression-in-python-step-by-step-becd4d56c9c8
-
-#y_true = y_test
-#y_scores = pred_test_prob[:,1]
+#Compute AUC
 auc_val_train =roc_auc_score(y_train,y_scores_train)
 auc_val_test =roc_auc_score(y_test,y_scores_test)
 
-#fpr, tpr, thresholds = roc_curve(y_test, 
-#                                 logreg.predict_proba(X_test)[:,1])
+print("AUC train: ", auc_val_train)
+print("AUC test: ", auc_val_test)
 
+#Generate inputs for ROC curves
 fpr, tpr, thresholds = roc_curve(y_test, 
                                  y_scores_test)
 plt.figure()
 plt.plot(fpr, tpr, 
-         label='Logistic Regression (area = %0.2f)' % auc_val)
+         label='Logistic Regression (area = %0.2f)' % auc_val_test)
 plt.plot([0, 1], [0, 1],'r--')
 plt.xlim([0.0, 1.0])
 plt.ylim([0.0, 1.05])
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
-plt.title('Receiver operating characteristic')
+plt.title('Test ROC')
 plt.legend(loc="lower right")
 plt.savefig('Log_ROC')
 plt.show()
