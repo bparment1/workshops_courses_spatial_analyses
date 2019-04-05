@@ -46,6 +46,8 @@ import copy
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import LabelEncoder
 from numpy import array
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
 
 ################ NOW FUNCTIONS  ###################
 
@@ -104,6 +106,10 @@ infile_name_nlcd_legend = "nlcd_legend.txt"
 infile_name_nlcd_classification_system = "classification_system_nlcd_legend.xlsx"
 #ARGS 18	
 data_fname = 'r_variables_harris_county_exercise4_02072019.txt'
+#ARGS 19
+prop = 0.3 #proportion of observations for hold-out/testing
+#ARGS 20
+random_seed = 100 #random seed for reproducibility
 
 ################# START SCRIPT ###############################
 
@@ -306,30 +312,24 @@ print(inverted)
 
 unique_val = np.array(freq_val_df.index)
 unique_val = np.sort(unique_val)
-
 print(unique_val)
 names_cat = ['lc_' + str(i) for i in unique_val]
-
 print(names_cat)
 onehot_encoded_df = pd.DataFrame(onehot_encoded,columns=names_cat)
 onehot_encoded_df.columns
 onehot_encoded_df.head()
 onehot_encoded_df.shape
 data_df.shape
-## Combine back!!
 
+## Add the new encoded variables to the data frame
 data_df= pd.concat([data_df,onehot_encoded_df],sort=False,axis=1)
 data_df.shape
 data_df.head()
 
 selected_covariates_names_updated = selected_continuous_var_names + names_cat 
 
-## Step 2: Split training and testing
-
-from sklearn.model_selection import train_test_split
-
-prop = 0.3
-random_seed = 100
+##############
+## Step 2: Split training and testing and rescaling for continuous variables
 
 X_train, X_test, y_train, y_test = train_test_split(data_df[selected_covariates_names_updated], 
                                                     data_df[selected_target_names], 
@@ -338,9 +338,6 @@ X_train, X_test, y_train, y_test = train_test_split(data_df[selected_covariates_
 X_train.shape
 
 #### Scaling between 0-1 for continuous variables
-
-from sklearn.preprocessing import MinMaxScaler
-
 # Data needs to be scaled to a small range like 0 to 1 for the neural
 # network to work well.
 scaler = MinMaxScaler(feature_range=(0, 1))
