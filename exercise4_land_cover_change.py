@@ -48,6 +48,9 @@ from sklearn.preprocessing import LabelEncoder
 from numpy import array
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
 
 ################ NOW FUNCTIONS  ###################
 
@@ -238,7 +241,6 @@ ax = sns.barplot(x="name_l1",
                      data=freq_tb_nlcd)
 ax.set_xticklabels(list(freq_tb_nlcd["name_l1"]),rotation=30)
 
-
 ##### Step 3: examine land transitions 
 #### Crosstab
 
@@ -263,9 +265,6 @@ rec_xtab_df['2.0']
 ###########################################
 ############# PART III: Process and prepare for land change modeling ####################
 ## add this later
-
-###########################################
-### PART IV: Run model and perform assessment ###########################
 
 ### Let's read in the information
 data_df = pd.read_csv(os.path.join(in_dir,data_fname))
@@ -336,17 +335,15 @@ X_train, X_test, y_train, y_test = train_test_split(data_df[selected_covariates_
                                                     test_size=prop, 
                                                     random_state=random_seed)
 X_train.shape
+X_train.head()
 
 #### Scaling between 0-1 for continuous variables
 # Data needs to be scaled to a small range like 0 to 1 for the neural
 # network to work well.
 scaler = MinMaxScaler(feature_range=(0, 1))
-
-##### need to use one hot encoding or text embedding to normalize categorical variables
 ### need to select only the continuous var:
 scaled_training = scaler.fit_transform(X_train[selected_continuous_var_names])
 scaled_testing = scaler.transform(X_test[selected_continuous_var_names])
-
 type(scaled_training) # array
 scaled_training.shape
 
@@ -357,58 +354,44 @@ X_testing_df = pd.DataFrame(np.concatenate((X_test[names_cat].values,scaled_test
 X_training_df = pd.DataFrame(np.concatenate((X_train[names_cat].values,scaled_training),axis=1),
                                             columns=names_cat+selected_continuous_var_names)
 
-#scaled_training_df.to_csv("sales_data_training_scaled.csv", index=False)
-#scaled_testing_df.to_csv("sales_data_testing_scaled.csv", index=False)
+###########################################
+### PART IV: Run model and perform assessment ###########################
 
 ####################
-###### Step 3: fit glm logistic model and generate predictions
+###### Step 1: fit glm logistic model and generate predictions
 
-##################################
-### logistic model
-from sklearn.linear_model import LogisticRegression
-
-model_logistic = LogisticRegression()
-
+model_logistic = LogisticRegression() #instantiate model object
 model_logistic = model_logistic.fit(X_train.values,y_train.values.ravel())
 
-model_logistic.coef_
+print("model coefficients: ",model_logistic.coef_)
 selected_covariates_names_updated
-
-pred_test = model_logistic.predict(X_test.values)
-pred_test_prob = model_logistic.predict_proba(X_test.values)
-
-pred_test_prob[:,1] # this is the prob for 1
-y_test[0:5]
-pred_test_prob[0:5,:]
-
-predicted_classes = model.predict(X)
-accuracy = accuracy_score(y.flatten(),pred_test)
-parameters = model.coef_
-#pred_test = model_logistic.predict(X_test)
-
-model_logistic.score(pred_test,y_test)
 
 pred_test_prob = model_logistic.predict_proba(X_test.values)
 y_scores_test = pred_test_prob[:,1]
-
 pred_train_prob = model_logistic.predict_proba(X_train.values)
 y_scores_train = pred_train_prob[:,1]
 
 ### Note that we only have about 10% change in the dataset so setting 50% does not make sense!!
 sum(data_df.change)/data_df.shape[0]
 sum(y_train.change)/y_train.shape[0]
-
-data_df['change'].value_counts()
-
 sns.set(color_codes=True) #improves layout with bar and background grid
 sns.countplot(x='change',data=data_df)
 #,palette='hls')
 plt.show()
 plt.savefig('count_plot')
 
-plt.figure()
-sns.distplot(y_scores_test) #histogram for the predicted probablities
+# Explore values distribution
 
+f, ax = plt.subplots(1, 2)
+sns.boxplot(ax=ax[0],x='test',y='T1',data=residuals_jan_df)#title='January residuals')
+ax[0].set(ylim=(-8, 8)) 
+ax[0].set(title="Residuals in January") 
+
+sns.boxplot(ax=ax[1],x='test',y='T7',data=residuals_jul_df) #title='July residuals')
+ax[1].set(ylim=(-8, 8)) 
+ax[1].set(title="Residuals in July") 
+
+sns.distplot(y_scores_test) #histogram for the predicted probablities
 sns.distplot(y_scores_train) #histogram for the predicted probablities
 
 ####################
@@ -419,8 +402,6 @@ sns.distplot(y_scores_train) #histogram for the predicted probablities
 #This is for ROC curve
 #https://towardsdatascience.com/building-a-logistic-regression-in-python-step-by-step-becd4d56c9c8
 
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import roc_curve
 
 #y_true = y_test
 #y_scores = pred_test_prob[:,1]
