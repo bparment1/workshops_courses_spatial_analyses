@@ -10,12 +10,12 @@ Spyder Editor.
 #
 #AUTHORS: Benoit Parmentier
 #DATE CREATED: 01/07/2019
-#DATE MODIFIED: 04/04/2019
+#DATE MODIFIED: 04/05/2019
 #Version: 1
 #PROJECT: AAG 2019 Geospatial Short Course
 #TO DO:
 #
-#COMMIT: clean up code for workshop
+#COMMIT: changes to modeling
 #
 #################################################################################################
 	
@@ -70,7 +70,7 @@ out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/ou
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 4
-out_suffix = "exercise4_03142019" #output suffix for the files and ouptut folder
+out_suffix = "exercise4_04052019" #output suffix for the files and ouptut folder
 #ARGS 5
 NA_value = -9999 # number of cores
 #ARGS 6
@@ -150,7 +150,7 @@ lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",
 lc_legend_df.head() # Inspect data
 lc_legend_df.columns
 lc_legend_df.shape
-#subset the data to remove unsured rows
+#subset the data to remove unused rows
 lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0] 
 
 #######
@@ -158,8 +158,7 @@ lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0]
 ###  PART II : Analyze overall changes and land transitions
 
 ## As the plot shows for 2006, we have 15 land cover types. Analyzing such complex categories in terms of decreasse (loss), increase (gain), 
-# persistence in land cover will generate a large number of transitions (potential up to 15*15=225 transitions in this case!)
-
+## persistence in land cover will generate a large number of transitions (potential up to 15*15=225 transitions in this case!)
 ## To generalize the information, let's aggregate leveraging the hierachical nature of NLCD Anderson Classification system.
 
 #### Step 1: aggregate NLCD classes
@@ -167,7 +166,7 @@ lc_legend_df = lc_legend_df[lc_legend_df['COUNT']>0]
 # Read in classification system: Now 15 land categories instead of 20.
 
 lc_system_nlcd_df = pd.read_excel(os.path.join(in_dir,infile_name_nlcd_classification_system))
-lc_system_nlcd_df.head #inspect data
+lc_system_nlcd_df.head() #inspect data
 
 ### Set up the reclassification
 class_def = np.array([0,20,1,
@@ -182,6 +181,7 @@ class_def = np.array([0,20,1,
  
 class_def = class_def.reshape(9,3)
 
+## Generate copies of raster objects
 r_date1_rec = copy.copy(r_lc_date1)
 r_date2_rec = copy.copy(r_lc_date2)
 
@@ -232,15 +232,9 @@ ax = sns.barplot(x="name_l1",
                      data=freq_tb_nlcd)
 ax.set_xticklabels(list(freq_tb_nlcd["name_l1"]),rotation=30)
 
-### Select relevant columns for the reclassification
-
-#lc_system_nlcd_df.shape
-#selected_cat = lc_system_nlcd_df.id_l1.isin(freq_tb_nlcd.value)
-#lc_system_nlcd_df = lc_system_nlcd_df[selected_cat]
-#rec_df = lc_system_nlcd_df.iloc[:,[2,1,0]]
 
 ##### Step 3: examine land transitions 
-#### Cros  stab
+#### Crosstab
 
 data_rec = pd.DataFrame({'date1': r_date1_rec.ravel(),
              'date2': r_date2_rec.ravel()})
@@ -252,6 +246,8 @@ rec_xtab_df.index = ['1.0','2.0','3.0','4.0','5.0','7.0','8.0','9.0']
 rec_xtab_df
 
 rec_xtab_df.max() # diagonal is the max for all columns
+
+rec_xtab_df['2.0']
 
 ## Look at transitions for class 2 (urban)
 ## Most common is from 8 to 2
@@ -265,54 +261,44 @@ rec_xtab_df.max() # diagonal is the max for all columns
 ###########################################
 ### PART IV: Run model and perform assessment ###########################
 
-################
-##### Step 1: consistent masking and generate mask removing water (1) and developped (2) in 2001
-	
-infile_land_cover_date1 = os.path.join(in_dir,infile_land_cover_date1) #NLCD 2001
-
-#data_df = pd.read_table(os.path.join(in_dir,data_fname))
+### Let's read in the information
 data_df = pd.read_csv(os.path.join(in_dir,data_fname))
 data_df.columns
+data_df.head()
 
 ################
-##### Step 2: Prepare model for predictions: Split data into training and testing and rescaling
-
+##### Step 1: Prepare features/covariates by rescaling values
 
 ## Relevant variables used:
 selected_covariates_names = ['land_cover', 'slope', 'roads_dist', 'developped_dist']
 selected_target_names = ['change'] #also called dependent variable
 
+## We need to account for categorical versus continuous variables
 selected_categorical_var_names=['land_cover']
-
 selected_continuous_var_names=list(set(selected_covariates_names) - set(selected_categorical_var_names))
 ##Find frequency of unique values:
 freq_val_df = data_df[selected_categorical_var_names].apply(pd.value_counts)
 print(freq_val_df.head())
-
 values_cat = array(data_df[selected_categorical_var_names].values) #note this is assuming only one cat val here
 
-label_encoder = LabelEncoder() 
-one_hot_encoder = OneHotEncoder(sparse=False)
-
+label_encoder = LabelEncoder()  # labeling categories
+one_hot_encoder = OneHotEncoder(sparse=False) #generate dummy variables
 ### First integer encode:
 integer_encoded = label_encoder.fit_transform(values_cat)
 print(integer_encoded)
-
 # Binary encode:
-
 integer_encoded = integer_encoded.reshape(len(integer_encoded),1)
 print(integer_encoded)
 
+#33 generate dummy variables
 onehot_encoded = one_hot_encoder.fit_transform(integer_encoded)
 print(onehot_encoded)
 onehot_encoded.shape
 type(onehot_encoded)
 
-#invert to check value?
+#Check values generated: invert to check value?
 onehot_encoded[0:5,]
 values_cat[0:5,]
-
-inverted = label_encoder.inverse_transform([np.argmax(onehot_encoded[0,:])])
 inverted = label_encoder.inverse_transform([np.argmax(onehot_encoded[1,:])])
 print(inverted)
 
@@ -338,7 +324,7 @@ data_df.head()
 
 selected_covariates_names_updated = selected_continuous_var_names + names_cat 
 
-## Split training and testing
+## Step 2: Split training and testing
 
 from sklearn.model_selection import train_test_split
 
