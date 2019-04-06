@@ -69,9 +69,13 @@ def create_dir_and_check_existence(path):
 #####  Parameters and argument set up ########### 
 
 #ARGS 1
-in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/data"
+#in_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/data"
+in_dir = "/nfs/public-data/training"
 #ARGS 2
-out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/outputs"
+#out_dir = "/home/bparmentier/c_drive/Users/bparmentier/Data/python/Exercise_4/outputs"
+#out_dir = "/home/participant32"
+out_dir = "/resarch-home/bparmentier"
+
 #ARGS 3:
 create_out_dir=True #create a new ouput dir if TRUE
 #ARGS 4
@@ -118,18 +122,17 @@ random_seed = 100 #random seed for reproducibility
 
 ######### PART 0: Set up the output dir ################
 
+
 #set up the working directory
 #Create output directory
 
 if create_out_dir==True:
-    #out_path<-"/data/project/layers/commons/data_workflow/output_data"
-    out_dir = "output_data_"+out_suffix
-    out_dir = os.path.join(in_dir,out_dir)
+    out_dir_new = "output_data_"+out_suffix
+    out_dir = os.path.join(out_dir,out_dir_new)
     create_dir_and_check_existence(out_dir)
     os.chdir(out_dir)        #set working directory
 else:
     os.chdir(create_out_dir) #use working dir defined earlier
-    
     
 ###########################################
 ### PART I: READ AND VISUALIZE DATA #######
@@ -146,7 +149,6 @@ lc_date3= rasterio.open(infile_land_cover_date2)
 
 #Generate quick visualization using rasterio object
 f, ax = plt.subplots(1, 2)
-
 plot.show(lc_date1,title="NLCD 2001",ax=ax[0])
 plot.show(lc_date2,title="NLCD 2006",ax=ax[1])
 
@@ -155,7 +157,7 @@ print("Coordinate reference system: ",lc_date1.crs )
       
 print(" Rows and columns: ", lc_date1.shape, "number of rows: ", lc_date1.height)  
 
-lc_legend_df = pd.read_table(os.path.join(in_dir,infile_name_nlcd_legend),sep=",")
+lc_legend_df = pd.read_csv(os.path.join(in_dir,infile_name_nlcd_legend),sep=",")
 lc_legend_df.head() # Inspect data
 lc_legend_df.columns
 lc_legend_df.shape
@@ -272,7 +274,7 @@ data_df.columns
 data_df.head()
 
 ################
-##### Step 1: Prepare features/covariates by rescaling values
+##### Step 1: Prepare categorical features/covariates by rescaling values
 
 ## Relevant variables used:
 selected_covariates_names = ['land_cover', 'slope', 'roads_dist', 'developped_dist']
@@ -352,6 +354,8 @@ X_testing_df = pd.DataFrame(np.concatenate((X_test[names_cat].values,scaled_test
 
 X_training_df = pd.DataFrame(np.concatenate((X_train[names_cat].values,scaled_training),axis=1),
                                             columns=names_cat+selected_continuous_var_names)
+
+X_training_df.head()
 
 ###########################################
 ### PART IV: Run model and perform assessment ###########################
