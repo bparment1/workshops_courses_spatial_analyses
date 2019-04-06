@@ -34,7 +34,7 @@ from rasterio import plot
 import geopandas as gpd
 import descartes
 import libpysal as lp #new pysal interface
-from cartopy import crs as ccrs
+#from cartopy import crs as ccrs
 from pyproj import Proj
 from osgeo import osr
 from shapely.geometry import Point
